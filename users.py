@@ -1,0 +1,148 @@
+import os.path
+from typing import Annotated, Set
+
+import pandas as pd
+import typer
+from rich.table import Table
+
+from api.models import AddDatabaseUserDTO, UpdateDatabaseUserRoleDTO, DatabaseRole
+from utils import get_client, handle_api_errors, console
+
+app = typer.Typer(no_args_is_help=True)
+
+USER_ROLES = ["Global Administrator", "CM Administrator", "CM Coordinator", "CM Partner"]
+
+
+@app.command(help="Bulk add or update users in a database from a file.", no_args_is_help=True)
+def add_bulk(
+        target_database_id: Annotated[str, typer.Argument(help="The ID of the target database")],
+        input_file_path: Annotated[str, typer.Argument(help="The path to the input file (CSV/XLSX)")],
+        remove_users: Annotated[bool, typer.Option(help="Remove existing users missing from the input list")] = False,
+        dry_run: Annotated[bool, typer.Option(help="Do not actually perform any changes")] = False,
+        yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation prompt")] = False
+):
+    client = get_client()
+
+    # 1. Load input file
+    filename, extension = os.path.splitext(input_file_path)
+    with handle_api_errors(f"Could not read input file: {input_file_path}"):
+        if extension == ".csv":
+            data: pd.DataFrame = pd.read_csv(input_file_path)
+        elif extension in [".xls", ".xlsx"]:
+            data = pd.read_excel(input_file_path)
+        else:
+            raise typer.BadParameter(f"Unrecognized file extension: {extension}")
+
+    data.columns = [col.lower().strip() for col in data.columns]
+
+    email_col = next((col for col in data.columns if "email" in col), None)
+    if not email_col:
+        console.print("[red]Error: Input file does not have an email column.[/red]")
+        raise typer.Exit(code=1)
+
+    if "name" not in data.columns or "role" not in data.columns:
+        console.print("[red]Error: Input file must have 'name' and 'role' columns.[/red]")
+        raise typer.Exit(code=1)
+
+    # 2. Retrieve target database info
+    with handle_api_errors("Could not get target database information"):
+        target_tree = client.api.get_database_tree(target_database_id)
+        existing_users = client.api.get_database_users(target_database_id)
+
+    # 3. Validation
+    existing_roles = {role.label: role for role in target_tree.roles}
+    matching_roles_count = len(set(USER_ROLES).intersection(existing_roles.keys()))
+    if matching_roles_count == 0:
+        console.print("[red]Error: Target database has no predefined roles.[/red]")
+        raise typer.Exit(code=1)
+
+    # 4. Compare and categorize
+    known_emails: Set[str] = set()
+    user_additions = []
+    user_updates = []
+
+    for _, row in data.iterrows():
+        email = str(row[email_col]).strip().lower()
+        name = str(row["name"]).strip()
+        role_label = str(row["role"]).strip()
+
+        if role_label not in existing_roles:
+            console.print(f"[yellow]Warning: Role '{role_label}' is not recognized for {email}. Skipping.[/yellow]")
+            continue
+
+        existing_user = next((u for u in existing_users if u.email.lower() == email), None)
+        if existing_user is None:
+            user_additions.append((name, email, role_label))
+        else:
+            user_updates.append((existing_user.user_id, email, role_label))
+        known_emails.add(email)
+
+    user_deletes = []
+    if remove_users:
+        user_deletes = [u for u in existing_users if u.email.lower() not in known_emails]
+
+    # 5. Show detailed diff tables
+    if user_additions:
+        add_table = Table(title="Users to ADD", title_style="green")
+        add_table.add_column("Name")
+        add_table.add_column("Email")
+        add_table.add_column("Role")
+        for name, email, role in user_additions:
+            add_table.add_row(name, email, role)
+        console.print(add_table)
+
+    if user_updates:
+        up_table = Table(title="Users to UPDATE", title_style="yellow")
+        up_table.add_column("Email")
+        up_table.add_column("New Role")
+        for _, email, role in user_updates:
+            up_table.add_row(email, role)
+        console.print(up_table)
+
+    if user_deletes:
+        del_table = Table(title="Users to DELETE", title_style="red")
+        del_table.add_column("Name")
+        del_table.add_column("Email")
+        for u in user_deletes:
+            del_table.add_row(u.name, u.email)
+        console.print(del_table)
+
+    if dry_run:
+        console.print("\n[bold cyan]Dry run mode: No changes will be applied.[/bold cyan]")
+        return
+
+    if not (user_additions or user_updates or user_deletes):
+        console.print("[green]No changes needed.[/green]")
+        return
+
+    if not yes and not typer.confirm("\nProceed with these changes?"):
+        raise typer.Abort()
+
+    # 6. Execution
+    with console.status("Applying changes...") as status:
+        for name, email, role_label in user_additions:
+            status.update(f"Adding user: {email}")
+            with handle_api_errors(f"Could not add user {email}"):
+                client.api.add_database_user(target_database_id, AddDatabaseUserDTO(
+                    name=name, email=email, role=DatabaseRole(
+                        id=existing_roles[role_label].id
+                    ), grants=[], locale="en"
+                ))
+
+        for uid, email, role_label in user_updates:
+            status.update(f"Updating user: {email}")
+            with handle_api_errors(f"Could not update user {email}"):
+                client.api.update_database_user_role(target_database_id, uid, UpdateDatabaseUserRoleDTO(
+                    assignments=[DatabaseRole(id=existing_roles[role_label].id)],
+                ))
+
+        for user in user_deletes:
+            status.update(f"Deleting user: {user.email}")
+            with handle_api_errors(f"Could not delete user {user.email}"):
+                client.api.delete_database_user(target_database_id, user.user_id)
+
+    console.print("[bold green]Bulk update completed successfully.[/bold green]")
+
+
+if __name__ == "__main__":
+    app()
