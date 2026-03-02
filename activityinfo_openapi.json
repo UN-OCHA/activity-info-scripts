@@ -1,0 +1,5411 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ActivityInfo API",
+    "version": "1.0.0",
+    "description": "REST API for ActivityInfo. Authenticate with a Personal API Token either as `Authorization: Bearer <TOKEN>` or HTTP Basic Auth (any username, token as password)."
+  },
+  "servers": [
+    {
+      "url": "https://www.activityinfo.org/resources"
+    }
+  ],
+  "paths": {
+    "/accounts": {
+      "post": {
+        "operationId": "updateProfile",
+        "summary": "Update profile",
+        "description": "Updates the authenticated user's name and/or locale. Returns the updated AccountStatus plus a locale cookie.",
+        "tags": [
+          "Accounts"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated account status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/accounts/status": {
+      "get": {
+        "operationId": "getUserAccountStatus",
+        "summary": "Get user account status",
+        "description": "Returns user profile, billing account, and subscription status for the authenticated user.",
+        "tags": [
+          "Accounts"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/accounts/tokens": {
+      "get": {
+        "operationId": "getTokens",
+        "summary": "Get API tokens",
+        "description": "Lists all active Personal API tokens for the authenticated user (up to 10).",
+        "tags": [
+          "Accounts"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiToken"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/accounts/tokens/generate": {
+      "post": {
+        "operationId": "generateApiToken",
+        "summary": "Generate API token",
+        "description": "Creates a new Personal API token. Returns an error if the user already has 10 tokens. Scope `LOGIN` is not allowed.",
+        "tags": [
+          "Accounts"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateApiTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/accounts/tokens/{tokenId}": {
+      "delete": {
+        "operationId": "revokeApiToken",
+        "summary": "Revoke API token",
+        "description": "Permanently revokes the specified API token.",
+        "tags": [
+          "Accounts"
+        ],
+        "parameters": [
+          {
+            "name": "tokenId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Token ID to revoke"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token revoked"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/billingAccounts/{accountId}": {
+      "get": {
+        "operationId": "getBillingAccount",
+        "summary": "Get billing account",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Numeric billing account ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingAccount"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/billingAccounts/{accountId}/users": {
+      "get": {
+        "operationId": "getBillingAccountUsers",
+        "summary": "Get billing account users",
+        "description": "Lists users across all databases on the billing account. Optionally filter by `databaseId`.",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "databaseId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optionally filter to users of a specific database"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingUserStats"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "post": {
+        "operationId": "addBillingAccountUser",
+        "summary": "Add billing account user",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddBillingAccountUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddBillingAccountUserResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/billingAccounts/{accountId}/domains": {
+      "get": {
+        "operationId": "getBillingAccountDomains",
+        "summary": "Get billing account domains",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DomainStats"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/billingAccounts/{accountId}/databases": {
+      "get": {
+        "operationId": "getBillingAccountDatabases",
+        "summary": "Get billing account databases",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DatabaseStats"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/billingAccounts/{accountId}/domains/assign": {
+      "post": {
+        "operationId": "assignDomains",
+        "summary": "Assign domains",
+        "description": "Admin-only. Assigns email domains to a billing account.",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDomainRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignDomainResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases": {
+      "get": {
+        "operationId": "getDatabases",
+        "summary": "Get databases",
+        "description": "Returns all databases owned by or shared with the authenticated user.",
+        "tags": [
+          "Databases"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DatabaseHeader"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "post": {
+        "operationId": "addDatabase",
+        "summary": "Add database",
+        "description": "Creates a new database, optionally from a template (`reporting`, `casemanagement`).",
+        "tags": [
+          "Databases"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDatabaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisibleDatabaseTree"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}": {
+      "get": {
+        "operationId": "getDatabaseTree",
+        "summary": "Get database tree",
+        "description": "Returns the full database tree including resources, roles, and grants.",
+        "tags": [
+          "Databases"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "CUID of the database"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisibleDatabaseTree"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateDatabase",
+        "summary": "Update database",
+        "description": "Updates database resources, roles, or supported languages.",
+        "tags": [
+          "Databases"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDatabaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisibleDatabaseTree"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteDatabase",
+        "summary": "Delete database",
+        "description": "Permanently deletes the database and all its data.",
+        "tags": [
+          "Databases"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteDatabaseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/recover": {
+      "post": {
+        "operationId": "recoverDatabase",
+        "summary": "Recover database",
+        "description": "Attempts to recover a recently deleted database.",
+        "tags": [
+          "Databases"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoverDatabaseResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/versions/{version}/revert": {
+      "post": {
+        "operationId": "revertDatabaseUpdate",
+        "summary": "Revert database update",
+        "description": "Reverts the database schema to a previous version.",
+        "tags": [
+          "Databases"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisibleDatabaseTree"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/billingAccount": {
+      "get": {
+        "operationId": "getDatabaseBillingAccount",
+        "summary": "Get database billing account",
+        "tags": [
+          "Databases"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingAccount"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/dictionary/{dictionaryId}/{language}": {
+      "get": {
+        "operationId": "getTranslations",
+        "summary": "Get translations",
+        "description": "Returns the translation dictionary for a database resource. `dictionaryId` is `database` for the whole database or `form/{formId}` for a single form.",
+        "tags": [
+          "Databases"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "dictionaryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Dictionary path, e.g. `database` or `form/formId`"
+          },
+          {
+            "name": "language",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "BCP-47 language code"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationDictionary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/translations/{language}": {
+      "post": {
+        "operationId": "updateDatabaseTranslations",
+        "summary": "Update database translations",
+        "tags": [
+          "Databases"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "language",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTranslationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTranslationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/forms": {
+      "post": {
+        "operationId": "addForm",
+        "summary": "Add form",
+        "description": "Adds a new form to the database.",
+        "tags": [
+          "Databases"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddFormRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateFormResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/forms/{formId}/duplicate": {
+      "post": {
+        "operationId": "duplicateForm",
+        "summary": "Duplicate form",
+        "tags": [
+          "Databases"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "formId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateFormResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/users": {
+      "get": {
+        "operationId": "getDatabaseUsers",
+        "summary": "Get database users",
+        "tags": [
+          "Database Users"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DatabaseUser"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "post": {
+        "operationId": "addDatabaseUser",
+        "summary": "Add database user",
+        "description": "Invites a user to the database and assigns a role.",
+        "tags": [
+          "Database Users"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDatabaseUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseUserGrantSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/users/preflight": {
+      "post": {
+        "operationId": "preflightAddUser",
+        "summary": "Preflight add user",
+        "description": "Validates an email before adding a user. Returns whether the email is valid.",
+        "tags": [
+          "Database Users"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDatabaseUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreflightUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/users/{userId}": {
+      "delete": {
+        "operationId": "deleteDatabaseUser",
+        "summary": "Delete database user",
+        "description": "Removes a user from the database. If `userId` matches the authenticated user, this leaves the database instead.",
+        "tags": [
+          "Database Users"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteDatabaseUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/users/{userId}/role": {
+      "post": {
+        "operationId": "updateDatabaseUserRole",
+        "summary": "Update database user role",
+        "tags": [
+          "Database Users"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleAssignmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseUserGrantSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/users/{userId}/grants": {
+      "get": {
+        "operationId": "getDatabaseUserGrants",
+        "summary": "Get database user grants",
+        "tags": [
+          "Database Users"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseUserGrantSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateDatabaseUserGrants",
+        "summary": "Update database user grants",
+        "tags": [
+          "Database Users"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGrantSetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseUserGrantSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/users/{userId}/unlock": {
+      "post": {
+        "operationId": "unlockDatabaseUser",
+        "summary": "Unlock database user",
+        "description": "Re-enables a locked user account.",
+        "tags": [
+          "Database Users"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnlockDatabaseUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/databases/{databaseId}/users/{userId}/restore": {
+      "post": {
+        "operationId": "restoreDatabaseUser",
+        "summary": "Restore database user",
+        "description": "Restores a previously removed user.",
+        "tags": [
+          "Database Users"
+        ],
+        "parameters": [
+          {
+            "name": "databaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreDatabaseUserResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/form/{formId}/schema": {
+      "get": {
+        "operationId": "getFormSchema",
+        "summary": "Get form schema",
+        "tags": [
+          "Forms"
+        ],
+        "parameters": [
+          {
+            "name": "formId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateFormSchema",
+        "summary": "Update form schema",
+        "tags": [
+          "Forms"
+        ],
+        "parameters": [
+          {
+            "name": "formId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schema updated"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/form/{formId}/schema/translations/{languageCode}": {
+      "post": {
+        "operationId": "updateFormSchemaTranslations",
+        "summary": "Update form schema translations",
+        "tags": [
+          "Forms"
+        ],
+        "parameters": [
+          {
+            "name": "formId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "languageCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTranslationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Translations updated"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/form/{formId}/records": {
+      "get": {
+        "operationId": "getFormRecords",
+        "summary": "Get form records",
+        "description": "Returns all records as a JSON array of field-value objects.",
+        "tags": [
+          "Records"
+        ],
+        "parameters": [
+          {
+            "name": "formId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/form/{formId}/record/{recordId}": {
+      "get": {
+        "operationId": "getRecord",
+        "summary": "Get record",
+        "tags": [
+          "Records"
+        ],
+        "parameters": [
+          {
+            "name": "formId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/form/{formId}/record/{recordId}/history": {
+      "get": {
+        "operationId": "getRecordHistory",
+        "summary": "Get record history",
+        "description": "Returns the full edit history of a record.",
+        "tags": [
+          "Records"
+        ],
+        "parameters": [
+          {
+            "name": "formId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecordHistoryEntry"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/update": {
+      "post": {
+        "operationId": "updateRecords",
+        "summary": "Update records",
+        "description": "Creates, updates, or deletes records across one or more forms in a single transaction.",
+        "tags": [
+          "Records"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordUpdateSet"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Records updated"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/attachments": {
+      "post": {
+        "operationId": "uploadAttachment",
+        "summary": "Upload attachment",
+        "tags": [
+          "Attachments"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentRef"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/attachments/{blobId}": {
+      "get": {
+        "operationId": "getAttachment",
+        "summary": "Get attachment",
+        "tags": [
+          "Attachments"
+        ],
+        "parameters": [
+          {
+            "name": "blobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Blob ID from uploadAttachment"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File content",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/query/columns": {
+      "post": {
+        "operationId": "queryColumns",
+        "summary": "Query columns",
+        "description": "Executes a QueryModel and returns results in columnar format.",
+        "tags": [
+          "Queries"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryModel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryColumnsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/query/rows": {
+      "post": {
+        "operationId": "queryRows",
+        "summary": "Query rows",
+        "description": "Executes a QueryModel and returns results as an array of row objects.",
+        "tags": [
+          "Queries"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryModel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Row results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/query/pivot": {
+      "post": {
+        "operationId": "pivot",
+        "summary": "Pivot",
+        "description": "Runs a pivot aggregation query.",
+        "tags": [
+          "Queries"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PivotRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PivotTable"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/query/v43/form/{formId}": {
+      "get": {
+        "operationId": "queryFormRows",
+        "summary": "Query form rows (v43)",
+        "description": "Returns all rows of a form using the v43 engine. Pass `_truncate=false` to disable string truncation.",
+        "tags": [
+          "Queries"
+        ],
+        "parameters": [
+          {
+            "name": "formId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "_truncate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Set to `false` to disable string truncation"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Row results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/jobs": {
+      "post": {
+        "operationId": "startJob",
+        "summary": "Start job",
+        "description": "Starts an asynchronous background job. Poll `GET /jobs/{jobId}` for status.",
+        "tags": [
+          "Jobs"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/jobs/{jobId}": {
+      "get": {
+        "operationId": "getJobStatus",
+        "summary": "Get job status",
+        "description": "Returns the current status and progress of a job.",
+        "tags": [
+          "Jobs"
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/jobs/{jobId}/{exportId}/{filename}": {
+      "get": {
+        "operationId": "getJobFile",
+        "summary": "Get job file",
+        "description": "Downloads the output file produced by a completed job.",
+        "tags": [
+          "Jobs"
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "exportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Export ID from the completed JobStatus"
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filename from the completed JobStatus"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File download",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/reports": {
+      "get": {
+        "operationId": "getReports",
+        "summary": "Get reports",
+        "description": "Returns all reports owned by or shared with the authenticated user.",
+        "tags": [
+          "Reports"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportHeader"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateReport",
+        "summary": "Create or update report",
+        "description": "Creates a new report or updates an existing one via the `UpdateReportRequest` body.",
+        "tags": [
+          "Reports"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/reports/{reportId}": {
+      "get": {
+        "operationId": "getReport",
+        "summary": "Get report",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteReport",
+        "summary": "Delete report",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteReportError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/reports/{reportId}/analyses/{analysisId}": {
+      "get": {
+        "operationId": "getAnalysis",
+        "summary": "Get analysis",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "analysisId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Analysis"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/reports/{reportId}/analyses/{analysisId}/results": {
+      "get": {
+        "operationId": "getAnalysisResults",
+        "summary": "Get analysis results",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          {
+            "name": "analysisId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/reports/{reportId}/rows": {
+      "get": {
+        "operationId": "getReportRows",
+        "summary": "Get report rows",
+        "description": "Returns the result rows of a single-pivot or single-table report as JSON.",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Row data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/ping": {
+      "get": {
+        "operationId": "ping",
+        "summary": "Ping",
+        "description": "Health-check. Returns 200 when the server is reachable and the token is valid.",
+        "tags": [
+          "Miscellaneous"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "operationId": "search",
+        "summary": "Search",
+        "description": "Full-text search across databases, forms, and records.",
+        "tags": [
+          "Miscellaneous"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search query string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResults"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddDatabaseUserDTO": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/DatabaseRole"
+          },
+          "grants": {
+            "items": {},
+            "title": "Grants",
+            "type": "array"
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "locale",
+          "role",
+          "grants"
+        ],
+        "title": "AddDatabaseUserDTO",
+        "type": "object"
+      },
+      "AddFormDTO": {
+        "properties": {
+          "formResource": {
+            "$ref": "#/components/schemas/FormResource"
+          },
+          "formClass": {
+            "$ref": "#/components/schemas/FormClass"
+          }
+        },
+        "required": [
+          "formResource",
+          "formClass"
+        ],
+        "title": "AddFormDTO",
+        "type": "object"
+      },
+      "Database": {
+        "properties": {
+          "databaseId": {
+            "title": "Databaseid",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "databaseId",
+          "label",
+          "description"
+        ],
+        "title": "Database",
+        "type": "object"
+      },
+      "DatabaseRole": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Parameters",
+            "type": "object"
+          },
+          "resources": {
+            "default": [],
+            "items": {},
+            "title": "Resources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "DatabaseRole",
+        "type": "object"
+      },
+      "DatabaseTranslation": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "original": {
+            "title": "Original",
+            "type": "string"
+          },
+          "translated": {
+            "title": "Translated",
+            "type": "string"
+          },
+          "autoTranslated": {
+            "title": "Autotranslated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "original",
+          "translated",
+          "autoTranslated"
+        ],
+        "title": "DatabaseTranslation",
+        "type": "object"
+      },
+      "DatabaseTranslations": {
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/DatabaseTranslationsID"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "translatedStrings": {
+            "items": {
+              "$ref": "#/components/schemas/DatabaseTranslation"
+            },
+            "title": "Translatedstrings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "language",
+          "translatedStrings"
+        ],
+        "title": "DatabaseTranslations",
+        "type": "object"
+      },
+      "DatabaseTranslationsID": {
+        "properties": {
+          "databaseId": {
+            "title": "Databaseid",
+            "type": "string"
+          },
+          "dictionaryId": {
+            "title": "Dictionaryid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "databaseId",
+          "dictionaryId"
+        ],
+        "title": "DatabaseTranslationsID",
+        "type": "object"
+      },
+      "DatabaseTree": {
+        "properties": {
+          "databaseId": {
+            "title": "Databaseid",
+            "type": "string"
+          },
+          "userId": {
+            "title": "Userid",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "ownerRef": {
+            "$ref": "#/components/schemas/OwnerRef"
+          },
+          "billingAccountId": {
+            "title": "Billingaccountid",
+            "type": "integer"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "originalLanguage": {
+            "title": "Originallanguage",
+            "type": "string"
+          },
+          "languages": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "role": {
+            "$ref": "#/components/schemas/DatabaseRole"
+          },
+          "suspended": {
+            "title": "Suspended",
+            "type": "boolean"
+          },
+          "billingPlan": {
+            "title": "Billingplan",
+            "type": "string"
+          },
+          "storage": {
+            "title": "Storage",
+            "type": "string"
+          },
+          "publishedTemplate": {
+            "title": "Publishedtemplate",
+            "type": "boolean"
+          },
+          "resources": {
+            "items": {
+              "$ref": "#/components/schemas/Resource"
+            },
+            "title": "Resources",
+            "type": "array"
+          },
+          "grants": {
+            "items": {
+              "$ref": "#/components/schemas/Grant"
+            },
+            "title": "Grants",
+            "type": "array"
+          },
+          "locks": {
+            "default": [],
+            "items": {},
+            "title": "Locks",
+            "type": "array"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "securityCategories": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Securitycategories",
+            "type": "array"
+          }
+        },
+        "required": [
+          "databaseId",
+          "userId",
+          "version",
+          "label",
+          "description",
+          "ownerRef",
+          "billingAccountId",
+          "language",
+          "originalLanguage",
+          "role",
+          "suspended",
+          "billingPlan",
+          "storage",
+          "publishedTemplate",
+          "resources",
+          "grants",
+          "roles",
+          "securityCategories"
+        ],
+        "title": "DatabaseTree",
+        "type": "object"
+      },
+      "DatabaseUser": {
+        "title": "DatabaseUser",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "roleId": {
+            "type": "string"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "roleLabel": {
+            "type": "string"
+          }
+        }
+      },
+      "FieldTypeParametersCardinality": {
+        "enum": [
+          "SINGLE",
+          "MULTIPLE"
+        ],
+        "title": "FieldTypeParametersCardinality",
+        "type": "string"
+      },
+      "FieldTypeParametersItemsUpdateDTO": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "FieldTypeParametersItemsUpdateDTO",
+        "type": "object"
+      },
+      "FieldTypeParametersUpdateDTO": {
+        "properties": {
+          "units": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Units"
+          },
+          "inputMask": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Inputmask"
+          },
+          "cardinality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FieldTypeParametersCardinality"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "range": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Range"
+          },
+          "formId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Formid"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FieldTypeParametersItemsUpdateDTO"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Items"
+          },
+          "formula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Formula"
+          },
+          "prefixFormula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Prefixformula"
+          }
+        },
+        "title": "FieldTypeParametersUpdateDTO",
+        "type": "object"
+      },
+      "FormClass": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "title": "Schemaversion",
+            "type": "integer"
+          },
+          "databaseId": {
+            "title": "Databaseid",
+            "type": "string"
+          },
+          "parentFormId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parentformid"
+          },
+          "elements": {
+            "items": {
+              "$ref": "#/components/schemas/SchemaFieldDTO"
+            },
+            "title": "Elements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "schemaVersion",
+          "databaseId",
+          "parentFormId",
+          "elements"
+        ],
+        "title": "FormClass",
+        "type": "object"
+      },
+      "FormResource": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "parentId": {
+            "title": "Parentid",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "visibility": {
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "parentId",
+          "label",
+          "visibility"
+        ],
+        "title": "FormResource",
+        "type": "object"
+      },
+      "FormSchema": {
+        "title": "FormSchema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "databaseId": {
+            "type": "string"
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormElement"
+            }
+          }
+        }
+      },
+      "Grant": {
+        "properties": {
+          "resourceId": {
+            "title": "Resourceid",
+            "type": "string"
+          },
+          "optional": {
+            "title": "Optional",
+            "type": "boolean"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "title": "Operations",
+            "type": "array"
+          },
+          "conditions": {
+            "default": [],
+            "items": {},
+            "title": "Conditions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "resourceId",
+          "optional",
+          "operations"
+        ],
+        "title": "Grant",
+        "type": "object"
+      },
+      "Operation": {
+        "properties": {
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "filter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Filter"
+          },
+          "securityCategories": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Securitycategories",
+            "type": "array"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "title": "Operation",
+        "type": "object"
+      },
+      "OperationDataFormsField": {
+        "properties": {
+          "@id": {
+            "title": "@Id",
+            "type": "string"
+          },
+          "@lastEditTime": {
+            "title": "@Lastedittime",
+            "type": "number"
+          },
+          "SYSPREFIX": {
+            "title": "Sysprefix",
+            "type": "string"
+          },
+          "EFORM.SYSPREFIX": {
+            "title": "Eform.Sysprefix",
+            "type": "string"
+          },
+          "EFORM.@id": {
+            "title": "Eform.@Id",
+            "type": "string"
+          },
+          "CCODE": {
+            "title": "Ccode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "@id",
+          "@lastEditTime",
+          "SYSPREFIX",
+          "EFORM.SYSPREFIX",
+          "EFORM.@id",
+          "CCODE"
+        ],
+        "title": "OperationDataFormsField",
+        "type": "object"
+      },
+      "OperationMetricConfigurationField": {
+        "properties": {
+          "@id": {
+            "title": "@Id",
+            "type": "string"
+          },
+          "@lastEditTime": {
+            "title": "@Lastedittime",
+            "type": "number"
+          },
+          "SORTORDER": {
+            "title": "Sortorder",
+            "type": "string"
+          },
+          "DFORM.SYSPREFIX": {
+            "title": "Dform.Sysprefix",
+            "type": "string"
+          },
+          "DFORM.@id": {
+            "title": "Dform.@Id",
+            "type": "string"
+          },
+          "REFORDER": {
+            "title": "Reforder",
+            "type": "integer"
+          },
+          "DISPLAY.@id": {
+            "title": "Display.@Id",
+            "type": "string"
+          },
+          "GLOBMETRIC.@id": {
+            "title": "Globmetric.@Id",
+            "type": "string"
+          },
+          "REFCODE_MAN": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refcode Man"
+          },
+          "NAME": {
+            "title": "Name",
+            "type": "string"
+          },
+          "REFCODE": {
+            "title": "Refcode",
+            "type": "string"
+          },
+          "CCODE": {
+            "title": "Ccode",
+            "type": "string"
+          },
+          "REFLABEL": {
+            "title": "Reflabel",
+            "type": "string"
+          },
+          "ERRS": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errs"
+          }
+        },
+        "required": [
+          "@id",
+          "@lastEditTime",
+          "SORTORDER",
+          "DFORM.SYSPREFIX",
+          "DFORM.@id",
+          "REFORDER",
+          "DISPLAY.@id",
+          "GLOBMETRIC.@id",
+          "REFCODE_MAN",
+          "NAME",
+          "REFCODE",
+          "CCODE",
+          "REFLABEL",
+          "ERRS"
+        ],
+        "title": "OperationMetricConfigurationField",
+        "type": "object"
+      },
+      "OwnerRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email"
+        ],
+        "title": "OwnerRef",
+        "type": "object"
+      },
+      "RecordUpdateDTO": {
+        "properties": {
+          "formId": {
+            "title": "Formid",
+            "type": "string"
+          },
+          "recordId": {
+            "title": "Recordid",
+            "type": "string"
+          },
+          "parentRecordId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Parentrecordid"
+          },
+          "deleted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Deleted"
+          },
+          "fields": {
+            "additionalProperties": true,
+            "title": "Fields",
+            "type": "object"
+          }
+        },
+        "required": [
+          "formId",
+          "recordId",
+          "fields"
+        ],
+        "title": "RecordUpdateDTO",
+        "type": "object"
+      },
+      "Resource": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parentid"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "visibility": {
+            "title": "Visibility",
+            "type": "string"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Icon"
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "label",
+          "type",
+          "visibility"
+        ],
+        "title": "Resource",
+        "type": "object"
+      },
+      "Role": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "permissions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "parameters": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Parameters",
+            "type": "array"
+          },
+          "filters": {
+            "default": [],
+            "items": {},
+            "title": "Filters",
+            "type": "array"
+          },
+          "grants": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Grant"
+            },
+            "title": "Grants",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "grantBased": {
+            "title": "Grantbased",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "version",
+          "grantBased"
+        ],
+        "title": "Role",
+        "type": "object"
+      },
+      "SchemaFieldDTO": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "relevanceCondition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Relevancecondition"
+          },
+          "validationCondition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Validationcondition"
+          },
+          "dataEntryVisible": {
+            "default": false,
+            "title": "Dataentryvisible",
+            "type": "boolean"
+          },
+          "tableVisible": {
+            "default": false,
+            "title": "Tablevisible",
+            "type": "boolean"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": false,
+            "title": "Key"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "typeParameters": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FieldTypeParametersUpdateDTO"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "label",
+          "required",
+          "type"
+        ],
+        "title": "SchemaFieldDTO",
+        "type": "object"
+      },
+      "UpdateDatabaseDTO": {
+        "properties": {
+          "resourceUpdates": {
+            "items": {
+              "$ref": "#/components/schemas/Resource"
+            },
+            "title": "Resourceupdates",
+            "type": "array"
+          },
+          "resourceDeletions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Resourcedeletions",
+            "type": "array"
+          },
+          "languageUpdates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Languageupdates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "resourceUpdates",
+          "resourceDeletions",
+          "languageUpdates"
+        ],
+        "title": "UpdateDatabaseDTO",
+        "type": "object"
+      },
+      "UpdateDatabaseTranslationsDTO": {
+        "properties": {
+          "strings": {
+            "items": {
+              "$ref": "#/components/schemas/DatabaseTranslation"
+            },
+            "title": "Strings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "strings"
+        ],
+        "title": "UpdateDatabaseTranslationsDTO",
+        "type": "object"
+      },
+      "UpdateDatabaseUserRoleDTO": {
+        "properties": {
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/DatabaseRole"
+            },
+            "title": "Assignments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "assignments"
+        ],
+        "title": "UpdateDatabaseUserRoleDTO",
+        "type": "object"
+      },
+      "UpdateRecordsDTO": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/RecordUpdateDTO"
+            },
+            "title": "Changes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "changes"
+        ],
+        "title": "UpdateRecordsDTO",
+        "type": "object"
+      },
+      "AddDatabaseDTO": {
+        "title": "AddDatabaseDTO",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "description"
+        ],
+        "description": "Payload for creating a new database."
+      },
+      "UserAccountStatus": {
+        "title": "UserAccountStatus",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "emailNotifications": {
+            "type": "boolean"
+          },
+          "accountType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "name"
+        ]
+      },
+      "Record": {
+        "title": "Record",
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "type": "string"
+          },
+          "formId": {
+            "type": "string"
+          },
+          "lastEditTime": {
+            "type": "number",
+            "description": "Unix timestamp (ms)"
+          },
+          "parentRecordId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Field values keyed by field ID"
+          }
+        },
+        "required": [
+          "recordId",
+          "formId",
+          "lastEditTime",
+          "fields"
+        ],
+        "description": "A single form record."
+      },
+      "RecordHistoryEntry": {
+        "title": "RecordHistoryEntry",
+        "type": "object",
+        "properties": {
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp (ms)"
+          },
+          "subFieldId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "FIELD_CHANGED",
+              "DELETED"
+            ]
+          },
+          "newValue": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "oldValue": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "RecordHistory": {
+        "title": "RecordHistory",
+        "type": "object",
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordHistoryEntry"
+            }
+          }
+        }
+      },
+      "QueryRequest": {
+        "title": "QueryRequest",
+        "type": "object",
+        "properties": {
+          "rowSources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rootFormId": {
+                  "type": "string"
+                },
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "expression"
+              ]
+            }
+          },
+          "filter": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rowSources",
+          "columns"
+        ],
+        "description": "Body for row/column query endpoints."
+      },
+      "QueryRowsResult": {
+        "title": "QueryRowsResult",
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "QueryColumnsResult": {
+        "title": "QueryColumnsResult",
+        "type": "object",
+        "description": "Columnar result: each key is a column ID mapping to an array of values.",
+        "properties": {
+          "numRows": {
+            "type": "integer"
+          },
+          "columns": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {}
+            }
+          }
+        }
+      },
+      "PivotRequest": {
+        "title": "PivotRequest",
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "model": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Pivot model definition"
+          },
+          "showHidden": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "sources",
+          "model"
+        ]
+      },
+      "PivotResult": {
+        "title": "PivotResult",
+        "type": "object",
+        "properties": {
+          "cells": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "number"
+                },
+                "dimensions": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "JobRequest": {
+        "title": "JobRequest",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "exportForm",
+              "exportAuditLog",
+              "exportDatabaseForms",
+              "exportUsers",
+              "exportBillingAccount",
+              "duplicateDatabase",
+              "importRecords",
+              "importXlsform",
+              "exportAttachments",
+              "exportReport",
+              "translate",
+              "migrateDomainIdp",
+              "duplicateScan",
+              "updateBillingAccountStats"
+            ],
+            "description": "Job type key (camelCase as in the server source)"
+          },
+          "descriptor": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Job-type-specific configuration object"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Optional BCP-47 locale for the job output"
+          }
+        },
+        "required": [
+          "type",
+          "descriptor"
+        ]
+      },
+      "JobStatus": {
+        "title": "JobStatus",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "descriptor": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "started",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "description": "Lowercase JobState name"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "percentComplete": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "result": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Present when state=completed"
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Present when state=failed"
+          }
+        },
+        "required": [
+          "id",
+          "state"
+        ]
+      },
+      "SearchResultItem": {
+        "title": "SearchResultItem",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "database | form | record"
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "databaseId": {
+            "type": "string"
+          },
+          "databaseLabel": {
+            "type": "string"
+          }
+        }
+      },
+      "SearchResults": {
+        "title": "SearchResults",
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            }
+          }
+        }
+      },
+      "FieldType": {
+        "type": "string",
+        "enum": [
+          "serial",
+          "month",
+          "attachment",
+          "geopoint",
+          "FREE_TEXT",
+          "quantity",
+          "enumerated",
+          "multiselectreference",
+          "epiweek",
+          "subform",
+          "date",
+          "calculated",
+          "reversereference",
+          "reference",
+          "fortnight",
+          "section",
+          "NARRATIVE"
+        ]
+      },
+      "UpdateProfileDTO": {
+        "title": "UpdateProfileDTO",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string",
+            "description": "BCP-47 locale code"
+          },
+          "emailNotifications": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiToken": {
+        "title": "ApiToken",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AuthenticationScope"
+          },
+          "timeCreated": {
+            "type": "number",
+            "description": "Unix timestamp (ms)"
+          },
+          "timeLastUsed": {
+            "type": "number",
+            "description": "Unix timestamp (ms)"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "scope",
+          "timeCreated"
+        ]
+      },
+      "GenerateTokenDTO": {
+        "title": "GenerateTokenDTO",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Human-readable label for the token"
+          }
+        },
+        "required": [
+          "label"
+        ]
+      },
+      "BillingAccount": {
+        "title": "BillingAccount",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "TRIAL"
+            ]
+          },
+          "databaseCount": {
+            "type": "integer"
+          },
+          "expirationTime": {
+            "type": "number",
+            "description": "Unix timestamp (s)"
+          },
+          "trial": {
+            "type": "boolean"
+          },
+          "automaticCollection": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "BillingAccountBranding": {
+        "title": "BillingAccountBranding",
+        "type": "object",
+        "properties": {
+          "primaryColor": {
+            "type": "string"
+          },
+          "secondaryColor": {
+            "type": "string"
+          },
+          "logoUrl": {
+            "type": "string"
+          },
+          "faviconUrl": {
+            "type": "string"
+          },
+          "loginTitle": {
+            "type": "string"
+          }
+        }
+      },
+      "BillingAccountDomain": {
+        "title": "BillingAccountDomain",
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "default": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AttachmentRef": {
+        "title": "AttachmentRef",
+        "type": "object",
+        "properties": {
+          "blobId": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "blobId"
+        ]
+      },
+      "Report": {
+        "title": "Report",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "ownerType": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "sources": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "grants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "editable": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ]
+      },
+      "UpdateProfileRequest": {
+        "title": "UpdateProfileRequest",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "New display name (ignored if empty)"
+          },
+          "locale": {
+            "type": "string",
+            "description": "BCP-47 locale code, e.g. `fr`"
+          }
+        }
+      },
+      "AccountStatus": {
+        "title": "AccountStatus",
+        "type": "object",
+        "properties": {
+          "userAccountId": {
+            "type": "string"
+          },
+          "userAccountEmail": {
+            "type": "string",
+            "format": "email"
+          },
+          "userAccountName": {
+            "type": "string"
+          },
+          "userLocale": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserAccount"
+          },
+          "billingAccount": {
+            "$ref": "#/components/schemas/BillingAccount"
+          }
+        },
+        "required": [
+          "userAccountId",
+          "userAccountEmail",
+          "userAccountName"
+        ],
+        "description": "Serialised by AccountStatus.toJson()"
+      },
+      "UserAccount": {
+        "title": "UserAccount",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "name": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name"
+        ]
+      },
+      "AuthenticationScope": {
+        "type": "string",
+        "enum": [
+          "LOGIN",
+          "READ_ONLY",
+          "READ_WRITE"
+        ],
+        "description": "Scope of an API token. `LOGIN` cannot be used when generating tokens via the API."
+      },
+      "GenerateApiTokenRequest": {
+        "title": "GenerateApiTokenRequest",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AuthenticationScope"
+          }
+        },
+        "required": [
+          "label",
+          "scope"
+        ]
+      },
+      "TokenResult": {
+        "title": "TokenResult",
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string",
+            "description": "The raw token value (only shown once)"
+          }
+        },
+        "required": [
+          "tokenId",
+          "token"
+        ]
+      },
+      "BillingUserStats": {
+        "title": "BillingUserStats",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "databaseCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "DatabaseStats": {
+        "title": "DatabaseStats",
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "userCount": {
+            "type": "integer"
+          },
+          "recordCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "DomainStats": {
+        "title": "DomainStats",
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "idp": {
+            "type": "string"
+          },
+          "userCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "AddBillingAccountUserRequest": {
+        "title": "AddBillingAccountUserRequest",
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "AddBillingAccountUserResult": {
+        "title": "AddBillingAccountUserResult",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "AssignDomainRequest": {
+        "title": "AssignDomainRequest",
+        "type": "object",
+        "properties": {
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "idp": {
+            "type": "string"
+          }
+        }
+      },
+      "AssignDomainResult": {
+        "title": "AssignDomainResult",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "DatabaseHeader": {
+        "title": "DatabaseHeader",
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "language": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "databaseId",
+          "label"
+        ]
+      },
+      "VisibleDatabaseTree": {
+        "title": "VisibleDatabaseTree",
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "grants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "language": {
+            "type": "string"
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "databaseId",
+          "label"
+        ]
+      },
+      "AddDatabaseRequest": {
+        "title": "AddDatabaseRequest",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "CUID for the new database"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "enum": [
+              "",
+              "reporting",
+              "casemanagement"
+            ],
+            "description": "Optional template. Empty string = blank database."
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "description": "Request body for POST /databases."
+      },
+      "UpdateDatabaseRequest": {
+        "title": "UpdateDatabaseRequest",
+        "type": "object",
+        "properties": {
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "deletedResources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DeleteDatabaseResponse": {
+        "title": "DeleteDatabaseResponse",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "RecoverDatabaseResult": {
+        "title": "RecoverDatabaseResult",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "TranslationDictionary": {
+        "title": "TranslationDictionary",
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string"
+          },
+          "dictionaryId": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "UpdateTranslationRequest": {
+        "title": "UpdateTranslationRequest",
+        "type": "object",
+        "properties": {
+          "translations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "translations"
+        ]
+      },
+      "UpdateTranslationResult": {
+        "title": "UpdateTranslationResult",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "AddFormRequest": {
+        "title": "AddFormRequest",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ]
+      },
+      "UpdateFormResponse": {
+        "title": "UpdateFormResponse",
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string"
+          }
+        }
+      },
+      "AddDatabaseUserRequest": {
+        "title": "AddDatabaseUserRequest",
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "roleId": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "DatabaseUserGrantSet": {
+        "title": "DatabaseUserGrantSet",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "roleId": {
+            "type": "string"
+          },
+          "grants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "PreflightUserResponse": {
+        "title": "PreflightUserResponse",
+        "type": "object",
+        "properties": {
+          "validEmail": {
+            "type": "boolean"
+          },
+          "localizedErrorMessage": {
+            "type": "string"
+          },
+          "existingUser": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DeleteDatabaseUserResponse": {
+        "title": "DeleteDatabaseUserResponse",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateRoleAssignmentRequest": {
+        "title": "UpdateRoleAssignmentRequest",
+        "type": "object",
+        "properties": {
+          "roleId": {
+            "type": "string"
+          },
+          "roleParameters": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "UpdateGrantSetRequest": {
+        "title": "UpdateGrantSetRequest",
+        "type": "object",
+        "properties": {
+          "grants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "UnlockDatabaseUserResponse": {
+        "title": "UnlockDatabaseUserResponse",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "RestoreDatabaseUserResult": {
+        "title": "RestoreDatabaseUserResult",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "FormElement": {
+        "title": "FormElement",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/FieldType"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "typeParameters": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "FormRecord": {
+        "title": "FormRecord",
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "type": "string"
+          },
+          "formId": {
+            "type": "string"
+          },
+          "parentRecordId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Field values keyed by field ID"
+          }
+        },
+        "required": [
+          "recordId",
+          "formId",
+          "fields"
+        ]
+      },
+      "RecordUpdateSet": {
+        "title": "RecordUpdateSet",
+        "type": "object",
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordUpdate"
+            },
+            "description": "List of record mutations to apply in a single transaction"
+          }
+        },
+        "required": [
+          "changes"
+        ]
+      },
+      "RecordUpdate": {
+        "title": "RecordUpdate",
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "parentRecordId": {
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean",
+            "default": false
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Field values to set, keyed by field ID"
+          }
+        },
+        "required": [
+          "formId",
+          "recordId"
+        ]
+      },
+      "QueryModel": {
+        "title": "QueryModel",
+        "type": "object",
+        "properties": {
+          "rowSources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RowSource"
+            },
+            "description": "Exactly one RowSource is required"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ColumnModel"
+            }
+          },
+          "filter": {
+            "type": "string",
+            "description": "Formula-based filter expression"
+          },
+          "filterSets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "truncateStrings": {
+            "type": "boolean",
+            "default": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "rowSources",
+          "columns"
+        ]
+      },
+      "RowSource": {
+        "title": "RowSource",
+        "type": "object",
+        "properties": {
+          "rootFormId": {
+            "type": "string",
+            "description": "CUID of the root form to query"
+          }
+        },
+        "required": [
+          "rootFormId"
+        ]
+      },
+      "ColumnModel": {
+        "title": "ColumnModel",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Column identifier in the result"
+          },
+          "formula": {
+            "type": "string",
+            "description": "Formula or field ID"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "formula"
+        ]
+      },
+      "PivotTable": {
+        "title": "PivotTable",
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "totals": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "ReportHeader": {
+        "title": "ReportHeader",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "ownerType": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateReportRequest": {
+        "title": "UpdateReportRequest",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "report": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "DeleteReportError": {
+        "title": "DeleteReportError",
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "Analysis": {
+        "title": "Analysis",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "model": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "AnalysisResult": {
+        "title": "AnalysisResult",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "content": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "SearchResult": {
+        "title": "SearchResult",
+        "type": "object",
+        "properties": {
+          "surtitleHtml": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API Token",
+        "description": "Personal API Token from ActivityInfo user settings. Set the `ACTIVITYINFO_API_TOKEN` environment variable in your HTTP client."
+      },
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Use any username and your API token as the password."
+      },
+      "ApiKeyHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Pass as `Bearer <API_TOKEN>`"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    },
+    {
+      "BasicAuth": []
+    },
+    {
+      "ApiKeyHeader": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Accounts",
+      "description": "User profile and API token management"
+    },
+    {
+      "name": "Billing",
+      "description": "Billing-account information"
+    },
+    {
+      "name": "Databases",
+      "description": "Database lifecycle and resources"
+    },
+    {
+      "name": "Database Users",
+      "description": "Invite and manage database users"
+    },
+    {
+      "name": "Forms",
+      "description": "Form schema and translations"
+    },
+    {
+      "name": "Records",
+      "description": "Record CRUD and history"
+    },
+    {
+      "name": "Attachments",
+      "description": "File attachments"
+    },
+    {
+      "name": "Queries",
+      "description": "Row / column / pivot queries"
+    },
+    {
+      "name": "Jobs",
+      "description": "Asynchronous background jobs"
+    },
+    {
+      "name": "Reports",
+      "description": "Saved reports"
+    },
+    {
+      "name": "Miscellaneous",
+      "description": "Utility endpoints"
+    }
+  ]
+}
