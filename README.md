@@ -30,6 +30,8 @@ user access control, and synchronize multilingual content.
 
 - **Translation Sync**: Migrate and synchronize translations between source and target databases.
 - **Bulk User Management**: Add, update, or remove database users using CSV or Excel (XLSX) files.
+- **Segmentation Management**: Automate hierarchical data segmentation across Coordination, Logframe, and Data forms (
+  CDE/LFE/IND/CST/CSL).
 - **Automated Form Deployment**: Programmatically create and rebuild data and reference forms based on predefined
   schemas.
 - **Metric & Disaggregation Management**: Batch adjust complex form fields (Amount, Metric, Disaggregation) to maintain
@@ -117,6 +119,35 @@ Adjust metric fields within data forms:
 
 ```bash
 python main.py config metric <target_db_id>
+```
+
+Adjust segmentation fields (CDE, LFE, Entity, Data levels):
+
+```bash
+python main.py config segment <target_db_id> [--remove-fields] [--rebuild-fields]
+```
+
+## Testing
+
+The project uses `pytest` and `testcontainers` for full integration testing against a real ActivityInfo Docker instance.
+
+### Prerequisites for Testing
+
+- **Docker Desktop** (or any Docker engine) running locally.
+
+### Running Tests
+
+To run the full suite:
+
+```bash
+# Using uv (with correct PYTHONPATH if needed)
+PYTHONPATH=. uv run pytest
+```
+
+Individual test files:
+
+```bash
+PYTHONPATH=. uv run pytest tests/test_config.py
 ```
 
 ---

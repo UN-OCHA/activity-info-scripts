@@ -30,6 +30,10 @@ def main(
         # Enable logging for our specific logger in api/client.py
         logging.getLogger("httpx_full").setLevel(logging.INFO)
         console.print("[dim]Verbose logging enabled[/dim]")
+    else:
+        logging.basicConfig(level=logging.WARNING, format="%(message)s")
+        logging.getLogger("httpx_full").setLevel(logging.WARNING)
+        console.print("[dim]Verbose logging disabled[/dim]")
 
 
 if __name__ == "__main__":

@@ -1,10 +1,9 @@
-import os
-import asyncio
 import logging
+import os
 from time import sleep
+from typing import Optional, Dict, Any
 
 import httpx
-from typing import Optional, Dict, Any
 
 
 # ---------- Exceptions ----------
@@ -122,7 +121,8 @@ class ActivityInfoHTTPClient:
                     return None
 
                 json_data = response.json()
-                if isinstance(json_data, dict) and json_data.get("code") in ["BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "INTERNAL_ERROR"]:
+                if isinstance(json_data, dict) and json_data.get("code") in ["BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN",
+                                                                             "NOT_FOUND", "INTERNAL_ERROR"]:
                     raise APIError(
                         f"API returned error code {json_data.get('code')}: {json_data.get('message') or json_data.get('localizedMessage') or 'No message'}",
                         status_code=response.status_code
