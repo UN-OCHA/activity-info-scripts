@@ -139,9 +139,9 @@ def create_data(
                     type=FieldType.reference,
                     typeParameters=FieldTypeParametersUpdateDTO(
                         cardinality="single",
-                        range=[{"formId": get_ref_form_id("2.2")}],
+                        range=[{"formId": get_ref_form_id("2.2_")}],
                         lookupConfigs=[
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="LEADORG.ORG.NAME",
+                            TypeParameterLookupConfig(id=cuid.generate(), formula="LEADORG.GLOBORG.NAME",
                                                       lookupLabel="Lead Organization"),
                             TypeParameterLookupConfig(id=cuid.generate(), formula="REFLABEL", lookupLabel="Project")
                         ]
