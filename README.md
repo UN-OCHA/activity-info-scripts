@@ -1,4 +1,4 @@
-# ActivityInfo Integration System (AIS) CLI
+# ActivityInfo Scripts (AIS) CLI
 
 A specialized Command Line Interface (CLI) developed for the **United Nations Office for the Coordination of
 Humanitarian Affairs (OCHA)** to streamline the management, configuration, and automation

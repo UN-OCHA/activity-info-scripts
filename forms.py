@@ -7,13 +7,15 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskPr
 from api.models import (
     DatabaseTreeResourceType, AddFormDTO, DatabaseTreeResourceVisibility,
     SchemaFieldDTO, FieldType, FieldTypeParametersUpdateDTO,
-    TypeParameterLookupConfig, UpdateDatabaseDTO, FormSchema
+    TypeParameterLookupConfig, UpdateDatabaseDTO
 )
 from common import filter_data_forms, get_records_with_multiref, get_field_info
 from utils import get_client, handle_api_errors, console
 
+# Initialize a Typer sub-application for form and schema management
 app = typer.Typer(no_args_is_help=True)
 
+# Prefixes used to identify specific configuration forms within the ActivityInfo database
 DATA_FORM_PREFIX = "0.1.2"
 REFERENCE_FORM_PREFIX = "0.1.3"
 
@@ -28,6 +30,13 @@ def create_data(
         rebuild_forms: Annotated[
             bool, typer.Option(help="Fix existing forms to conform to the expected schema.")] = False
 ):
+    """
+    Automate the creation and maintenance of 'Data Forms' based on a central configuration.
+    
+    This command reads a 'Data Configuration' form (prefixed with 0.1.2) and ensures 
+    that the target database has corresponding forms created with the correct 
+    parent-child relationships and mandatory fields (Indicator, Project, etc.).
+    """
     client = get_client()
 
     with Progress(
@@ -38,18 +47,20 @@ def create_data(
             console=console
     ) as progress:
 
-        # 1. Initialize Task
+        # --- 1. Initialization ---
         task = progress.add_task("Fetching database configuration...", total=None)
 
-        # 2. Get the target DB's tree
+        # --- 2. Retrieve Target State ---
+        # Fetch the database tree to understand the current structure and folders
         with handle_api_errors(f"Could not get tree for {target_database_id}"):
             target_tree = client.api.get_database_tree(target_database_id)
 
-        # 3. Filter data forms
+        # --- 3. Filter and Identify Existing Data Forms ---
         data_forms = filter_data_forms(target_tree, root_folder_id or target_database_id)
         data_forms_by_name = {f.label: f for f in data_forms}
 
-        # 4. Get data form records
+        # --- 4. Locate and Read the Configuration Form ---
+        # Find the form that contains the definitions for all data forms to be managed
         data_config_form = next((res for res in target_tree.resources if res.label.startswith(DATA_FORM_PREFIX)), None)
         if not data_config_form:
             progress.stop()
@@ -61,9 +72,9 @@ def create_data(
         with handle_api_errors(f"Could not get records for {data_config_form.id}"):
             records = client.api.get_form(data_config_form.id)
 
-        # 5. Process records
+        # --- 5. Iterate and Process each Form Definition ---
         progress.update(task, description="Processing forms...", total=len(records))
-        cuid = Cuid(length=18)
+        cuid = Cuid(length=18)  # Used for generating unique, collision-resistant field/form IDs
 
         processed_sysnames = set()
 
@@ -78,11 +89,13 @@ def create_data(
 
             existing_form_res = data_forms_by_name.get(form_name)
 
+            # Skip processing if form exists and 'rebuild' flag isn't set
             if existing_form_res and not rebuild_forms:
                 progress.advance(task)
                 continue
 
-            # Determine target folder
+            # --- Folder Determination Logic ---
+            # Map the process and user level from the config to a specific folder in the target DB
             target_folder_prefix: Optional[str] = None
             if record["PROCESS.REFCODE"] == "PLAN":
                 target_folder_prefix = "3" if record["USERLEVEL.REFCODE"] == "LC" else "4"
@@ -94,7 +107,7 @@ def create_data(
                 progress.advance(task)
                 continue
 
-            # Find target folder resource
+            # Locate the actual folder resource in the database tree
             parent_folder = next(
                 (res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FOLDER and (
                         res.parentId == root_folder_id or res.parentId == target_database_id) and res.label.startswith(
@@ -106,13 +119,16 @@ def create_data(
                 progress.advance(task)
                 continue
 
-            # Build elements list
+            # --- Element Schema Construction ---
+            # Dynamically build the list of fields (elements) for the form based on its type (IND, CSL, CST)
             elements: List[SchemaFieldDTO] = []
 
             def get_ref_form_id(prefix: str):
+                """Helper to find IDs of reference forms based on their label prefix."""
                 return next(res.id for res in target_tree.resources if
                             res.type == DatabaseTreeResourceType.FORM and res.label.startswith(prefix))
 
+            # Add Project reference field if applicable
             if record["USERLEVEL.REFCODE"] == "LP":
                 elements.append(SchemaFieldDTO(
                     code="PROJECT",
@@ -132,6 +148,7 @@ def create_data(
                     )
                 ))
 
+            # Add Indicator reference field if applicable
             if record["EFORM.REFCODE"] == "IND":
                 elements.append(SchemaFieldDTO(
                     code="IND",
@@ -154,6 +171,7 @@ def create_data(
                     )
                 ))
 
+            # Similar logic for Caseload and Cost Attachments...
             if record["EFORM.REFCODE"] == "CSL":
                 elements.append(SchemaFieldDTO(
                     code="CSL",
@@ -200,33 +218,32 @@ def create_data(
                     )
                 ))
 
+            # --- Update or Create Form in Database ---
             if existing_form_res:
-                # Rebuild existing form
+                # REBUILD: Merge our standardized fields with any custom fields already in the form
                 with handle_api_errors(f"Could not rebuild form {form_name}"):
                     schema = client.api.get_form_schema(existing_form_res.id)
 
-                    # Preserve IDs for matching codes
+                    # ID preservation logic: ensure we don't change IDs of fields that match our codes
                     for new_elem in elements:
                         old_elem = next((e for e in schema.elements if e.code == new_elem.code), None)
                         if old_elem:
                             new_elem.id = old_elem.id
-                            # Also try to preserve lookupConfig IDs if possible
                             if new_elem.type_parameters and new_elem.type_parameters.lookup_configs and \
                                     old_elem.type_parameters and old_elem.type_parameters.lookup_configs:
                                 for i, new_lc in enumerate(new_elem.type_parameters.lookup_configs):
                                     if i < len(old_elem.type_parameters.lookup_configs):
                                         new_lc.id = old_elem.type_parameters.lookup_configs[i].id
 
-                    # Identify other elements (metrics, disaggs, etc. added by other scripts)
-                    # We identify them by the fact that their codes are NOT in the list of basic field codes
-                    # that CAN BE in a 0.1.2 form (PROJECT, IND, CSL, CST).
+                    # Identify existing fields that are NOT part of our standard core fields
                     basic_codes_possible = {"PROJECT", "IND", "CSL", "CST"}
                     other_elements = [e for e in schema.elements if e.code not in basic_codes_possible]
 
+                    # Concatenate standard core fields with existing custom ones
                     schema.elements = elements + other_elements
                     client.api.update_form_schema(schema)
             else:
-                # Create new form
+                # CREATE: Define a brand new form structure
                 form_id = cuid.generate()
                 with handle_api_errors(f"Could not create form {form_name}"):
                     client.api.add_form(AddFormDTO(
@@ -249,7 +266,8 @@ def create_data(
 
             progress.advance(task)
 
-        # 6. Cleanup
+        # --- 6. Optional Cleanup ---
+        # Remove forms from the target folder that are no longer present in the configuration
         extra_forms = [form for form in data_forms if form.label not in processed_sysnames]
         if remove_forms and extra_forms:
             progress.update(task, description="Removing extra forms...")
@@ -276,6 +294,12 @@ def create_reference(
         rebuild_forms: Annotated[
             bool, typer.Option(help="Fix existing forms to conform to the expected schema.")] = False
 ):
+    """
+    Synchronize 'Reference Forms' (Administrative levels, Sectors, etc.) from a Global Reference Module (GRM).
+    
+    This command follows a dependency-aware order to ensure that parent forms are created 
+    before child forms. It maps global reference data to country-specific forms.
+    """
     client = get_client()
     cuid = Cuid(length=18)
 
@@ -288,9 +312,11 @@ def create_reference(
     ) as progress:
         task = progress.add_task("Fetching database configuration...", total=None)
 
+        # Retrieve structural trees for both CM (Target) and GRM (Source)
         with handle_api_errors(f"Could not get tree for {target_cm_database_id}"):
             target_tree = client.api.get_database_tree(target_cm_database_id)
 
+        # Identify the standard folder (prefixed '0.4') where reference forms reside
         parent_folder = next(
             (res for res in target_tree.resources if
              res.type == DatabaseTreeResourceType.FOLDER and res.label.startswith("0.4")),
@@ -306,6 +332,7 @@ def create_reference(
         ]
         reference_forms_by_name = {f.label: f for f in reference_forms_in_target}
 
+        # Find the configuration form that defines which reference forms to sync
         reference_config_form = next(
             (res for res in target_tree.resources if
              res.type == DatabaseTreeResourceType.FORM and res.label.startswith(REFERENCE_FORM_PREFIX)),
@@ -318,10 +345,12 @@ def create_reference(
 
         progress.update(task, description="Fetching reference configuration records with multi-refs...")
 
+        # Get the definitions including multi-value reference fields (Global forms to link)
         with handle_api_errors(f"Could not get records for {reference_config_form.id}"):
             records = get_records_with_multiref(client, reference_config_form.id)
 
-        # 1. Determine processing order
+        # --- 1. Dependency-Aware Sorting ---
+        # Sort forms so that parents (referenced via PARENT_RFORM_REFCODE) are created first
         all_refcode_mans = {r.get("REFCODE_MAN") for r in records if r.get("REFCODE_MAN")}
         ordered_records = []
         processed_refcodes = set()
@@ -340,15 +369,17 @@ def create_reference(
                     made_progress = True
 
             if not made_progress:
+                # Break to prevent infinite loop in case of circular dependencies
                 ordered_records.extend(remaining_records)
                 break
 
-        # 2. Iterate and create
+        # --- 2. Iterate and Create/Update ---
         progress.update(task, description="Creating reference forms...", total=len(ordered_records))
 
         with handle_api_errors(f"Could not get tree for {grm_database_id}"):
             grm_tree = client.api.get_database_tree(grm_database_id)
 
+        # Schema cache to minimize repetitive API calls
         schema_cache = {}
 
         def get_cached_schema(form_id):
@@ -364,6 +395,7 @@ def create_reference(
             sys_name = rec.get("SYSNAME")
             def_refcode = rec.get("DEF.REFCODE")
 
+            # Only process supported form definition types
             if def_refcode not in ["CMB", "SUB", "LCL"] or not sys_name:
                 progress.advance(task)
                 continue
@@ -377,7 +409,8 @@ def create_reference(
 
             elements = []
 
-            # SUB or CMB logic
+            # --- Logic for SUB (Sub-set) or CMB (Combined) forms ---
+            # These link to one or more Global Reference forms
             if def_refcode in ["SUB", "CMB"]:
                 glob_r_forms = rec.get("GLOBRFORMS", [])
                 for x in glob_r_forms:
@@ -391,6 +424,7 @@ def create_reference(
                     grm_schema = get_cached_schema(grm_form.id)
                     field_id, field_label = get_field_info(grm_schema)
 
+                    # Add a reference field pointing to the global form
                     elements.append(SchemaFieldDTO(
                         code=x.get("REFCODE", cuid.generate()),
                         id=cuid.generate(),
@@ -411,7 +445,8 @@ def create_reference(
                         )
                     ))
 
-            # REFCODE field
+            # --- Add standard REFCODE (Reference Code) field ---
+            # For SUB/CMB, this is often a formula pulling from the global reference
             refcode_formula = None
             glob_r_forms = rec.get("GLOBRFORMS", [])
             if def_refcode == "SUB" and len(glob_r_forms) == 1:
@@ -434,7 +469,7 @@ def create_reference(
                 key=True if def_refcode == "LCL" else False
             ))
 
-            # NAME field
+            # --- Add standard NAME field ---
             name_formula = None
             if def_refcode == "SUB" and len(glob_r_forms) == 1:
                 name_formula = f"{glob_r_forms[0].get('REFCODE')}.NAME"
@@ -455,7 +490,7 @@ def create_reference(
                 unique=True
             ))
 
-            # PARENT_RFORM_REFCODE logic (ADMIN0)
+            # --- Logic for Hierarchical Parent Links ---
             parent_refcode = rec.get("PARENT_RFORM_REFCODE")
             if parent_refcode:
                 parent_rec = next((r for r in records if r.get("REFCODE_MAN") == parent_refcode), None)
@@ -484,7 +519,8 @@ def create_reference(
                         )
                     ))
 
-            # REFLABEL field
+            # --- Add standard REFLABEL (Display Label) field ---
+            # This is a calculated field used as the primary label for the record
             reflabel_id = cuid.generate()
             elements.append(SchemaFieldDTO(
                 code="REFLABEL",
@@ -499,13 +535,13 @@ def create_reference(
                 tableVisible=False
             ))
 
+            # --- Update/Create Implementation ---
             if existing:
-                # Rebuild existing form
                 with handle_api_errors(f"Could not rebuild form {sys_name}"):
                     schema = client.api.get_form_schema(existing.id)
                     reflabel_id = next((e.id for e in elements if e.code == "REFLABEL"), reflabel_id)
 
-                    # Preserve IDs
+                    # Preservation of IDs for stability
                     for new_elem in elements:
                         old_elem = next((e for e in schema.elements if e.code == new_elem.code), None)
                         if old_elem:
@@ -516,12 +552,11 @@ def create_reference(
                                     if i < len(old_elem.type_parameters.lookup_configs):
                                         new_lc.id = old_elem.type_parameters.lookup_configs[i].id
 
-                    schema.elements = elements  # In Ref forms, we usually want exactly these fields
+                    schema.elements = elements
                     schema.record_label_field_id = reflabel_id
                     client.api.update_form_schema(schema)
                     created_forms_by_refcode_man[ref_code_man] = existing.id
             else:
-                # Finalize Form Creation
                 form_id = cuid.generate()
                 with handle_api_errors(f"Could not create form {sys_name}"):
                     client.api.add_form(AddFormDTO(
@@ -546,7 +581,7 @@ def create_reference(
                 created_forms_by_refcode_man[ref_code_man] = form_id
             progress.advance(task)
 
-        # 3. Cleanup
+        # --- 3. Cleanup ---
         extra_forms = [form for form in reference_forms_in_target if form.label not in processed_sysnames]
         if remove_forms and extra_forms:
             progress.update(task, description="Removing extra forms...")

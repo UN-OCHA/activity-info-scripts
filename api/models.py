@@ -1,3 +1,10 @@
+"""
+Pydantic Data Models and Data Transfer Objects (DTOs) for the ActivityInfo API.
+
+This module defines the structural backbone of the AIS CLI, providing type-safe 
+representations of ActivityInfo resources like Databases, Forms, Schemas, and Users. 
+These models are used for validating API responses and serializing outgoing requests.
+"""
 from enum import StrEnum, auto
 from typing import List, Optional, Dict, Any
 
