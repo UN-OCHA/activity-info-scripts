@@ -188,7 +188,7 @@ class FieldTypeParametersUpdateDTO(BaseModel):
 class SchemaFieldDTO(BaseModel):
     model_config = {"populate_by_name": True}
     id: str = Field(alias="id")
-    code: str = Field(alias="code")
+    code: Optional[str] = Field(alias="code")
     label: str = Field(alias="label")
     description: Optional[str] = Field(default=None, alias="description")
     relevance_condition: Optional[str] = Field(default=None, alias="relevanceCondition")
