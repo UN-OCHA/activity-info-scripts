@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 
 from api import ActivityInfoClient
 from api.models import DatabaseTree, DatabaseTreeResourceType, Resource, FieldType, FormSchema
@@ -62,9 +62,11 @@ def get_records_with_multiref(client: ActivityInfoClient, form_id: str):
     ]
 
     for field in multiref_fields:
-        # Skip fields without a defined target range (should not happen in valid schemas)
-        if not field.type_parameters or not field.type_parameters.range:
+        # Skip fields without a code or defined target range
+        if not field.code or not field.type_parameters or not field.type_parameters.range:
             continue
+
+        field_code = field.code
 
         # Fetch the records of the referenced form to build a lookup map
         ref_form_id = field.type_parameters.range[0]["formId"]
@@ -72,7 +74,7 @@ def get_records_with_multiref(client: ActivityInfoClient, form_id: str):
         ref_records_map = {rec["@id"]: rec for rec in ref_records}
 
         # The ID key is usually 'CODE.@id' in the API response
-        field_id_key = f"{field.code}.@id"
+        field_id_key = f"{field_code}.@id"
 
         for record in base_records:
             # Parse the comma-separated string of IDs
@@ -80,12 +82,12 @@ def get_records_with_multiref(client: ActivityInfoClient, form_id: str):
             if ids_str:
                 ids = [i.strip() for i in ids_str.split(",")]
                 # Replace the field value with a list of fully resolved record objects
-                record[field.code] = [
+                record[field_code] = [
                     ref_records_map[i] for i in ids if i in ref_records_map
                 ]
             else:
                 # Ensure an empty list if no references are selected
-                record[field.code] = []
+                record[field_code] = []
 
     return base_records
 

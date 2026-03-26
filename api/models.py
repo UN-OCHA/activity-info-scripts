@@ -8,7 +8,7 @@ These models are used for validating API responses and serializing outgoing requ
 from enum import StrEnum, auto
 from typing import List, Optional, Dict, Any
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class DatabaseTreeResourceType(StrEnum):
@@ -278,6 +278,7 @@ class DatabaseTranslationsID(BaseModel):
 
 
 class DatabaseTranslation(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     id: str = Field(alias="id")
     original: str = Field(alias="original")
     translated: str = Field(alias="translated")
@@ -285,6 +286,7 @@ class DatabaseTranslation(BaseModel):
 
 
 class DatabaseTranslations(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     id: DatabaseTranslationsID = Field(alias="id")
     version: int = Field(alias="version")
     language: str = Field(alias="language")

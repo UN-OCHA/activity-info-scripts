@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
@@ -25,35 +25,59 @@ def transfer(
     """
     client = get_client()
 
-    # Use a rich Progress bar to provide visual feedback for the multi-step migration
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
                   BarColumn(),
                   TaskProgressColumn(),
                   console=console) as progress:
 
-        # --- 1. Initialization ---
-        task = progress.add_task("Fetching source translations...", total=None)
+        # --- 1. Initialization & Data Retrieval ---
+        task = progress.add_task("Fetching database structures...", total=None)
 
-        # --- 2. Retrieve Source Data ---
-        # Fetch all translated strings for the requested language from the source database
-        with handle_api_errors(f"Could not retrieve '{language_code}' translations for DB {source_database_id}"):
+        with handle_api_errors("Could not retrieve database structures"):
+            source_tree = client.api.get_database_tree(source_database_id)
+            target_tree = client.api.get_database_tree(target_database_id)
             source_db_translations = client.api.get_database_translations(source_database_id, language_code)
 
-        # --- 3. Retrieve Target Structure ---
-        # Get the full tree of the target database to understand its forms and hierarchy
-        progress.update(task, description="Fetching target database structure...")
-        with handle_api_errors(f"Could not retrieve target database tree for {target_database_id}"):
-            target_tree = client.api.get_database_tree(target_database_id)
-
-        # --- 4. Validation ---
-        # Ensure the target database is set up with English as the base language
+        # --- 2. Validation ---
         if target_tree.originalLanguage and target_tree.originalLanguage.lower() != "en":
             console.print(
                 f"[bold red]Error:[/bold red] Target DB original language must be 'en', found '{target_tree.originalLanguage}'")
             raise typer.Exit(code=1)
 
-        # --- 5. Language Setup ---
-        # If the target language is not already enabled in the target database, add it
+        # --- 3. Build Resource ID Mapping ---
+        # Map source IDs to target IDs based on label and type compatibility
+        resource_id_map = {source_database_id: target_database_id}
+        
+        # Create lookups for target resources by (type, label)
+        target_resources_by_key = {(res.type, res.label): res for res in target_tree.resources}
+        
+        for s_res in source_tree.resources:
+            key = (s_res.type, s_res.label)
+            if key in target_resources_by_key:
+                resource_id_map[s_res.id] = target_resources_by_key[key].id
+
+        def map_identifier(res_id: str, field_id_map: Optional[dict[str, str]] = None) -> str:
+            """
+            Robustly maps a translation identifier (resource or field) from source to target.
+            Example: 'resource:SOURCE_DB:label' -> 'resource:TARGET_DB:label'
+            Example: 'field:SOURCE_FIELD:label' -> 'field:TARGET_FIELD:label'
+            """
+            parts = res_id.split(":")
+            if not parts:
+                return res_id
+                
+            prefix = parts[0]
+            if prefix == "resource" and len(parts) >= 2:
+                source_id = parts[1]
+                parts[1] = resource_id_map.get(source_id, source_id)
+                return ":".join(parts)
+            elif prefix == "field" and len(parts) >= 2 and field_id_map:
+                source_id = parts[1]
+                parts[1] = field_id_map.get(source_id, source_id)
+                return ":".join(parts)
+            return res_id
+
+        # --- 4. Language Setup ---
         if language_code not in target_tree.languages:
             progress.update(task, description=f"Adding '{language_code}' to target database...")
             if not dry_run:
@@ -65,90 +89,68 @@ def transfer(
                         originalLanguage="en"
                     ))
 
-        # --- 6. Sync Database-Level Translations ---
-        # Apply global database translations (e.g., database label, folder names)
+        # --- 5. Sync Database-Level Translations ---
         progress.update(task, description="Syncing database-level translations...")
         if not dry_run:
+            mapped_db_strings = [
+                DatabaseTranslation(
+                    id=map_identifier(t.id),
+                    original=t.original,
+                    translated=t.translated,
+                    autoTranslated=t.auto_translated
+                ) for t in source_db_translations.translated_strings
+            ]
             with handle_api_errors("Failed to sync database-level translations"):
-                client.api.update_database_translations(target_database_id, language_code, source_db_translations)
+                client.api.update_database_translations(
+                    target_database_id, 
+                    language_code, 
+                    UpdateDatabaseTranslationsDTO(strings=mapped_db_strings)
+                )
 
-        # --- 7. Sync Form-Level Translations ---
-        # Identify all forms in the target database
+        # --- 6. Sync Form-Level Translations ---
         target_forms = [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM]
         progress.update(task, description="Syncing form-level translations...", total=len(target_forms))
 
         for form in target_forms:
-            form_identifier = form.label
-            progress.update(task, description=f"Processing form: {form_identifier}")
+            progress.update(task, description=f"Processing form: {form.label}")
 
-            # 7.1 Match Source Form
-            # Retrieve the source database tree to find a form with the same label
-            source_tree = client.api.get_database_tree(source_database_id)
+            # Find matching source form
             source_form = next((res for res in source_tree.resources if
                                 res.label == form.label and res.type == DatabaseTreeResourceType.FORM), None)
 
             if not source_form:
-                # If no matching form is found by label, skip to the next one
                 progress.advance(task)
                 continue
 
-            # 7.2 Fetch Schemas for Field Mapping
-            with handle_api_errors(f"Failed to sync translations for {form_identifier}"):
-                existing_translations = client.api.get_form_translations(source_database_id, source_form.id,
-                                                                         language_code)
+            with handle_api_errors(f"Failed to sync translations for {form.label}"):
+                # Fetch translations and schemas
+                source_translations = client.api.get_form_translations(source_database_id, source_form.id, language_code)
                 source_schema = client.api.get_form_schema(source_form.id)
                 target_schema = client.api.get_form_schema(form.id)
 
-                # 7.3 Map Elements by Label
-                # Create lookups to resolve field IDs between the two different databases
-                source_fields_by_label = {f.label: f for f in source_schema.elements}
+                # Map field IDs by label
                 target_fields_by_label = {f.label: f for f in target_schema.elements}
+                field_id_map = {}
+                for s_field in source_schema.elements:
+                    if s_field.label in target_fields_by_label:
+                        field_id_map[s_field.id] = target_fields_by_label[s_field.label].id
 
-                # 7.4. Identifier Mapping Logic
-                def update_identifier(res_id: str) -> str:
-                    """
-                    Maps a translation identifier (form or field) from source ID to target ID.
-                    Example: 'field:abc1234:label' -> 'field:xyz5678:label'
-                    """
-                    if res_id.startswith("resource:"):
-                        # Replace source form ID with target form ID
-                        return res_id.replace(source_form.id, form.id)
-                    elif res_id.startswith("field:"):
-                        # Extract the source field ID from the composite identifier
-                        parts = res_id.split(":")
-                        source_field_id = parts[1]
-
-                        # Find the source field by its ID to get its human-readable label
-                        source_field = next((f for f in source_schema.elements if f.id == source_field_id), None)
-                        if not source_field:
-                            return res_id
-
-                        # Find the corresponding field in the target database using that same label
-                        target_field = target_fields_by_label.get(source_field.label)
-                        if not target_field:
-                            return res_id
-
-                        # Swap the ID in the identifier string
-                        return res_id.replace(source_field_id, target_field.id)
-                    return res_id
-
-                # 7.5. Apply Mapped Translations
                 if not dry_run:
-                    # Construct the list of new translations with remapped IDs
-                    new_translations = [DatabaseTranslation(
-                        id=update_identifier(t.id),
-                        original=t.original,
-                        translated=t.translated,
-                        autoTranslated=t.auto_translated
-                    ) for t in existing_translations.translated_strings]
+                    new_translations = [
+                        DatabaseTranslation(
+                            id=map_identifier(t.id, field_id_map if 'field_id_map' in locals() else None),
+                            original=t.original,
+                            translated=t.translated,
+                            autoTranslated=t.auto_translated
+                        )
+ for t in source_translations.translated_strings
+                    ]
 
-                    # Push the mapped translations to the target form
                     client.api.update_form_translations(
                         form.id, language_code,
                         UpdateDatabaseTranslationsDTO(strings=new_translations)
                     )
 
-            # Update progress bar
             progress.advance(task)
 
     # Final summary output

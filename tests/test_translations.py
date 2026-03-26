@@ -100,7 +100,101 @@ def test_translation_transfer(api_client, ai_setup):
     
     assert result.exit_code == 0
 
-    # 6. Verify Target DB has the translation mapped to the new field ID
-    target_translations = api_client.api.get_form_translations(target_db_id, target_form_id, "fr")
-    found = any(t.translated == "Champ 1" and target_field_id in t.id for t in target_translations.translated_strings)
-    assert found, f"Translation not found in target. Strings: {target_translations.translated_strings}"
+def test_translation_transfer_database_and_folders(api_client, ai_setup):
+    base_url = ai_setup["url"]
+    token = ai_setup["token"]
+
+    cuid = Cuid(length=18)
+    source_db_id = cuid.generate()
+    target_db_id = cuid.generate()
+
+    # 1. Create Source and Target DBs
+    api_client.api.add_database(
+        AddDatabaseDTO(id=source_db_id, label="Source DB", description="Source", templateId="blank"))
+    api_client.api.add_database(
+        AddDatabaseDTO(id=target_db_id, label="Target DB", description="Target", templateId="blank"))
+
+    from api.models import UpdateDatabaseDTO
+    api_client.api.update_database(source_db_id, UpdateDatabaseDTO(
+        languageUpdates=["fr"], resourceUpdates=[], resourceDeletions=[], originalLanguage="en"))
+    api_client.api.update_database(target_db_id, UpdateDatabaseDTO(
+        languageUpdates=["fr"], resourceUpdates=[], resourceDeletions=[], originalLanguage="en"))
+
+    # 2. Add Folder and Form to Source
+    folder_id = cuid.generate()
+    form_id = cuid.generate()
+    field_id = cuid.generate()
+
+    # Add Folder
+    from api.models import Resource
+    api_client.api.update_database(source_db_id, UpdateDatabaseDTO(
+        resourceUpdates=[
+            Resource(id=folder_id, parentId=source_db_id, label="Test Folder", type=DatabaseTreeResourceType.FOLDER)
+        ]
+    ))
+    
+    # Add Form
+    from api.models import AddFormDTO
+    api_client.api.add_form(AddFormDTO(
+        formClass=AddFormDTO.FormClass(
+            databaseId=source_db_id, id=form_id, label="Nested Form", schemaVersion=1,
+            elements=[SchemaFieldDTO(id=field_id, code="F1", label="Field 1", required=True, type=FieldType.FREE_TEXT)]
+        ),
+        formResource=AddFormDTO.FormResource(id=form_id, label="Nested Form", parentId=folder_id, type=DatabaseTreeResourceType.FORM)
+    ))
+
+    # 3. Add Folder and Form to Target (different IDs)
+    target_folder_id = cuid.generate()
+    target_form_id = cuid.generate()
+    target_field_id = cuid.generate()
+
+    # Add Folder
+    api_client.api.update_database(target_db_id, UpdateDatabaseDTO(
+        resourceUpdates=[
+            Resource(id=target_folder_id, parentId=target_db_id, label="Test Folder", type=DatabaseTreeResourceType.FOLDER)
+        ]
+    ))
+    
+    # Add Form
+    api_client.api.add_form(AddFormDTO(
+        formClass=AddFormDTO.FormClass(
+            databaseId=target_db_id, id=target_form_id, label="Nested Form", schemaVersion=1,
+            elements=[SchemaFieldDTO(id=target_field_id, code="F1", label="Field 1", required=True, type=FieldType.FREE_TEXT)]
+        ),
+        formResource=AddFormDTO.FormResource(id=target_form_id, label="Nested Form", parentId=target_folder_id, type=DatabaseTreeResourceType.FORM)
+    ))
+
+    # 4. Seed Database-Level Translations
+    db_translations = [
+        DatabaseTranslation(id=f"resource:{source_db_id}:label", original="Source DB", translated="BD Source", autoTranslated=False),
+        DatabaseTranslation(id=f"resource:{folder_id}:label", original="Test Folder", translated="Dossier Test", autoTranslated=False)
+    ]
+    api_client.api.update_database_translations(source_db_id, "fr", UpdateDatabaseTranslationsDTO(strings=db_translations))
+
+    # 5. Seed Form-Level Translations
+    form_translations = [
+        DatabaseTranslation(id=f"resource:{form_id}:label", original="Nested Form", translated="Formulaire Imbriqué", autoTranslated=False),
+        DatabaseTranslation(id=f"field:{field_id}:label", original="Field 1", translated="Champ 1", autoTranslated=False)
+    ]
+    api_client.api.update_form_translations(form_id, "fr", UpdateDatabaseTranslationsDTO(strings=form_translations))
+
+    # 6. Run the transfer command
+    import os
+    os.environ["API_TOKEN"] = token
+    os.environ["ACTIVITYINFO_BASE_URL"] = f"{base_url}/resources/"
+
+    result = runner.invoke(app, [source_db_id, target_db_id, "fr"])
+    assert result.exit_code == 0
+
+    # 7. Verify Results
+    # 7.1 Database Level
+    target_db_trans = api_client.api.get_database_translations(target_db_id, "fr")
+    # Verify Folder label mapped (This is the key fix for folder IDs)
+    assert any(t.translated == "Dossier Test" and target_folder_id in t.id for t in target_db_trans.translated_strings)
+
+    # 7.2 Form Level
+    target_form_trans = api_client.api.get_form_translations(target_db_id, target_form_id, "fr")
+    # Verify Form label mapped
+    assert any(t.translated == "Formulaire Imbriqué" and target_form_id in t.id for t in target_form_trans.translated_strings)
+    # Verify Field label mapped
+    assert any(t.translated == "Champ 1" and target_field_id in t.id for t in target_form_trans.translated_strings)
