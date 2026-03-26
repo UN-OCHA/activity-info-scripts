@@ -147,7 +147,7 @@ def transfer(
                     ]
 
                     client.api.update_form_translations(
-                        form.id, language_code,
+                        target_database_id, form.id, language_code,
                         UpdateDatabaseTranslationsDTO(strings=new_translations)
                     )
 

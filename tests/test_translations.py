@@ -77,7 +77,7 @@ def test_translation_transfer(api_client, ai_setup):
     translations = [
         DatabaseTranslation(id=f"field:{field_id}:label", original="Field 1", translated="Champ 1", autoTranslated=False)
     ]
-    api_client.api.update_form_translations(form_id, "fr", UpdateDatabaseTranslationsDTO(strings=translations))
+    api_client.api.update_form_translations(target_db_id, form_id, "fr", UpdateDatabaseTranslationsDTO(strings=translations))
     
     # Verify seeding
     source_translations = api_client.api.get_form_translations(source_db_id, form_id, "fr")
@@ -176,7 +176,7 @@ def test_translation_transfer_database_and_folders(api_client, ai_setup):
         DatabaseTranslation(id=f"resource:{form_id}:label", original="Nested Form", translated="Formulaire Imbriqué", autoTranslated=False),
         DatabaseTranslation(id=f"field:{field_id}:label", original="Field 1", translated="Champ 1", autoTranslated=False)
     ]
-    api_client.api.update_form_translations(form_id, "fr", UpdateDatabaseTranslationsDTO(strings=form_translations))
+    api_client.api.update_form_translations(target_db_id, form_id, "fr", UpdateDatabaseTranslationsDTO(strings=form_translations))
 
     # 6. Run the transfer command
     import os
