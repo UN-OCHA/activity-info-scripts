@@ -1,15 +1,14 @@
 import os.path
 import re
-from typing import Annotated, Set, List, Dict, Any, Optional
+from typing import Annotated, Set, List, Dict, Any, Optional, cast
 
 import pandas as pd
 import typer
-from rich.table import Table
 
 from api.models import (
-    AddDatabaseUserDTO, 
-    UpdateDatabaseUserRoleDTO, 
-    DatabaseRole, 
+    AddDatabaseUserDTO,
+    UpdateDatabaseUserRoleDTO,
+    DatabaseRole,
     UserPreflightDTO
 )
 from utils import get_client, handle_api_errors, console
@@ -17,13 +16,8 @@ from utils import get_client, handle_api_errors, console
 # Initialize a Typer sub-application for user management
 app = typer.Typer(no_args_is_help=True)
 
-# SPPB roles that may require parameters
-ROLE_LABELS = {
-    "Global Administrator": "admin",
-    "CM Administrator": "c2klv6bmewnkere2",
-    "CM Coordinator": "cccsylkmj64iy7at",
-    "CM Partner": "dataentry"
-}
+# SPPB roles as per spec
+USER_ROLES = ["Global Administrator", "CM Administrator", "CM Coordinator", "CM Partner"]
 
 # Form IDs for parameters as per spec
 FORM_ID_COORDINATION_ENTITIES = "c9mpkvrml3u24bz1a9"
@@ -32,24 +26,27 @@ FORM_ID_PARTNERS = "clhlthnml3u24bz1ah"
 # Standard email regex for pre-validation (spec says preflight API can also do this)
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
 
-def get_record_id_by_ccode(client, form_id: str, ccode: str) -> Optional[str]:
+
+def get_record_id_by_ccode(client: Any, form_id: str, ccode: str) -> Optional[str]:
     """Find record ID in a form where CCODE matches."""
     records = client.api.get_form(form_id)
     ccode_clean = ccode.strip().lower()
     for rec in records:
         if str(rec.get("CCODE", "")).strip().lower() == ccode_clean:
-            return rec.get("@id")
+            return cast(str, rec.get("@id"))
     return None
 
-def get_record_id_by_org_abbrev(client, form_id: str, abbrev: str) -> Optional[str]:
+
+def get_record_id_by_org_abbrev(client: Any, form_id: str, abbrev: str) -> Optional[str]:
     """Find record ID in form 2.1 Partners where GLOBORG.ABBREV matches."""
     records = client.api.get_form(form_id)
     abbrev_clean = abbrev.strip().lower()
     for rec in records:
         # Based on spec "GLOBORG.ABBREV referenced field"
         if str(rec.get("GLOBORG.ABBREV", "")).strip().lower() == abbrev_clean:
-            return rec.get("@id")
+            return cast(str, rec.get("@id"))
     return None
+
 
 @app.command(help="Bulk add or update users in a database from a CSV file.", no_args_is_help=True)
 def add_bulk(
@@ -58,7 +55,8 @@ def add_bulk(
         remove_users: Annotated[bool, typer.Option(help="Remove existing users missing from the input list")] = False,
         dry_run: Annotated[bool, typer.Option(help="Do not actually perform any changes")] = False,
         yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation prompt")] = False,
-        output_csv: Annotated[str, typer.Option("--output", "-o", help="Path to output status CSV file")] = "user_sync_status.csv"
+        output_csv: Annotated[
+            str, typer.Option("--output", "-o", help="Path to output status CSV file")] = "user_sync_status.csv"
 ):
     """
     Synchronize database users with an external list provided in a CSV file.
@@ -98,17 +96,13 @@ def add_bulk(
 
     # Map role labels to IDs from the target database
     db_roles = {role.label.strip().lower(): role for role in target_tree.roles}
-    
+
     # --- 3. Process Rows ---
-    results = []
+    results: List[Dict[str, Any]] = []
     known_emails: Set[str] = set()
-    
-    user_additions = []
-    user_updates = []
-    
-    # Pre-fetch parameter data if needed
-    coordination_records = None
-    partner_records = None
+
+    user_additions: List[Dict[str, Any]] = []
+    user_updates: List[Dict[str, Any]] = []
 
     for idx, row in data.iterrows():
         # Spec: Stop if empty row reached
@@ -122,63 +116,70 @@ def add_bulk(
         cde_raw = str(row.get("cde", "")).strip() if not pd.isna(row.get("cde")) else ""
         org_raw = str(row.get("org", "")).strip() if not pd.isna(row.get("org")) else ""
 
-        # Validation results for this row
-        status = "Ignored"
-        message = ""
-        
         if not email_raw:
             continue
 
         # Email preflight
         with handle_api_errors(f"Preflight failed for {email_raw}"):
             preflight = client.api.user_preflight(target_database_id, UserPreflightDTO(email=email_raw))
-        
+
         if not preflight.valid_email:
-            results.append({"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored", "Message": preflight.localized_error_message or "Invalid email"})
+            results.append(
+                {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                 "Message": preflight.localized_error_message or "Invalid email"})
             continue
 
         # Role matching
         role_key = role_label_raw.lower()
         if role_key not in db_roles:
-            results.append({"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored", "Message": f"Unknown role: {role_label_raw}"})
+            results.append(
+                {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                 "Message": f"Unknown role: {role_label_raw}"})
             continue
-        
+
         target_role = db_roles[role_key]
         role_id = target_role.id
-        role_params = {}
+        role_params: Dict[str, Any] = {}
 
         # Handle Role Parameters
-        skip_row = False
         if role_label_raw == "CM Coordinator":
             if not cde_raw:
-                results.append({"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored", "Message": "Missing cde for CM Coordinator"})
+                results.append(
+                    {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                     "Message": "Missing cde for CM Coordinator"})
                 continue
-            
+
             # Find record in 1.1 Coordination Entities
             rec_id = get_record_id_by_ccode(client, FORM_ID_COORDINATION_ENTITIES, cde_raw)
             if not rec_id:
-                results.append({"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored", "Message": "Unknown cde"})
+                results.append(
+                    {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                     "Message": "Unknown cde"})
                 continue
             role_params = {"cde": f"{FORM_ID_COORDINATION_ENTITIES}:{rec_id}"}
-            
+
         elif role_label_raw == "CM Partner":
             if not org_raw:
-                results.append({"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored", "Message": "Missing org for CM Partner"})
+                results.append(
+                    {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                     "Message": "Missing org for CM Partner"})
                 continue
-                
+
             # Find record in 2.1 Partners
             rec_id = get_record_id_by_org_abbrev(client, FORM_ID_PARTNERS, org_raw)
             if not rec_id:
-                results.append({"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored", "Message": "Unknown org"})
+                results.append(
+                    {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                     "Message": "Unknown org"})
                 continue
             role_params = {"org": f"{FORM_ID_PARTNERS}:{rec_id}"}
 
         # User identification
         email_clean = email_raw.lower()
         known_emails.add(email_clean)
-        
+
         existing_user = next((u for u in existing_users if u.email.lower() == email_clean), None)
-        
+
         # Name fallback
         final_name = name_raw if name_raw else (preflight.name if preflight.name else email_raw)
         final_lang = lang_raw if lang_raw else "en"
@@ -198,7 +199,7 @@ def add_bulk(
                 changed = True
             elif existing_user.role.parameters != role_params:
                 changed = True
-            
+
             if changed:
                 user_updates.append({
                     "user_id": existing_user.user_id,
@@ -207,7 +208,9 @@ def add_bulk(
                     "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw}
                 })
             else:
-                results.append({"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Unchanged", "Message": ""})
+                results.append(
+                    {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Unchanged",
+                     "Message": ""})
 
     # Identify Deletions
     user_deletions = []
@@ -218,7 +221,8 @@ def add_bulk(
 
     # --- 4. Execution ---
     if dry_run:
-        console.print(f"\n[bold cyan]Dry run mode: {len(user_additions)} additions, {len(user_updates)} updates, {len(user_deletions)} deletions planned.[/bold cyan]")
+        console.print(
+            f"\n[bold cyan]Dry run mode: {len(user_additions)} additions, {len(user_updates)} updates, {len(user_deletions)} deletions planned.[/bold cyan]")
         return
 
     if not (user_additions or user_updates or user_deletions):
@@ -232,17 +236,21 @@ def add_bulk(
                 status.update(f"Adding user: {add['email']}")
                 with handle_api_errors(f"Could not add user {add['email']}"):
                     client.api.add_database_user(target_database_id, AddDatabaseUserDTO(
-                        name=add['name'], email=add['email'], locale=add['locale'],
-                        role=add['role'], grants=[]
+                        name=cast(str, add['name']),
+                        email=cast(str, add['email']),
+                        locale=cast(str, add['locale']),
+                        role=cast(DatabaseRole, add['role']),
+                        grants=[]
                     ))
                     results.append({**add['orig_row'], "Status": "Added", "Message": ""})
 
             for up in user_updates:
                 status.update(f"Updating user: {up['email']}")
                 with handle_api_errors(f"Could not update user {up['email']}"):
-                    client.api.update_database_user_role(target_database_id, up['user_id'], UpdateDatabaseUserRoleDTO(
-                        assignments=[up['role']]
-                    ))
+                    client.api.update_database_user_role(target_database_id, cast(str, up['user_id']),
+                                                         UpdateDatabaseUserRoleDTO(
+                                                             assignments=[cast(DatabaseRole, up['role'])]
+                                                         ))
                     results.append({**up['orig_row'], "Status": "Modified", "Message": ""})
 
             for dele in user_deletions:
@@ -251,12 +259,14 @@ def add_bulk(
                     # Capture current role for reporting
                     role_lbl = next((r.label for r in target_tree.roles if r.id == dele.role.id), dele.role.id)
                     client.api.delete_database_user(target_database_id, dele.user_id)
-                    results.append({"Email": dele.email, "Role": role_lbl, "cde": "", "org": "", "Status": "Deleted", "Message": ""})
+                    results.append({"Email": dele.email, "Role": role_lbl, "cde": "", "org": "", "Status": "Deleted",
+                                    "Message": ""})
 
     # --- 5. Output Report ---
     report_df = pd.DataFrame(results)
     report_df.to_csv(output_csv, index=False)
     console.print(f"[bold green]Sync completed. Status report written to {output_csv}[/bold green]")
+
 
 if __name__ == "__main__":
     app()
