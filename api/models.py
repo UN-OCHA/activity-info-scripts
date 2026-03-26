@@ -323,3 +323,20 @@ class AddDatabaseUserDTO(BaseModel):
 
 class UpdateDatabaseUserRoleDTO(BaseModel):
     assignments: List[DatabaseRole] = Field(alias="assignments")
+
+
+class UserPreflightDTO(BaseModel):
+    email: str = Field(alias="email")
+    name: str = Field(default="", alias="name")
+    locale: str = Field(default="", alias="locale")
+    role: DatabaseRole = Field(default_factory=lambda: DatabaseRole(id="default"), alias="role")
+    grants: List[Any] = Field(default_factory=list, alias="grants")
+
+
+class UserPreflightResponse(BaseModel):
+    user_id: Optional[str] = Field(default=None, alias="userId")
+    activation_status: str = Field(alias="activationStatus")
+    name: str = Field(alias="name")
+    added_to_database: bool = Field(alias="addedToDatabase")
+    valid_email: bool = Field(alias="validEmail")
+    localized_error_message: Optional[str] = Field(default=None, alias="localizedErrorMessage")

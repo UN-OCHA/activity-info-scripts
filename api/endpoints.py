@@ -6,7 +6,8 @@ from api.client import ActivityInfoHTTPClient, APIError
 from api.models import (
     DatabaseTree, FormSchema, Database, AddFormDTO, UpdateDatabaseDTO,
     RecordUpdateDTO, DatabaseTranslations, UpdateDatabaseTranslationsDTO,
-    DatabaseUser, AddDatabaseUserDTO, UpdateDatabaseUserRoleDTO, AddDatabaseDTO
+    DatabaseUser, AddDatabaseUserDTO, UpdateDatabaseUserRoleDTO, AddDatabaseDTO,
+    UserPreflightDTO, UserPreflightResponse
 )
 
 # Type alias for raw dictionary payloads returned by some API endpoints
@@ -226,3 +227,20 @@ class ActivityInfoEndpoints:
     def delete_database_user(self, database_id: str, user_id: str):
         """Remove a user's access to a specific database."""
         self._http.request("DELETE", f"databases/{database_id}/users/{user_id}")
+
+    def user_preflight(self, database_id: str, dto: UserPreflightDTO) -> UserPreflightResponse:
+        """Check the status of a user's email before adding them to a database."""
+        raw = self._http.request(
+            "POST",
+            f"databases/{database_id}/users/preflight",
+            json=dto.model_dump(
+                mode="json",
+                exclude_none=True,
+                exclude_unset=True,
+                by_alias=True,
+            )
+        )
+        try:
+            return UserPreflightResponse.model_validate(raw)
+        except ValidationError as e:
+            raise APIError("Response does not match UserPreflightResponse schema") from e
