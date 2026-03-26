@@ -165,17 +165,17 @@ class ActivityInfoEndpoints:
 
     def get_form_translations(self, database_id: str, form_id: str, language_code: str):
         """Retrieve all translated labels for a specific form and its fields."""
-        raw = self._http.request("GET", f"databases/{database_id}/dictionary/formId/{form_id}/{language_code}")
+        raw = self._http.request("GET", f"databases/{database_id}/dictionary/form/{form_id}/{language_code}")
         try:
             return DatabaseTranslations.model_validate(raw)
         except ValidationError as e:
             raise APIError("Response does not match DatabaseTranslations schema") from e
 
-    def update_form_translations(self, form_id: str, language_code: str, dto: UpdateDatabaseTranslationsDTO):
+    def update_form_translations(self, database_id: str, form_id: str, language_code: str, dto: UpdateDatabaseTranslationsDTO):
         """Apply new translations to a specific form and its fields."""
         self._http.request(
             "POST",
-            f"form/{form_id}/schema/translations/{language_code}",
+            f"databases/translations/{database_id}/form/{form_id}/{language_code}",
             json=dto.model_dump(
                 mode="json",
                 exclude_none=True,
