@@ -209,7 +209,7 @@ def upsert(
                     originalLanguage="en"
                 ))
 
-        schema_missing_en = set()
+        schema_missing_en = set()  # Set of (Context, Original)
 
         # --- SCHEMA TRANSLATIONS ---
         if not skip_schema:
@@ -227,8 +227,7 @@ def upsert(
 
             target_lang_col = language_code.upper()
             if target_lang_col not in df_schema.columns:
-                console.print(
-                    f"[bold red]Error:[/bold red] '{target_lang_col}' column missing from 'CM - Schema' sheet.")
+                console.print(f"[bold red]Error:[/bold red] '{target_lang_col}' column missing from 'CM - Schema' sheet.")
                 raise typer.Exit(code=1)
 
             # Create mapping EN -> Target, ensuring strings and dropping empty EN or Target values
@@ -250,7 +249,7 @@ def upsert(
                         t.translated = target_val
                         updated_db_strings.append(t)
                 else:
-                    schema_missing_en.add(t.original)
+                    schema_missing_en.add(("Database", t.original))
 
             if updated_db_strings:
                 with handle_api_errors("Failed to update database-level translations"):
@@ -274,7 +273,7 @@ def upsert(
                                 t.translated = target_val
                                 updated_form_strings.append(t)
                         else:
-                            schema_missing_en.add(t.original)
+                            schema_missing_en.add((form.label, t.original))
 
                     if updated_form_strings:
                         client.api.update_form_translations(
@@ -287,10 +286,11 @@ def upsert(
             if schema_output and schema_missing_en:
                 with open(schema_output, 'w', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f)
-                    writer.writerow(['EN'])
-                    for val in sorted(schema_missing_en):
-                        writer.writerow([val])
+                    writer.writerow(['Context', 'EN'])
+                    for context, val in sorted(schema_missing_en):
+                        writer.writerow([context, val])
                 console.print(f"Missing schema EN values written to {schema_output}")
+
 
         # --- REFERENCE VALUE TRANSLATIONS ---
         if not skip_reference:
