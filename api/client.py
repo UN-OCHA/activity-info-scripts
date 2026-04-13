@@ -10,6 +10,7 @@ import httpx
 
 class APIError(Exception):
     """Base exception for all ActivityInfo API related errors."""
+
     def __init__(self, message: str, status_code: Optional[int] = None):
         super().__init__(message)
         self.status_code = status_code
@@ -37,26 +38,26 @@ DEFAULT_HEADERS = {
 logger = logging.getLogger("httpx_full")
 
 
-def log_request(request: httpx.Request):
-    """Callback to log details of an outgoing HTTP request."""
-    body = request.content.decode() if request.content else None
-    logger.info(f"Request: {request.method} {request.url}")
-    logger.info(f"Request headers: {request.headers}")
-    logger.info(f"Request body: {body}")
-
-
-def log_response(response: httpx.Response):
-    """Callback to log details of an incoming HTTP response."""
-    request = response.request
-    logger.info(f"Response: {request.method} {request.url} -> {response.status_code}")
-    logger.info(f"Response headers: {response.headers}")
-
-    # Read the response body safely and handle potential binary data
-    content = response.read()
-    try:
-        logger.info(f"Response body: {content.decode('utf-8', errors='replace')}")
-    except Exception:
-        logger.info(f"Response body (binary): {content!r}")
+# def log_request(request: httpx.Request):
+#     """Callback to log details of an outgoing HTTP request."""
+#     body = request.content.decode() if request.content else None
+#     logger.info(f"Request: {request.method} {request.url}")
+#     logger.info(f"Request headers: {request.headers}")
+#     logger.info(f"Request body: {body}")
+#
+#
+# def log_response(response: httpx.Response):
+#     """Callback to log details of an incoming HTTP response."""
+#     request = response.request
+#     logger.info(f"Response: {request.method} {request.url} -> {response.status_code}")
+#     logger.info(f"Response headers: {response.headers}")
+#
+#     # Read the response body safely and handle potential binary data
+#     content = response.read()
+#     try:
+#         logger.info(f"Response body: {content.decode('utf-8', errors='replace')}")
+#     except Exception:
+#         logger.info(f"Response body (binary): {content!r}")
 
 
 class ActivityInfoHTTPClient:
@@ -66,6 +67,7 @@ class ActivityInfoHTTPClient:
     Handles authentication, request/response logging, automatic retries with 
     exponential backoff, and standard error parsing.
     """
+
     def __init__(
             self,
             base_url: str,
@@ -102,10 +104,10 @@ class ActivityInfoHTTPClient:
             base_url=base_url,
             headers=headers,
             timeout=timeout,
-            event_hooks={
-                "request": [log_request],
-                "response": [log_response],
-            }
+            # event_hooks={
+            #     "request": [log_request],
+            #     "response": [log_response],
+            # }
         )
 
     def request(
@@ -165,7 +167,7 @@ class ActivityInfoHTTPClient:
                     return None
 
                 json_data = response.json()
-                
+
                 # Check if the JSON body itself contains an error message (common in ActivityInfo)
                 if isinstance(json_data, dict) and json_data.get("code") in ["BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN",
                                                                              "NOT_FOUND", "INTERNAL_ERROR"]:
@@ -181,7 +183,7 @@ class ActivityInfoHTTPClient:
                 if attempt == retries - 1:
                     raise APITimeoutError("Request timed out") from exc
                 sleep(2 ** attempt)
-        
+
         return None
 
     def close(self) -> None:

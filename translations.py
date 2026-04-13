@@ -1,12 +1,21 @@
 import csv
-from typing import Annotated, Optional
+import random
+import string
+from typing import Annotated, Optional, List, Set, Dict, Any
 
 import pandas as pd
 import typer
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
-from api.models import RecordUpdateDTO
-from api.models import UpdateDatabaseDTO, DatabaseTreeResourceType, UpdateDatabaseTranslationsDTO, DatabaseTranslation
+from api.models import (
+    RecordUpdateDTO,
+    UpdateDatabaseDTO,
+    DatabaseTreeResourceType,
+    UpdateDatabaseTranslationsDTO,
+    DatabaseTranslation,
+    SchemaFieldDTO,
+    FieldTypeParametersUpdateDTO
+)
 from common import get_records_with_multiref
 from utils import get_client, console, handle_api_errors
 
@@ -23,9 +32,6 @@ def transfer(
 ):
     """
     Synchronize translations for a specific language between two ActivityInfo databases.
-    
-    This command fetches translations from a source database and maps them onto the 
-    corresponding forms and fields of a target database based on matching labels.
     """
     client = get_client()
 
@@ -49,10 +55,7 @@ def transfer(
             raise typer.Exit(code=1)
 
         # --- 3. Build Resource ID Mapping ---
-        # Map source IDs to target IDs based on label and type compatibility
         resource_id_map = {source_database_id: target_database_id}
-
-        # Create lookups for target resources by (type, label)
         target_resources_by_key = {(res.type, res.label): res for res in target_tree.resources}
 
         for s_res in source_tree.resources:
@@ -61,15 +64,9 @@ def transfer(
                 resource_id_map[s_res.id] = target_resources_by_key[key].id
 
         def map_identifier(res_id: str, field_id_map: Optional[dict[str, str]] = None) -> str:
-            """
-            Robustly maps a translation identifier (resource or field) from source to target.
-            Example: 'resource:SOURCE_DB:label' -> 'resource:TARGET_DB:label'
-            Example: 'field:SOURCE_FIELD:label' -> 'field:TARGET_FIELD:label'
-            """
             parts = res_id.split(":")
             if not parts:
                 return res_id
-
             prefix = parts[0]
             if prefix == "resource" and len(parts) >= 2:
                 source_id = parts[1]
@@ -116,24 +113,17 @@ def transfer(
         progress.update(task, description="Syncing form-level translations...", total=len(target_forms))
 
         for form in target_forms:
-            progress.update(task, description=f"Processing form: {form.label}")
-
-            # Find matching source form
             source_form = next((res for res in source_tree.resources if
                                 res.label == form.label and res.type == DatabaseTreeResourceType.FORM), None)
-
             if not source_form:
                 progress.advance(task)
                 continue
 
             with handle_api_errors(f"Failed to sync translations for {form.label}"):
-                # Fetch translations and schemas
-                source_translations = client.api.get_form_translations(source_database_id, source_form.id,
-                                                                       language_code)
+                source_translations = client.api.get_form_translations(source_database_id, source_form.id, language_code)
                 source_schema = client.api.get_form_schema(source_form.id)
                 target_schema = client.api.get_form_schema(form.id)
 
-                # Map field IDs by label
                 target_fields_by_label = {f.label: f for f in target_schema.elements}
                 field_id_map = {}
                 for s_field in source_schema.elements:
@@ -143,29 +133,22 @@ def transfer(
                 if not dry_run:
                     new_translations = [
                         DatabaseTranslation(
-                            id=map_identifier(t.id, field_id_map if 'field_id_map' in locals() else None),
+                            id=map_identifier(t.id, field_id_map),
                             original=t.original,
                             translated=t.translated,
                             autoTranslated=t.auto_translated
-                        )
-                        for t in source_translations.translated_strings
+                        ) for t in source_translations.translated_strings
                     ]
-
                     client.api.update_form_translations(
                         target_database_id, form.id, language_code,
                         UpdateDatabaseTranslationsDTO(strings=new_translations)
                     )
-
             progress.advance(task)
 
-    # Final summary output
-    if dry_run:
-        console.print("[bold cyan]Dry run completed successfully. No changes were made.[/bold cyan]")
-    else:
-        console.print("[bold green]Transfer executed successfully.[/bold green]")
+    console.print(f"[bold green]Translation sync for '{language_code}' completed.[/bold green]")
 
 
-@app.command(help="Upsert existing translations from an Excel file to a target database.")
+@app.command(help="Upsert translations from an Excel file to an ActivityInfo database.", no_args_is_help=True)
 def upsert(
         source_translations_file: Annotated[
             str, typer.Argument(help="The local path of the Excel file containing translations to upsert")],
@@ -182,7 +165,6 @@ def upsert(
     """
     Upsert translations for a specific language between an Excel file and a target ActivityInfo database.
     """
-
     client = get_client()
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
                   BarColumn(),
@@ -215,202 +197,218 @@ def upsert(
         if not skip_schema:
             progress.update(task, description="Processing schema translations...")
             try:
-                # Header is on the second row (index 1)
                 df_schema = pd.read_excel(source_translations_file, sheet_name='CM - Schema', header=1)
-            except ValueError:
-                console.print("[bold red]Error:[/bold red] 'CM - Schema' sheet missing from Excel file.")
-                raise typer.Exit(code=1)
-
-            if 'EN' not in df_schema.columns:
-                console.print("[bold red]Error:[/bold red] 'EN' column missing from 'CM - Schema' sheet.")
+                df_metrics = pd.read_excel(source_translations_file, sheet_name='CM - Schema (Metrics)', header=0)
+            except ValueError as e:
+                console.print(f"[bold red]Error:[/bold red] Required schema sheet missing from Excel file: {e}")
                 raise typer.Exit(code=1)
 
             target_lang_col = language_code.upper()
-            if target_lang_col not in df_schema.columns:
-                console.print(f"[bold red]Error:[/bold red] '{target_lang_col}' column missing from 'CM - Schema' sheet.")
+            if target_lang_col not in df_schema.columns or target_lang_col not in df_metrics.columns:
+                console.print(f"[bold red]Error:[/bold red] '{target_lang_col}' column missing from schema sheets.")
                 raise typer.Exit(code=1)
 
-            # Create mapping EN -> Target, ensuring strings and dropping empty EN or Target values
-            schema_map = df_schema.dropna(subset=['EN', target_lang_col]).set_index('EN')[target_lang_col].to_dict()
-            # Convert keys and values to strings
-            schema_map = {str(k).strip(): str(v).strip() for k, v in schema_map.items()}
+            schema_map_main = df_schema.dropna(subset=['EN', target_lang_col]).set_index('EN')[target_lang_col].to_dict()
+            schema_map_metrics = df_metrics.dropna(subset=['EN', target_lang_col]).set_index('EN')[target_lang_col].to_dict()
+            schema_map = {str(k).strip(): str(v).strip() for k, v in schema_map_main.items()}
+            schema_map.update({str(k).strip(): str(v).strip() for k, v in schema_map_metrics.items()})
+
+            console.print(f"[dim]Loaded {len(schema_map)} unique schema translation mappings.[/dim]")
 
             # Database-level translations
             progress.update(task, description="Syncing database-level translations...")
-            with handle_api_errors("Failed to get database-level translations"):
-                db_translations = client.api.get_database_translations(target_database_id, language_code)
+            db_strings = [
+                DatabaseTranslation(id=f"resource:{target_database_id}:label", original=target_tree.label, translated="", autoTranslated=False)
+            ]
+            if target_tree.description:
+                db_strings.append(DatabaseTranslation(id=f"resource:{target_database_id}:description", original=target_tree.description, translated="", autoTranslated=False))
+            for role in target_tree.roles:
+                db_strings.append(DatabaseTranslation(id=f"role:{role.id}:label", original=role.label, translated="", autoTranslated=False))
 
             updated_db_strings = []
-            for t in db_translations.translated_strings:
-                original_clean = t.original.strip()
-                if original_clean in schema_map:
-                    target_val = schema_map[original_clean]
-                    if replace_translations or not t.translated:
-                        t.translated = target_val
-                        updated_db_strings.append(t)
+            for t in db_strings:
+                if t.original.strip() in schema_map:
+                    t.translated = schema_map[t.original.strip()]
+                    updated_db_strings.append(t)
                 else:
                     schema_missing_en.add(("Database", t.original))
 
             if updated_db_strings:
-                with handle_api_errors("Failed to update database-level translations"):
-                    client.api.update_database_translations(
-                        target_database_id,
-                        language_code,
-                        UpdateDatabaseTranslationsDTO(strings=updated_db_strings)
-                    )
+                console.print(f"[dim]Updating {len(updated_db_strings)} database-level strings...[/dim]")
+                client.api.update_database_translations(target_database_id, language_code, UpdateDatabaseTranslationsDTO(strings=updated_db_strings))
 
             # Form-level translations
             target_forms = [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM]
+            target_folders = [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FOLDER]
+
+            def get_translation(original_label: str) -> Optional[str]:
+                # 1. Try exact match
+                cleaned_label = original_label.strip()
+                if cleaned_label in schema_map:
+                    return schema_map[cleaned_label]
+                
+                # 2. Try prefix-based match (e.g., "0.3.3_Metric_Configuration" matches "0.3.3" in map)
+                # We only do this for labels that look like they have a prefix (start with numbers and dots)
+                if "_" in cleaned_label:
+                    prefix = cleaned_label.split("_")[0]
+                    if prefix in schema_map:
+                        return schema_map[prefix]
+                
+                return None
+
+            for folder in progress.track(target_folders, description="Syncing folder schema translations"):
+                trans_val = get_translation(folder.label)
+                if trans_val:
+                    console.print(f"[dim]Updating folder '{folder.label}' -> '{trans_val}'...[/dim]")
+                    client.api.update_database_translations(target_database_id, language_code, UpdateDatabaseTranslationsDTO(strings=[
+                        DatabaseTranslation(id=f"resource:{folder.id}:label", original=folder.label, translated=trans_val, autoTranslated=False)
+                    ]))
+                else:
+                    schema_missing_en.add((folder.label, folder.label))
+
             for form in progress.track(target_forms, description="Syncing form schema translations"):
                 with handle_api_errors(f"Failed to sync translations for {form.label}"):
-                    form_translations = client.api.get_form_translations(target_database_id, form.id, language_code)
-                    updated_form_strings = []
-                    for t in form_translations.translated_strings:
-                        original_clean = t.original.strip()
-                        if original_clean in schema_map:
-                            target_val = schema_map[original_clean]
-                            if replace_translations or not t.translated:
-                                t.translated = target_val
-                                updated_form_strings.append(t)
-                        else:
+                    schema = client.api.get_form_schema(form.id)
+                    
+                    form_trans_val = get_translation(form.label)
+                    form_strings = [DatabaseTranslation(id=f"resource:{form.id}:label", original=form.label, translated=form_trans_val or "", autoTranslated=False)]
+                    
+                    for field in schema.elements:
+                        field_trans_val = get_translation(field.label)
+                        form_strings.append(DatabaseTranslation(id=f"field:{field.id}:label", original=field.label, translated=field_trans_val or "", autoTranslated=False))
+                        if field.description:
+                            desc_trans_val = get_translation(field.description)
+                            form_strings.append(DatabaseTranslation(id=f"field:{field.id}:description", original=field.description, translated=desc_trans_val or "", autoTranslated=False))
+                    
+                    updated_form_strings = [t for t in form_strings if t.translated]
+                    
+                    # Track missing
+                    for t in form_strings:
+                        if not t.translated:
                             schema_missing_en.add((form.label, t.original))
-
+                    
                     if updated_form_strings:
-                        client.api.update_form_translations(
-                            target_database_id, form.id, language_code,
-                            UpdateDatabaseTranslationsDTO(strings=updated_form_strings)
-                        )
-
+                        console.print(f"[dim]Updating {len(updated_form_strings)} strings for form '{form.label}'...[/dim]")
+                        client.api.update_form_translations(target_database_id, form.id, language_code, UpdateDatabaseTranslationsDTO(strings=updated_form_strings))
+            
             console.print(f"[bold green]Schema translations completed.[/bold green]")
-
             if schema_output and schema_missing_en:
                 with open(schema_output, 'w', newline='', encoding='utf-8') as f:
-                    writer = csv.writer(f)
-                    writer.writerow(['Context', 'EN'])
-                    for context, val in sorted(schema_missing_en):
-                        writer.writerow([context, val])
-                console.print(f"Missing schema EN values written to {schema_output}")
-
+                    writer = csv.writer(f); writer.writerow(['Context', 'EN'])
+                    for context, val in sorted(schema_missing_en): writer.writerow([context, val])
 
         # --- REFERENCE VALUE TRANSLATIONS ---
         if not skip_reference:
             progress.update(task, description="Processing reference value translations...")
             try:
-                # Header is on the second row (index 1)
                 df_values = pd.read_excel(source_translations_file, sheet_name='CM - Values', header=1)
             except ValueError:
-                console.print("[bold red]Error:[/bold red] 'CM - Values' sheet missing from Excel file.")
+                console.print("[bold red]Error:[/bold red] 'CM - Values' sheet missing.")
                 raise typer.Exit(code=1)
-
-            required_cols = ['Form System Prefix', 'Field Code', 'Refcode']
-            for col in required_cols:
-                if col not in df_values.columns:
-                    console.print(f"[bold red]Error:[/bold red] '{col}' column missing from 'CM - Values' sheet.")
-                    raise typer.Exit(code=1)
 
             target_lang_col = language_code.upper()
-            if target_lang_col not in df_values.columns:
-                console.print(
-                    f"[bold red]Error:[/bold red] '{target_lang_col}' column missing from 'CM - Values' sheet.")
-                raise typer.Exit(code=1)
-
-            # Target field name (e.g., NAME_SO)
-            target_field_suffix = f"_{language_code.upper()}"
-
+            target_field_suffix = f"_{target_lang_col}"
             not_found_items = []
-
-            # Group by Form System Prefix to minimize form fetching, treating prefixes as strings
             df_values['Form System Prefix'] = df_values['Form System Prefix'].astype(str)
-            grouped = df_values.groupby('Form System Prefix')
-
-            for prefix, group in progress.track(grouped, description="Syncing reference values"):
-                # Find form by prefix
-                form_res = next((res for res in target_tree.resources if
-                                 res.type == DatabaseTreeResourceType.FORM and res.label.startswith(str(prefix))), None)
+            
+            for prefix, group in progress.track(df_values.groupby('Form System Prefix'), description="Syncing reference values"):
+                # Robust form matching: Try exact match, then prefix with underscore, then just prefix
+                form_res = next((res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM and res.label == str(prefix)), None)
                 if not form_res:
-                    for _, row in group.iterrows():
-                        not_found_items.append({
-                            'Form System Prefix': prefix,
-                            'Field Code': row['Field Code'],
-                            'Refcode': row['Refcode'],
-                            'Reason': 'Form not found'
-                        })
+                    form_res = next((res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM and res.label.startswith(f"{prefix}_")), None)
+                if not form_res:
+                    form_res = next((res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM and res.label.startswith(str(prefix))), None)
+                
+                if not form_res:
+                    for _, row in group.iterrows(): not_found_items.append({'Form System Prefix': prefix, 'Field Code': row['Field Code'], 'Refcode': row['Refcode'], 'Reason': 'Form not found'})
                     continue
 
                 with handle_api_errors(f"Failed to fetch data for form {form_res.label}"):
+                    console.print(f"[dim]Processing form '{form_res.label}' (Prefix: {prefix})...[/dim]")
                     schema = client.api.get_form_schema(form_res.id)
                     records = get_records_with_multiref(client, form_res.id)
+                    needed_codes = group['Field Code'].unique()
+                    schema_changed = False
+                    code_to_id = {f.code: f.id for f in schema.elements}
 
-                    # Create lookup for records by Refcode (checking CCODE then REFCODE)
+                    for fc in needed_codes:
+                        target_fc = f"{fc}{target_field_suffix}"
+                        if target_fc not in code_to_id:
+                            orig_field = next((f for f in schema.elements if f.code == fc), None)
+                            if orig_field:
+                                new_id = 'c' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=15))
+                                console.print(f"[yellow]Creating field '{target_fc}' in '{form_res.label}'...[/yellow]")
+                                new_field = SchemaFieldDTO(id=new_id, code=target_fc, label=f"{orig_field.label} ({target_lang_col})", type=orig_field.type, type_parameters=orig_field.type_parameters.model_copy(deep=True) if orig_field.type_parameters else None, required=False, key=False, unique=False, dataEntryVisible=True, tableVisible=True)
+                                schema.elements.append(new_field); code_to_id[target_fc] = new_id; schema_changed = True
+                        
+                        # Ensure REFLABEL_[LANG] exists and has the correct formula
+                        if fc == "NAME":
+                            target_reflabel_fc = f"REFLABEL{target_field_suffix}"
+                            has_reflabel = any(f.code == "REFLABEL" for f in schema.elements)
+                            if has_reflabel:
+                                # Prioritize CCODE, then REFCODE (standard/calculated), then REFCODE_MAN (manual)
+                                refcode_id = code_to_id.get("CCODE") or code_to_id.get("REFCODE") or code_to_id.get("REFCODE_MAN")
+                                name_lang_id = code_to_id.get(f"NAME{target_field_suffix}")
+                                
+                                if refcode_id and name_lang_id:
+                                    target_formula = f'IF(!ISBLANK({name_lang_id}), CONCAT({refcode_id}, " - ", {name_lang_id}))'
+                                    
+                                    if target_reflabel_fc not in code_to_id:
+                                        new_refl_id = 'c' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=15))
+                                        console.print(f"[yellow]Creating field '{target_reflabel_fc}' in '{form_res.label}'...[/yellow]")
+                                        new_refl_field = SchemaFieldDTO(id=new_refl_id, code=target_reflabel_fc, label=f"Reference Label ({target_lang_col})", type="calculated", type_parameters=FieldTypeParametersUpdateDTO(formula=target_formula), required=False, key=False, unique=False, dataEntryVisible=False, tableVisible=True)
+                                        schema.elements.append(new_refl_field); code_to_id[target_reflabel_fc] = new_refl_id; schema_changed = True
+                                    else:
+                                        # Field exists, ensure formula is correct
+                                        existing_field = next(f for f in schema.elements if f.code == target_reflabel_fc)
+                                        if existing_field.type == "calculated" and existing_field.type_parameters and existing_field.type_parameters.formula != target_formula:
+                                            console.print(f"[yellow]Updating formula for '{target_reflabel_fc}' in '{form_res.label}'...[/yellow]")
+                                            existing_field.type_parameters.formula = target_formula
+                                            schema_changed = True
+                    
+                    if schema_changed:
+                        client.api.update_form_schema(schema); schema = client.api.get_form_schema(form_res.id)
+                        field_code_to_id = {f.code: f.id for f in schema.elements}
+                    else:
+                        field_code_to_id = code_to_id
+
+                    # Improved record matching: avoid "None" string matching
                     record_map = {}
                     for rec in records:
-                        ccode = str(rec.get('CCODE', '')).strip()
-                        refcode = str(rec.get('REFCODE', '')).strip()
-                        if ccode:
-                            record_map[ccode] = rec
-                        if refcode and refcode not in record_map:
-                            record_map[refcode] = rec
+                        for k in ['CCODE', 'REFCODE', 'REFCODE_MAN']:
+                            val = rec.get(k)
+                            if val is not None:
+                                val_str = str(val).strip()
+                                if val_str and val_str.lower() != "none":
+                                    record_map[val_str] = rec
 
                     updates = []
                     for _, row in group.iterrows():
-                        field_code = str(row['Field Code']).strip()
-                        refcode = str(row['Refcode']).strip()
-
-                        target_field_code = f"{field_code}{target_field_suffix}"
-
-                        # Check if field exists in schema
-                        field_exists = any(f.code == target_field_code for f in schema.elements)
-                        if not field_exists:
-                            not_found_items.append({
-                                'Form System Prefix': prefix,
-                                'Field Code': field_code,
-                                'Refcode': refcode,
-                                'Reason': f'Field {target_field_code} not found'
-                            })
+                        field_code, refcode = str(row['Field Code']).strip(), str(row['Refcode']).strip()
+                        target_fc = f"{field_code}{target_field_suffix}"
+                        if target_fc not in field_code_to_id:
+                            not_found_items.append({'Form System Prefix': prefix, 'Field Code': field_code, 'Refcode': refcode, 'Reason': f'Field {target_fc} not found'})
                             continue
-
-                        # Find record
                         rec = record_map.get(refcode)
                         if not rec:
-                            not_found_items.append({
-                                'Form System Prefix': prefix,
-                                'Field Code': field_code,
-                                'Refcode': refcode,
-                                'Reason': 'Record not found'
-                            })
+                            not_found_items.append({'Form System Prefix': prefix, 'Field Code': field_code, 'Refcode': refcode, 'Reason': f'Record {refcode} not found'})
                             continue
-
-                        # Translation value
                         trans_val = row.get(target_lang_col)
-                        if pd.isna(trans_val) or str(trans_val).strip() == "":
-                            continue
-
-                        # Check ReplaceTranslations logic
-                        existing_val = rec.get(target_field_code)
-                        if replace_translations or not existing_val:
-                            updates.append(RecordUpdateDTO(
-                                formId=form_res.id,
-                                recordId=rec['@id'],
-                                fields={target_field_code: str(trans_val).strip()}
-                            ))
+                        if not pd.isna(trans_val) and str(trans_val).strip() != "":
+                            if replace_translations or not rec.get(target_fc):
+                                updates.append(RecordUpdateDTO(formId=form_res.id, recordId=rec['@id'], fields={field_code_to_id[target_fc]: str(trans_val).strip()}))
 
                     if updates:
-                        # Chunk updates if they are too many (e.g., > 100)
-                        for i in range(0, len(updates), 100):
-                            client.api.update_form_records(updates[i:i + 100])
+                        console.print(f"[dim]Pushing {len(updates)} record updates for '{form_res.label}'...[/dim]")
+                        for i in range(0, len(updates), 100): client.api.update_form_records(updates[i:i + 100])
 
-            console.print(f"[bold green]Reference value translations completed.[/bold green]")
-
+            console.print("[bold green]Reference value translations completed.[/bold green]")
             if reference_output and not_found_items:
                 with open(reference_output, 'w', newline='', encoding='utf-8') as f:
-                    writer = csv.DictWriter(f, fieldnames=['Form System Prefix', 'Field Code', 'Refcode', 'Reason'])
-                    writer.writeheader()
-                    writer.writerows(not_found_items)
-                console.print(f"Not found items written to {reference_output}")
+                    writer = csv.DictWriter(f, fieldnames=['Form System Prefix', 'Field Code', 'Refcode', 'Reason']); writer.writeheader(); writer.writerows(not_found_items)
 
     console.print("[bold green]Upsert executed successfully.[/bold green]")
 
 
-# Standard Python entry point
 if __name__ == "__main__":
     app()
