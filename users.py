@@ -5,6 +5,7 @@ from typing import Annotated, Set, List, Dict, Any, Optional, cast
 import pandas as pd
 import typer
 
+from rich.table import Table
 from api.models import (
     AddDatabaseUserDTO,
     UpdateDatabaseUserRoleDTO,
@@ -219,48 +220,77 @@ def add_bulk(
             if u.email.lower() not in known_emails:
                 user_deletions.append(u)
 
-    # --- 4. Execution ---
+    # --- 4. Recap and Confirmation ---
+    role_id_to_label = {r.id: r.label for r in target_tree.roles}
+
+    if user_additions or user_updates or user_deletions:
+        table = Table(title="Planned User Changes Summary")
+        table.add_column("Action", style="bold")
+        table.add_column("Email", style="cyan")
+        table.add_column("Role", style="magenta")
+        table.add_column("Parameters", style="dim")
+
+        for add in user_additions:
+            role_obj = cast(DatabaseRole, add['role'])
+            role_label = role_id_to_label.get(role_obj.id, role_obj.id)
+            params = str(role_obj.parameters) if role_obj.parameters else "-"
+            table.add_row("Add", add['email'], role_label, params, style="green")
+
+        for up in user_updates:
+            role_obj = cast(DatabaseRole, up['role'])
+            role_label = role_id_to_label.get(role_obj.id, role_obj.id)
+            params = str(role_obj.parameters) if role_obj.parameters else "-"
+            table.add_row("Modify", up['email'], role_label, params, style="yellow")
+
+        for dele in user_deletions:
+            role_label = role_id_to_label.get(dele.role.id, dele.role.id)
+            params = str(dele.role.parameters) if dele.role.parameters else "-"
+            table.add_row("Delete", dele.email, role_label, params, style="red")
+
+        console.print(table)
+    else:
+        console.print("[green]No changes needed.[/green]")
+        return
+
     if dry_run:
         console.print(
             f"\n[bold cyan]Dry run mode: {len(user_additions)} additions, {len(user_updates)} updates, {len(user_deletions)} deletions planned.[/bold cyan]")
         return
 
-    if not (user_additions or user_updates or user_deletions):
-        console.print("[green]No changes needed.[/green]")
-    else:
-        if not yes and not typer.confirm("\nProceed with these changes?"):
-            raise typer.Abort()
+    if not yes and not typer.confirm("\nProceed with these changes?"):
+        raise typer.Abort()
 
-        with console.status("Applying changes...") as status:
-            for add in user_additions:
-                status.update(f"Adding user: {add['email']}")
-                with handle_api_errors(f"Could not add user {add['email']}"):
-                    client.api.add_database_user(target_database_id, AddDatabaseUserDTO(
-                        name=cast(str, add['name']),
-                        email=cast(str, add['email']),
-                        locale=cast(str, add['locale']),
-                        role=cast(DatabaseRole, add['role']),
-                        grants=[]
-                    ))
-                    results.append({**add['orig_row'], "Status": "Added", "Message": ""})
+    # --- 5. Execution ---
+    with console.status("Applying changes...") as status:
+        for add in user_additions:
+            status.update(f"Adding user: {add['email']}")
+            with handle_api_errors(f"Could not add user {add['email']}"):
+                client.api.add_database_user(target_database_id, AddDatabaseUserDTO(
+                    name=cast(str, add['name']),
+                    email=cast(str, add['email']),
+                    locale=cast(str, add['locale']),
+                    role=cast(DatabaseRole, add['role']),
+                    grants=[]
+                ))
+                results.append({**add['orig_row'], "Status": "Added", "Message": ""})
 
-            for up in user_updates:
-                status.update(f"Updating user: {up['email']}")
-                with handle_api_errors(f"Could not update user {up['email']}"):
-                    client.api.update_database_user_role(target_database_id, cast(str, up['user_id']),
-                                                         UpdateDatabaseUserRoleDTO(
-                                                             assignments=[cast(DatabaseRole, up['role'])]
-                                                         ))
-                    results.append({**up['orig_row'], "Status": "Modified", "Message": ""})
+        for up in user_updates:
+            status.update(f"Updating user: {up['email']}")
+            with handle_api_errors(f"Could not update user {up['email']}"):
+                client.api.update_database_user_role(target_database_id, cast(str, up['user_id']),
+                                                     UpdateDatabaseUserRoleDTO(
+                                                         assignments=[cast(DatabaseRole, up['role'])]
+                                                     ))
+                results.append({**up['orig_row'], "Status": "Modified", "Message": ""})
 
-            for dele in user_deletions:
-                status.update(f"Deleting user: {dele.email}")
-                with handle_api_errors(f"Could not delete user {dele.email}"):
-                    # Capture current role for reporting
-                    role_lbl = next((r.label for r in target_tree.roles if r.id == dele.role.id), dele.role.id)
-                    client.api.delete_database_user(target_database_id, dele.user_id)
-                    results.append({"Email": dele.email, "Role": role_lbl, "cde": "", "org": "", "Status": "Deleted",
-                                    "Message": ""})
+        for dele in user_deletions:
+            status.update(f"Deleting user: {dele.email}")
+            with handle_api_errors(f"Could not delete user {dele.email}"):
+                # Capture current role for reporting
+                role_lbl = next((r.label for r in target_tree.roles if r.id == dele.role.id), dele.role.id)
+                client.api.delete_database_user(target_database_id, dele.user_id)
+                results.append({"Email": dele.email, "Role": role_lbl, "cde": "", "org": "", "Status": "Deleted",
+                                "Message": ""})
 
     # --- 5. Output Report ---
     report_df = pd.DataFrame(results)
