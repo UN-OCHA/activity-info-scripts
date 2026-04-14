@@ -21,16 +21,15 @@ app = typer.Typer(no_args_is_help=True)
 USER_ROLES = ["Global Administrator", "CM Administrator", "CM Coordinator", "CM Partner"]
 
 # Form IDs for parameters as per spec
-FORM_ID_COORDINATION_ENTITIES = "c9mpkvrml3u24bz1a9"
-FORM_ID_PARTNERS = "clhlthnml3u24bz1ah"
+# FORM_ID_COORDINATION_ENTITIES = "c9mpkvrml3u24bz1a9"
+# FORM_ID_PARTNERS = "cezl1y0mms4u30z1poo"
 
 # Standard email regex for pre-validation (spec says preflight API can also do this)
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
 
 
-def get_record_id_by_ccode(client: Any, form_id: str, ccode: str) -> Optional[str]:
+def get_record_id_by_ccode(records: List[Dict[str, Any]], ccode: str) -> Optional[str]:
     """Find record ID in a form where CCODE matches."""
-    records = client.api.get_form(form_id)
     ccode_clean = ccode.strip().lower()
     for rec in records:
         if str(rec.get("CCODE", "")).strip().lower() == ccode_clean:
@@ -38,9 +37,8 @@ def get_record_id_by_ccode(client: Any, form_id: str, ccode: str) -> Optional[st
     return None
 
 
-def get_record_id_by_org_abbrev(client: Any, form_id: str, abbrev: str) -> Optional[str]:
+def get_record_id_by_org_abbrev(records: List[Dict[str, Any]],abbrev: str) -> Optional[str]:
     """Find record ID in form 2.1 Partners where GLOBORG.ABBREV matches."""
-    records = client.api.get_form(form_id)
     abbrev_clean = abbrev.strip().lower()
     for rec in records:
         # Based on spec "GLOBORG.ABBREV referenced field"
@@ -95,6 +93,20 @@ def add_bulk(
         target_tree = client.api.get_database_tree(target_database_id)
         existing_users = client.api.get_database_users(target_database_id)
 
+    coordination_entities_form_id = next(
+        res.id for res in target_tree.resources if res.label.startswith("1.1")
+    )
+    partners_form_id = next(
+        res.id for res in target_tree.resources if res.label.startswith("2.1")
+    )
+    if not coordination_entities_form_id or not partners_form_id:
+        console.print("[red]Error: Could not find forms 1.1 and/or 2.1.[/red]")
+        raise typer.Exit(code=1)
+
+    with handle_api_errors("Could not retrieve coordination or partner records"):
+        coordination_entity_records = client.api.get_form(coordination_entities_form_id)
+        partner_records = client.api.get_form(partners_form_id)
+
     # Map role labels to IDs from the target database
     db_roles = {role.label.strip().lower(): role for role in target_tree.roles}
 
@@ -106,6 +118,9 @@ def add_bulk(
     user_updates: List[Dict[str, Any]] = []
 
     for idx, row in data.iterrows():
+
+        print(f"Processing {idx} of {len(data)}")
+
         # Spec: Stop if empty row reached
         if pd.isna(row[email_col]) and pd.isna(row.get("role")):
             break
@@ -151,13 +166,13 @@ def add_bulk(
                 continue
 
             # Find record in 1.1 Coordination Entities
-            rec_id = get_record_id_by_ccode(client, FORM_ID_COORDINATION_ENTITIES, cde_raw)
+            rec_id = get_record_id_by_ccode(coordination_entity_records, cde_raw)
             if not rec_id:
                 results.append(
                     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
                      "Message": "Unknown cde"})
                 continue
-            role_params = {"cde": f"{FORM_ID_COORDINATION_ENTITIES}:{rec_id}"}
+            role_params = {"cde": f"{coordination_entities_form_id}:{rec_id}"}
 
         elif role_label_raw == "CM Partner":
             if not org_raw:
@@ -167,13 +182,13 @@ def add_bulk(
                 continue
 
             # Find record in 2.1 Partners
-            rec_id = get_record_id_by_org_abbrev(client, FORM_ID_PARTNERS, org_raw)
+            rec_id = get_record_id_by_org_abbrev(partner_records, org_raw)
             if not rec_id:
                 results.append(
                     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
                      "Message": "Unknown org"})
                 continue
-            role_params = {"org": f"{FORM_ID_PARTNERS}:{rec_id}"}
+            role_params = {"org": f"{partners_form_id}:{rec_id}"}
 
         # User identification
         email_clean = email_raw.lower()
