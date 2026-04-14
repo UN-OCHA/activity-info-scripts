@@ -119,7 +119,7 @@ def add_bulk(
 
     for idx, row in data.iterrows():
 
-        print(f"Processing {idx} of {len(data)}")
+        print(f"Processing {idx+1} of {len(data)}")
 
         # Spec: Stop if empty row reached
         if pd.isna(row[email_col]) and pd.isna(row.get("role")):
@@ -265,6 +265,9 @@ def add_bulk(
         console.print(table)
     else:
         console.print("[green]No changes needed.[/green]")
+        report_df = pd.DataFrame(results)
+        report_df.to_csv(output_csv, index=False)
+        console.print(f"[bold green]Status report written to {output_csv}[/bold green]")
         return
 
     if dry_run:
