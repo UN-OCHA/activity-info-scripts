@@ -1,7 +1,5 @@
 import csv
-import random
-import string
-from typing import Annotated, Optional, List, Set, Dict, Any
+from typing import Annotated, Optional
 
 import pandas as pd
 import typer
@@ -12,9 +10,7 @@ from api.models import (
     UpdateDatabaseDTO,
     DatabaseTreeResourceType,
     UpdateDatabaseTranslationsDTO,
-    DatabaseTranslation,
-    SchemaFieldDTO,
-    FieldTypeParametersUpdateDTO
+    DatabaseTranslation
 )
 from common import get_records_with_multiref
 from utils import get_client, console, handle_api_errors
@@ -120,7 +116,8 @@ def transfer(
                 continue
 
             with handle_api_errors(f"Failed to sync translations for {form.label}"):
-                source_translations = client.api.get_form_translations(source_database_id, source_form.id, language_code)
+                source_translations = client.api.get_form_translations(source_database_id, source_form.id,
+                                                                       language_code)
                 source_schema = client.api.get_form_schema(source_form.id)
                 target_schema = client.api.get_form_schema(form.id)
 
@@ -208,8 +205,10 @@ def upsert(
                 console.print(f"[bold red]Error:[/bold red] '{target_lang_col}' column missing from schema sheets.")
                 raise typer.Exit(code=1)
 
-            schema_map_main = df_schema.dropna(subset=['EN', target_lang_col]).set_index('EN')[target_lang_col].to_dict()
-            schema_map_metrics = df_metrics.dropna(subset=['EN', target_lang_col]).set_index('EN')[target_lang_col].to_dict()
+            schema_map_main = df_schema.dropna(subset=['EN', target_lang_col]).set_index('EN')[
+                target_lang_col].to_dict()
+            schema_map_metrics = df_metrics.dropna(subset=['EN', target_lang_col]).set_index('EN')[
+                target_lang_col].to_dict()
             schema_map = {str(k).strip(): str(v).strip() for k, v in schema_map_main.items()}
             schema_map.update({str(k).strip(): str(v).strip() for k, v in schema_map_metrics.items()})
 
@@ -218,12 +217,16 @@ def upsert(
             # Database-level translations
             progress.update(task, description="Syncing database-level translations...")
             db_strings = [
-                DatabaseTranslation(id=f"resource:{target_database_id}:label", original=target_tree.label, translated="", autoTranslated=False)
+                DatabaseTranslation(id=f"resource:{target_database_id}:label", original=target_tree.label,
+                                    translated="", autoTranslated=False)
             ]
             if target_tree.description:
-                db_strings.append(DatabaseTranslation(id=f"resource:{target_database_id}:description", original=target_tree.description, translated="", autoTranslated=False))
+                db_strings.append(DatabaseTranslation(id=f"resource:{target_database_id}:description",
+                                                      original=target_tree.description, translated="",
+                                                      autoTranslated=False))
             for role in target_tree.roles:
-                db_strings.append(DatabaseTranslation(id=f"role:{role.id}:label", original=role.label, translated="", autoTranslated=False))
+                db_strings.append(DatabaseTranslation(id=f"role:{role.id}:label", original=role.label, translated="",
+                                                      autoTranslated=False))
 
             updated_db_strings = []
             for t in db_strings:
@@ -235,7 +238,8 @@ def upsert(
 
             if updated_db_strings:
                 console.print(f"[dim]Updating {len(updated_db_strings)} database-level strings...[/dim]")
-                client.api.update_database_translations(target_database_id, language_code, UpdateDatabaseTranslationsDTO(strings=updated_db_strings))
+                client.api.update_database_translations(target_database_id, language_code,
+                                                        UpdateDatabaseTranslationsDTO(strings=updated_db_strings))
 
             # Form-level translations
             target_forms = [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM]
@@ -246,55 +250,66 @@ def upsert(
                 cleaned_label = original_label.strip()
                 if cleaned_label in schema_map:
                     return schema_map[cleaned_label]
-                
+
                 # 2. Try prefix-based match (e.g., "0.3.3_Metric_Configuration" matches "0.3.3" in map)
                 # We only do this for labels that look like they have a prefix (start with numbers and dots)
                 if "_" in cleaned_label:
                     prefix = cleaned_label.split("_")[0]
                     if prefix in schema_map:
                         return schema_map[prefix]
-                
+
                 return None
 
             for folder in progress.track(target_folders, description="Syncing folder schema translations"):
                 trans_val = get_translation(folder.label)
                 if trans_val:
                     console.print(f"[dim]Updating folder '{folder.label}' -> '{trans_val}'...[/dim]")
-                    client.api.update_database_translations(target_database_id, language_code, UpdateDatabaseTranslationsDTO(strings=[
-                        DatabaseTranslation(id=f"resource:{folder.id}:label", original=folder.label, translated=trans_val, autoTranslated=False)
-                    ]))
+                    client.api.update_database_translations(target_database_id, language_code,
+                                                            UpdateDatabaseTranslationsDTO(strings=[
+                                                                DatabaseTranslation(id=f"resource:{folder.id}:label",
+                                                                                    original=folder.label,
+                                                                                    translated=trans_val,
+                                                                                    autoTranslated=False)
+                                                            ]))
                 else:
                     schema_missing_en.add((folder.label, folder.label))
 
             for form in progress.track(target_forms, description="Syncing form schema translations"):
                 with handle_api_errors(f"Failed to sync translations for {form.label}"):
                     schema = client.api.get_form_schema(form.id)
-                    
+
                     form_trans_val = get_translation(form.label)
-                    form_strings = [DatabaseTranslation(id=f"resource:{form.id}:label", original=form.label, translated=form_trans_val or "", autoTranslated=False)]
-                    
+                    form_strings = [DatabaseTranslation(id=f"resource:{form.id}:label", original=form.label,
+                                                        translated=form_trans_val or "", autoTranslated=False)]
+
                     for field in schema.elements:
                         field_trans_val = get_translation(field.label)
-                        form_strings.append(DatabaseTranslation(id=f"field:{field.id}:label", original=field.label, translated=field_trans_val or "", autoTranslated=False))
+                        form_strings.append(DatabaseTranslation(id=f"field:{field.id}:label", original=field.label,
+                                                                translated=field_trans_val or "", autoTranslated=False))
                         if field.description:
                             desc_trans_val = get_translation(field.description)
-                            form_strings.append(DatabaseTranslation(id=f"field:{field.id}:description", original=field.description, translated=desc_trans_val or "", autoTranslated=False))
-                    
+                            form_strings.append(
+                                DatabaseTranslation(id=f"field:{field.id}:description", original=field.description,
+                                                    translated=desc_trans_val or "", autoTranslated=False))
+
                     updated_form_strings = [t for t in form_strings if t.translated]
-                    
+
                     # Track missing
                     for t in form_strings:
                         if not t.translated:
                             schema_missing_en.add((form.label, t.original))
-                    
+
                     if updated_form_strings:
-                        console.print(f"[dim]Updating {len(updated_form_strings)} strings for form '{form.label}'...[/dim]")
-                        client.api.update_form_translations(target_database_id, form.id, language_code, UpdateDatabaseTranslationsDTO(strings=updated_form_strings))
-            
+                        console.print(
+                            f"[dim]Updating {len(updated_form_strings)} strings for form '{form.label}'...[/dim]")
+                        client.api.update_form_translations(target_database_id, form.id, language_code,
+                                                            UpdateDatabaseTranslationsDTO(strings=updated_form_strings))
+
             console.print(f"[bold green]Schema translations completed.[/bold green]")
             if schema_output and schema_missing_en:
                 with open(schema_output, 'w', newline='', encoding='utf-8') as f:
-                    writer = csv.writer(f); writer.writerow(['Context', 'EN'])
+                    writer = csv.writer(f);
+                    writer.writerow(['Context', 'EN'])
                     for context, val in sorted(schema_missing_en): writer.writerow([context, val])
 
         # --- REFERENCE VALUE TRANSLATIONS ---
@@ -310,69 +325,33 @@ def upsert(
             target_field_suffix = f"_{target_lang_col}"
             not_found_items = []
             df_values['Form System Prefix'] = df_values['Form System Prefix'].astype(str)
-            
-            for prefix, group in progress.track(df_values.groupby('Form System Prefix'), description="Syncing reference values"):
+
+            for prefix, group in progress.track(df_values.groupby('Form System Prefix'),
+                                                description="Syncing reference values"):
                 # Robust form matching: Try exact match, then prefix with underscore, then just prefix
-                form_res = next((res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM and res.label == str(prefix)), None)
+                form_res = next((res for res in target_tree.resources if
+                                 res.type == DatabaseTreeResourceType.FORM and res.label == str(prefix)), None)
                 if not form_res:
-                    form_res = next((res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM and res.label.startswith(f"{prefix}_")), None)
+                    form_res = next((res for res in target_tree.resources if
+                                     res.type == DatabaseTreeResourceType.FORM and res.label.startswith(f"{prefix}_")),
+                                    None)
                 if not form_res:
-                    form_res = next((res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM and res.label.startswith(str(prefix))), None)
-                
+                    form_res = next((res for res in target_tree.resources if
+                                     res.type == DatabaseTreeResourceType.FORM and res.label.startswith(str(prefix))),
+                                    None)
+
                 if not form_res:
-                    for _, row in group.iterrows(): not_found_items.append({'Form System Prefix': prefix, 'Field Code': row['Field Code'], 'Refcode': row['Refcode'], 'Reason': 'Form not found'})
+                    for _, row in group.iterrows(): not_found_items.append(
+                        {'Form System Prefix': prefix, 'Field Code': row['Field Code'], 'Refcode': row['Refcode'],
+                         'Reason': 'Form not found'})
                     continue
 
                 with handle_api_errors(f"Failed to fetch data for form {form_res.label}"):
                     console.print(f"[dim]Processing form '{form_res.label}' (Prefix: {prefix})...[/dim]")
                     schema = client.api.get_form_schema(form_res.id)
                     records = get_records_with_multiref(client, form_res.id)
-                    needed_codes = group['Field Code'].unique()
-                    schema_changed = False
-                    code_to_id = {f.code: f.id for f in schema.elements}
+                    field_code_to_id = {f.code: f.id for f in schema.elements}
 
-                    for fc in needed_codes:
-                        target_fc = f"{fc}{target_field_suffix}"
-                        if target_fc not in code_to_id:
-                            orig_field = next((f for f in schema.elements if f.code == fc), None)
-                            if orig_field:
-                                new_id = 'c' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=15))
-                                console.print(f"[yellow]Creating field '{target_fc}' in '{form_res.label}'...[/yellow]")
-                                new_field = SchemaFieldDTO(id=new_id, code=target_fc, label=f"{orig_field.label} ({target_lang_col})", type=orig_field.type, type_parameters=orig_field.type_parameters.model_copy(deep=True) if orig_field.type_parameters else None, required=False, key=False, unique=False, dataEntryVisible=True, tableVisible=True)
-                                schema.elements.append(new_field); code_to_id[target_fc] = new_id; schema_changed = True
-                        
-                        # Ensure REFLABEL_[LANG] exists and has the correct formula
-                        if fc == "NAME":
-                            target_reflabel_fc = f"REFLABEL{target_field_suffix}"
-                            has_reflabel = any(f.code == "REFLABEL" for f in schema.elements)
-                            if has_reflabel:
-                                # Prioritize CCODE, then REFCODE (standard/calculated), then REFCODE_MAN (manual)
-                                refcode_id = code_to_id.get("CCODE") or code_to_id.get("REFCODE") or code_to_id.get("REFCODE_MAN")
-                                name_lang_id = code_to_id.get(f"NAME{target_field_suffix}")
-                                
-                                if refcode_id and name_lang_id:
-                                    target_formula = f'IF(!ISBLANK({name_lang_id}), CONCAT({refcode_id}, " - ", {name_lang_id}))'
-                                    
-                                    if target_reflabel_fc not in code_to_id:
-                                        new_refl_id = 'c' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=15))
-                                        console.print(f"[yellow]Creating field '{target_reflabel_fc}' in '{form_res.label}'...[/yellow]")
-                                        new_refl_field = SchemaFieldDTO(id=new_refl_id, code=target_reflabel_fc, label=f"Reference Label ({target_lang_col})", type="calculated", type_parameters=FieldTypeParametersUpdateDTO(formula=target_formula), required=False, key=False, unique=False, dataEntryVisible=False, tableVisible=True)
-                                        schema.elements.append(new_refl_field); code_to_id[target_reflabel_fc] = new_refl_id; schema_changed = True
-                                    else:
-                                        # Field exists, ensure formula is correct
-                                        existing_field = next(f for f in schema.elements if f.code == target_reflabel_fc)
-                                        if existing_field.type == "calculated" and existing_field.type_parameters and existing_field.type_parameters.formula != target_formula:
-                                            console.print(f"[yellow]Updating formula for '{target_reflabel_fc}' in '{form_res.label}'...[/yellow]")
-                                            existing_field.type_parameters.formula = target_formula
-                                            schema_changed = True
-                    
-                    if schema_changed:
-                        client.api.update_form_schema(schema); schema = client.api.get_form_schema(form_res.id)
-                        field_code_to_id = {f.code: f.id for f in schema.elements}
-                    else:
-                        field_code_to_id = code_to_id
-
-                    # Improved record matching: avoid "None" string matching
                     record_map = {}
                     for rec in records:
                         for k in ['CCODE', 'REFCODE', 'REFCODE_MAN']:
@@ -386,17 +365,22 @@ def upsert(
                     for _, row in group.iterrows():
                         field_code, refcode = str(row['Field Code']).strip(), str(row['Refcode']).strip()
                         target_fc = f"{field_code}{target_field_suffix}"
+
                         if target_fc not in field_code_to_id:
-                            not_found_items.append({'Form System Prefix': prefix, 'Field Code': field_code, 'Refcode': refcode, 'Reason': f'Field {target_fc} not found'})
                             continue
+
                         rec = record_map.get(refcode)
                         if not rec:
-                            not_found_items.append({'Form System Prefix': prefix, 'Field Code': field_code, 'Refcode': refcode, 'Reason': f'Record {refcode} not found'})
+                            not_found_items.append(
+                                {'Form System Prefix': prefix, 'Field Code': field_code, 'Refcode': refcode,
+                                 'Reason': f'Record {refcode} not found'})
                             continue
+
                         trans_val = row.get(target_lang_col)
                         if not pd.isna(trans_val) and str(trans_val).strip() != "":
                             if replace_translations or not rec.get(target_fc):
-                                updates.append(RecordUpdateDTO(formId=form_res.id, recordId=rec['@id'], fields={field_code_to_id[target_fc]: str(trans_val).strip()}))
+                                updates.append(RecordUpdateDTO(formId=form_res.id, recordId=rec['@id'], fields={
+                                    field_code_to_id[target_fc]: str(trans_val).strip()}))
 
                     if updates:
                         console.print(f"[dim]Pushing {len(updates)} record updates for '{form_res.label}'...[/dim]")
@@ -405,7 +389,9 @@ def upsert(
             console.print("[bold green]Reference value translations completed.[/bold green]")
             if reference_output and not_found_items:
                 with open(reference_output, 'w', newline='', encoding='utf-8') as f:
-                    writer = csv.DictWriter(f, fieldnames=['Form System Prefix', 'Field Code', 'Refcode', 'Reason']); writer.writeheader(); writer.writerows(not_found_items)
+                    writer = csv.DictWriter(f, fieldnames=['Form System Prefix', 'Field Code', 'Refcode', 'Reason']);
+                    writer.writeheader();
+                    writer.writerows(not_found_items)
 
     console.print("[bold green]Upsert executed successfully.[/bold green]")
 
