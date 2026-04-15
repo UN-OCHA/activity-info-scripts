@@ -1,1 +1,7 @@
 ./idea/
+__pycache__/
+activityinfo.jar_Decompiler.com/
+.DS_Store
+.env
+.idea/
+form_patch_*.json

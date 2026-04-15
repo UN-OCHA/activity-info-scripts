@@ -308,7 +308,7 @@ def upsert(
             console.print(f"[bold green]Schema translations completed.[/bold green]")
             if schema_output and schema_missing_en:
                 with open(schema_output, 'w', newline='', encoding='utf-8') as f:
-                    writer = csv.writer(f);
+                    writer = csv.writer(f)
                     writer.writerow(['Context', 'EN'])
                     for context, val in sorted(schema_missing_en): writer.writerow([context, val])
 
@@ -389,8 +389,8 @@ def upsert(
             console.print("[bold green]Reference value translations completed.[/bold green]")
             if reference_output and not_found_items:
                 with open(reference_output, 'w', newline='', encoding='utf-8') as f:
-                    writer = csv.DictWriter(f, fieldnames=['Form System Prefix', 'Field Code', 'Refcode', 'Reason']);
-                    writer.writeheader();
+                    writer = csv.DictWriter(f, fieldnames=['Form System Prefix', 'Field Code', 'Refcode', 'Reason'])
+                    writer.writeheader()
                     writer.writerows(not_found_items)
 
     console.print("[bold green]Upsert executed successfully.[/bold green]")
