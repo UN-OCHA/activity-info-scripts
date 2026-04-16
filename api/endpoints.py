@@ -7,7 +7,7 @@ from api.models import (
     DatabaseTree, FormSchema, Database, AddFormDTO, UpdateDatabaseDTO,
     RecordUpdateDTO, DatabaseTranslations, UpdateDatabaseTranslationsDTO,
     DatabaseUser, AddDatabaseUserDTO, UpdateDatabaseUserRoleDTO, AddDatabaseDTO,
-    UserPreflightDTO, UserPreflightResponse
+    UserPreflightDTO, UserPreflightResponse, DatabaseAuditRequestDTO, DatabaseAuditResponse
 )
 
 # Type alias for raw dictionary payloads returned by some API endpoints
@@ -171,7 +171,8 @@ class ActivityInfoEndpoints:
         except ValidationError as e:
             raise APIError("Response does not match DatabaseTranslations schema") from e
 
-    def update_form_translations(self, database_id: str, form_id: str, language_code: str, dto: UpdateDatabaseTranslationsDTO):
+    def update_form_translations(self, database_id: str, form_id: str, language_code: str,
+                                 dto: UpdateDatabaseTranslationsDTO):
         """Apply new translations to a specific form and its fields."""
         self._http.request(
             "POST",
@@ -244,3 +245,19 @@ class ActivityInfoEndpoints:
             return UserPreflightResponse.model_validate(raw)
         except ValidationError as e:
             raise APIError("Response does not match UserPreflightResponse schema") from e
+
+    def audit_database(self, database_id: str, dto: DatabaseAuditRequestDTO):
+        raw = self._http.request(
+            "POST",
+            f"databases/{database_id}/audit",
+            json=dto.model_dump(
+                mode="json",
+                exclude_none=True,
+                exclude_unset=True,
+                by_alias=True,
+            )
+        )
+        try:
+            return DatabaseAuditResponse.model_validate(raw)
+        except ValidationError as e:
+            raise APIError("Response does not match DatabaseAuditResponse schema") from e

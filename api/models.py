@@ -17,6 +17,18 @@ class DatabaseTreeResourceType(StrEnum):
     OTHER = auto()
 
 
+class DatabaseUpdateType(StrEnum):
+    RECORD = "RECORD"
+    FORM = "FORM"
+    REPORT = "REPORT"
+    FOLDER = "FOLDER"
+    DATABASE = "DATABASE"
+    LOCK = "LOCK"
+    USER_PERMISSION = "USER_PERMISSION"
+    ROLE = "ROLE"
+    AUTOMATION = "AUTOMATION"
+
+
 class DatabaseTreeResourceVisibility(StrEnum):
     PUBLIC = "PUBLIC"
     PRIVATE = "PRIVATE"
@@ -340,3 +352,44 @@ class UserPreflightResponse(BaseModel):
     added_to_database: bool = Field(alias="addedToDatabase")
     valid_email: bool = Field(alias="validEmail")
     localized_error_message: Optional[str] = Field(default=None, alias="localizedErrorMessage")
+
+
+class DatabaseAuditRequestDTO(BaseModel):
+    resource_filter: Optional[str] = Field(alias="resourceFilter", default=None)
+    type_filter: List[DatabaseUpdateType] = Field(alias="typeFilter")
+    start_time: int = Field(alias="startTime")
+    end_time: Optional[int] = Field(alias="endTime", default=None)
+
+
+class UserInfo(BaseModel):
+    id: str
+    name: str
+    email: str
+
+
+class DatabaseAuditEvent(BaseModel):
+    id: str
+    time: int  # Unix milliseconds
+    user: UserInfo
+    recordRef: Optional[Any] = None
+    automation: Optional[Any] = None
+    formId: Optional[Any] = None
+    version: int
+    databaseUserId: Optional[Any] = None
+    description: str
+    type: str
+    resourceTypes: List[str]
+    resourceId: str
+    added: bool
+    updated: bool
+    deleted: bool
+    recovered: bool
+    reverted: bool
+    mergeId: Optional[Any] = None
+
+
+class DatabaseAuditResponse(BaseModel):
+    events: List[DatabaseAuditEvent]
+    startTime: int
+    endTime: int
+    moreEvents: bool
