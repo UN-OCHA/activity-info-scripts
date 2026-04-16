@@ -177,7 +177,7 @@ class TypeParameters(BaseModel):
     aggregation: Optional[str] = None
 
 
-class FieldTypeParametersItemsUpdateDTO(BaseModel):
+class FieldTypeParametersValuesUpdateDTO(BaseModel):
     id: str = Field(alias="id")
     label: str = Field(alias="label")
 
@@ -190,11 +190,12 @@ class FieldTypeParametersUpdateDTO(BaseModel):
     cardinality: Optional[str] = Field(default=None, alias="cardinality")
     range: Optional[List[Dict[str, str]]] = Field(default=None, alias="range")
     form_id: Optional[str] = Field(default=None, alias="formId")
-    items: Optional[List[FieldTypeParametersItemsUpdateDTO]] = Field(default=None, alias="items")
+    values: Optional[List[FieldTypeParametersValuesUpdateDTO]] = Field(default=None, alias="values")
     formula: Optional[str] = Field(default=None, alias="formula")
     prefix_formula: Optional[str] = Field(default=None, alias="prefixFormula")
     lookup_configs: Optional[List[TypeParameterLookupConfig]] = Field(default=None, alias="lookupConfigs")
     aggregation: Optional[str] = Field(default=None, alias="aggregation")
+    presentation: Optional[str] = Field(default=None, alias="presentation")
 
 
 class SchemaFieldDTO(BaseModel):
