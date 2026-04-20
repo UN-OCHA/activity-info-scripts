@@ -7,7 +7,8 @@ from api.models import (
     DatabaseTree, FormSchema, Database, AddFormDTO, UpdateDatabaseDTO,
     RecordUpdateDTO, DatabaseTranslations, UpdateDatabaseTranslationsDTO,
     DatabaseUser, AddDatabaseUserDTO, UpdateDatabaseUserRoleDTO, AddDatabaseDTO,
-    UserPreflightDTO, UserPreflightResponse, DatabaseAuditRequestDTO, DatabaseAuditResponse
+    UserPreflightDTO, UserPreflightResponse, DatabaseAuditRequestDTO, DatabaseAuditResponse,
+    FormTree
 )
 
 # Type alias for raw dictionary payloads returned by some API endpoints
@@ -64,6 +65,14 @@ class ActivityInfoEndpoints:
             return FormSchema.model_validate(raw)
         except ValidationError as e:
             raise APIError("Response does not match FormSchema") from e
+
+    def get_form_tree(self, form_id: str) -> FormTree:
+        """Fetch the form and all its related forms (references)."""
+        raw = self._http.request("GET", f"form/{form_id}/tree")
+        try:
+            return FormTree.model_validate(raw)
+        except ValidationError as e:
+            raise APIError("Response does not match FormTree schema") from e
 
     def get_user_databases(self) -> List[Database]:
         """List all databases the authenticated user has access to."""

@@ -227,6 +227,43 @@ class FormSchema(BaseModel):
     elements: List[SchemaFieldDTO]
 
 
+class FormPermissions(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    view: bool = Field(alias="view")
+    view_filter: Optional[str] = Field(default=None, alias="viewFilter")
+    create_record: bool = Field(alias="createRecord")
+    create_filter: Optional[str] = Field(default=None, alias="createFilter")
+    edit_record: bool = Field(alias="editRecord")
+    edit_filter: Optional[str] = Field(default=None, alias="editFilter")
+    security_categories: List[str] = Field(default_factory=list, alias="securityCategories")
+    delete_record: bool = Field(alias="deleteRecord")
+    delete_filter: Optional[str] = Field(default=None, alias="deleteFilter")
+    bulk_delete: bool = Field(alias="bulkDelete")
+    export_records: bool = Field(alias="exportRecords")
+    resolve_duplicates: bool = Field(alias="resolveDuplicates")
+    manage_import_configs: bool = Field(alias="manageImportConfigs")
+    update_schema: bool = Field(alias="updateSchema")
+    collection_links: bool = Field(alias="collectionLinks")
+    public_form: bool = Field(alias="publicForm")
+    locks: List[Any] = Field(default_factory=list, alias="locks")
+    api: bool = Field(alias="api")
+    field_level_conditions: List[Any] = Field(default_factory=list, alias="fieldLevelConditions")
+
+
+class FormTreeEntry(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    id: str = Field(alias="id")
+    schema: FormSchema = Field(alias="schema")
+    schema_version: int = Field(alias="schemaVersion")
+    permissions: FormPermissions = Field(alias="permissions")
+
+
+class FormTree(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    root: str = Field(alias="root")
+    forms: Dict[str, FormTreeEntry] = Field(alias="forms")
+
+
 class AddDatabaseDTO(BaseModel):
     id: str
     label: str
