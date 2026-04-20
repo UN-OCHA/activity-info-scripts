@@ -8,6 +8,7 @@ import db
 import forms
 import translations
 import users
+import nicktest
 from utils import console
 
 # Initialize the main Typer application
@@ -21,6 +22,7 @@ app.add_typer(users.app, name="users", help="Manage a given database's users")
 app.add_typer(forms.app, name="forms", help="Manage reference & data forms for a given database")
 app.add_typer(config.app, name="config", help="Adjust metric and disaggregation fields in data forms")
 app.add_typer(db.app, name="db", help="General database utilities")
+app.add_typer(nicktest.app, name="nicktest", help="Nick test utilities")
 
 
 @app.callback()

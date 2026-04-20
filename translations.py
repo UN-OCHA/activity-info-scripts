@@ -188,7 +188,7 @@ def upsert(
                     originalLanguage="en"
                 ))
 
-        schema_missing_en = set()  # Set of (Context, Original)
+        schema_missing_en = set()  # Set of (Context, SubContext, StringContext, Original)
 
         # --- SCHEMA TRANSLATIONS ---
         if not skip_schema:
@@ -234,7 +234,9 @@ def upsert(
                     t.translated = schema_map[t.original.strip()]
                     updated_db_strings.append(t)
                 else:
-                    schema_missing_en.add(("Database", t.original))
+                    translation_id_components = t.id.split(":")
+                    string_context = translation_id_components[0] + ":" + translation_id_components[2]
+                    schema_missing_en.add(("Database", "", string_context, t.original))
 
             if updated_db_strings:
                 console.print(f"[dim]Updating {len(updated_db_strings)} database-level strings...[/dim]")
@@ -272,7 +274,7 @@ def upsert(
                                                                                     autoTranslated=False)
                                                             ]))
                 else:
-                    schema_missing_en.add((folder.label, folder.label))
+                    schema_missing_en.add(("Database", "Folder", "resource:label", folder.label))
 
             for form in progress.track(target_forms, description="Syncing form schema translations"):
                 with handle_api_errors(f"Failed to sync translations for {form.label}"):
@@ -281,23 +283,59 @@ def upsert(
                     form_trans_val = get_translation(form.label)
                     form_strings = [DatabaseTranslation(id=f"resource:{form.id}:label", original=form.label,
                                                         translated=form_trans_val or "", autoTranslated=False)]
+                    if not form_trans_val:
+                        schema_missing_en.add((form.label, "", "resource:label", form.label))
 
                     for field in schema.elements:
                         field_trans_val = get_translation(field.label)
                         form_strings.append(DatabaseTranslation(id=f"field:{field.id}:label", original=field.label,
                                                                 translated=field_trans_val or "", autoTranslated=False))
+                        if not field_trans_val:
+                            schema_missing_en.add((form.label, field.code, "field:label", field.label))
+
                         if field.description:
                             desc_trans_val = get_translation(field.description)
                             form_strings.append(
                                 DatabaseTranslation(id=f"field:{field.id}:description", original=field.description,
                                                     translated=desc_trans_val or "", autoTranslated=False))
+                            if not desc_trans_val:
+                                schema_missing_en.add((form.label, field.code, "field:description", field.description))
+
+                        if field.type_parameters:
+                            if field.type_parameters.lookup_configs:
+                                for lookup_config in field.type_parameters.lookup_configs:
+                                    lookup_trans_val = get_translation(lookup_config.lookupLabel)
+                                    form_strings.append(
+                                        DatabaseTranslation(id=f"lookup:{lookup_config.id}:label",
+                                                            original=lookup_config.lookupLabel,
+                                                            translated=lookup_trans_val or "", autoTranslated=False))
+                                    if not lookup_trans_val:
+                                        schema_missing_en.add((form.label, field.code, "lookup:label",
+                                                               lookup_config.lookupLabel))
+
+                            if field.type_parameters.values:
+                                for value in field.type_parameters.values:
+                                    value_trans_val = get_translation(value.label)
+                                    form_strings.append(
+                                        DatabaseTranslation(id=f"item:{value.id}:label",
+                                                            original=value.label,
+                                                            translated=value_trans_val or "", autoTranslated=False))
+                                    if not value_trans_val:
+                                        schema_missing_en.add((form.label, field.code, "item:label", value.label))
+
 
                     updated_form_strings = [t for t in form_strings if t.translated]
 
                     # Track missing
-                    for t in form_strings:
-                        if not t.translated:
-                            schema_missing_en.add((form.label, t.original))
+                    # for t in form_strings:
+                    #     if not t.translated:
+                    #         schema_missing_en.add((form.label, t.original))
+
+                    # Clean missing strings
+                    schema_missing_en_cleaned = {
+                        tuple("" if x is None else x for x in item)
+                        for item in schema_missing_en
+                    }
 
                     if updated_form_strings:
                         console.print(
@@ -309,8 +347,9 @@ def upsert(
             if schema_output and schema_missing_en:
                 with open(schema_output, 'w', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f)
-                    writer.writerow(['Context', 'EN'])
-                    for context, val in sorted(schema_missing_en): writer.writerow([context, val])
+                    writer.writerow(['Context', 'Subcontext', 'String Context', 'EN'])
+                    for context, subContext, strContext, val in sorted(schema_missing_en_cleaned):
+                        writer.writerow([context, subContext, strContext, val])
 
         # --- REFERENCE VALUE TRANSLATIONS ---
         if not skip_reference:
