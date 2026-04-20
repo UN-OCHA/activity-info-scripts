@@ -14,7 +14,7 @@ from api.models import (
     SchemaFieldDTO, FieldType, FieldTypeParametersUpdateDTO,
     TypeParameterLookupConfig, UpdateDatabaseDTO, FormSchema
 )
-from common import filter_data_forms, get_records_with_multiref, get_field_info
+from common import filter_data_forms, get_records_with_multiref, get_field_info, find_resource_by_prefix
 from id_translation import SchemaIdTranslator
 from utils import get_client, handle_api_errors, console
 
@@ -67,7 +67,7 @@ def create_data(
 
         # --- 4. Locate and Read the Configuration Form ---
         # Find the form that contains the definitions for all data forms to be managed
-        data_config_form = next((res for res in target_tree.resources if res.label.startswith(DATA_FORM_PREFIX)), None)
+        data_config_form = find_resource_by_prefix(target_tree.resources, DATA_FORM_PREFIX)
         if not data_config_form:
             progress.stop()
             console.print(
@@ -114,10 +114,10 @@ def create_data(
                 continue
 
             # Locate the actual folder resource in the database tree
-            parent_folder = next(
-                (res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FOLDER and (
-                        res.parentId == root_folder_id or res.parentId == target_database_id) and res.label.startswith(
-                    target_folder_prefix)), None
+            parent_folder = find_resource_by_prefix(
+                [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FOLDER and (
+                        res.parentId == root_folder_id or res.parentId == target_database_id)],
+                target_folder_prefix
             )
 
             if not parent_folder:
@@ -131,8 +131,13 @@ def create_data(
 
             def get_ref_form_id(prefix: str):
                 """Helper to find IDs of reference forms based on their label prefix."""
-                return next(res.id for res in target_tree.resources if
-                            res.type == DatabaseTreeResourceType.FORM and res.label.startswith(prefix))
+                form = find_resource_by_prefix(
+                    [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM],
+                    prefix
+                )
+                if not form:
+                    raise ValueError(f"Form with prefix {prefix} not found")
+                return form.id
 
             # Add Project reference field if applicable
             if record["USERLEVEL.REFCODE"] == "LP":
@@ -323,10 +328,9 @@ def create_reference(
             target_tree = client.api.get_database_tree(target_cm_database_id)
 
         # Identify the standard folder (prefixed '0.4') where reference forms reside
-        parent_folder = next(
-            (res for res in target_tree.resources if
-             res.type == DatabaseTreeResourceType.FOLDER and res.label.startswith("0.4")),
-            None
+        parent_folder = find_resource_by_prefix(
+            [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FOLDER],
+            "0.4"
         )
         if not parent_folder:
             console.print("[bold red]Error:[/bold red] Could not find folder starting with '0.4' in target database.")
@@ -339,10 +343,9 @@ def create_reference(
         reference_forms_by_name = {f.label: f for f in reference_forms_in_target}
 
         # Find the configuration form that defines which reference forms to sync
-        reference_config_form = next(
-            (res for res in target_tree.resources if
-             res.type == DatabaseTreeResourceType.FORM and res.label.startswith(REFERENCE_FORM_PREFIX)),
-            None
+        reference_config_form = find_resource_by_prefix(
+            [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM],
+            REFERENCE_FORM_PREFIX
         )
         if not reference_config_form:
             console.print(

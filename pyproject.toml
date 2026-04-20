@@ -12,7 +12,8 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "rich>=14.3.3",
     "mypy>=1.11",
-    "jsonpatch"
+    "jsonpatch",
+    "lark"
 ]
 
 [dependency-groups]

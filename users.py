@@ -13,6 +13,7 @@ from api.models import (
     UserPreflightDTO
 )
 from utils import get_client, handle_api_errors, console
+from common import find_resource_by_prefix
 
 # Initialize a Typer sub-application for user management
 app = typer.Typer(no_args_is_help=True)
@@ -93,15 +94,15 @@ def add_bulk(
         target_tree = client.api.get_database_tree(target_database_id)
         existing_users = client.api.get_database_users(target_database_id)
 
-    coordination_entities_form_id = next(
-        res.id for res in target_tree.resources if res.label.startswith("1.1")
-    )
-    partners_form_id = next(
-        res.id for res in target_tree.resources if res.label.startswith("2.1")
-    )
-    if not coordination_entities_form_id or not partners_form_id:
+    coordination_entities_form = find_resource_by_prefix(target_tree.resources, "1.1")
+    partners_form = find_resource_by_prefix(target_tree.resources, "2.1")
+    
+    if not coordination_entities_form or not partners_form:
         console.print("[red]Error: Could not find forms 1.1 and/or 2.1.[/red]")
         raise typer.Exit(code=1)
+
+    coordination_entities_form_id = coordination_entities_form.id
+    partners_form_id = partners_form.id
 
     with handle_api_errors("Could not retrieve coordination or partner records"):
         coordination_entity_records = client.api.get_form(coordination_entities_form_id)

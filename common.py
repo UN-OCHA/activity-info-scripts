@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Any, Optional
 
 from api import ActivityInfoClient
 from api.models import DatabaseTree, DatabaseTreeResourceType, Resource, FieldType, FormSchema
@@ -35,6 +35,40 @@ def filter_data_forms(tree: DatabaseTree, folder_id: str) -> List[Resource]:
         if res.type == DatabaseTreeResourceType.FORM
            and res.parentId in [folder.id for folder in top_level_folders]
     ]
+
+
+def find_resource_by_prefix(items: List[Any], prefix: str) -> Optional[Any]:
+    """
+    Find an item by its 'label' attribute prefix, preferring matches followed by standard delimiters.
+    
+    Priority:
+    1. Exact match (label == prefix)
+    2. Match followed by '.' or '_' (e.g., prefix='3.1' matches '3.1.' or '3.1_')
+    3. Any other match starting with the prefix (e.g., prefix='3.1' matches '3.1A')
+    
+    Args:
+        items: List of objects (must have a 'label' attribute).
+        prefix: The label prefix to look for.
+        
+    Returns:
+        The best matching item or None.
+    """
+    matches = [item for item in items if item.label.startswith(prefix)]
+    if not matches:
+        return None
+
+    # 1. Exact match
+    for item in matches:
+        if item.label == prefix:
+            return item
+
+    # 2. Match followed by '.' or '_'
+    for item in matches:
+        if len(item.label) > len(prefix) and item.label[len(prefix)] in (".", "_"):
+            return item
+
+    # 3. Fallback to the first match (e.g., prefix='3.1' matches '3.1A')
+    return matches[0]
 
 
 def get_records_with_multiref(client: ActivityInfoClient, form_id: str):
@@ -123,5 +157,5 @@ def get_field_info(schema: FormSchema):
     # 3. Final fallback to the very first field defined
     if schema.elements:
         return schema.elements[0].id, schema.elements[0].label
-    
+
     return None, None

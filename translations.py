@@ -12,7 +12,7 @@ from api.models import (
     UpdateDatabaseTranslationsDTO,
     DatabaseTranslation
 )
-from common import get_records_with_multiref
+from common import get_records_with_multiref, find_resource_by_prefix
 from utils import get_client, console, handle_api_errors
 
 # Initialize a Typer sub-application for translation management
@@ -367,17 +367,11 @@ def upsert(
 
             for prefix, group in progress.track(df_values.groupby('Form System Prefix'),
                                                 description="Syncing reference values"):
-                # Robust form matching: Try exact match, then prefix with underscore, then just prefix
-                form_res = next((res for res in target_tree.resources if
-                                 res.type == DatabaseTreeResourceType.FORM and res.label == str(prefix)), None)
-                if not form_res:
-                    form_res = next((res for res in target_tree.resources if
-                                     res.type == DatabaseTreeResourceType.FORM and res.label.startswith(f"{prefix}_")),
-                                    None)
-                if not form_res:
-                    form_res = next((res for res in target_tree.resources if
-                                     res.type == DatabaseTreeResourceType.FORM and res.label.startswith(str(prefix))),
-                                    None)
+                # Robust form matching: Try exact match, then prefix with underscore or dot, then just prefix
+                form_res = find_resource_by_prefix(
+                    [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM],
+                    str(prefix)
+                )
 
                 if not form_res:
                     for _, row in group.iterrows(): not_found_items.append(

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
 from api.models import DatabaseTreeResourceType
+from common import find_resource_by_prefix
 
 
 @dataclass
@@ -125,16 +126,17 @@ class SchemaIdTranslator:
 
     def _build_form_id_map(self, target_db_id: str) -> Dict[str, str]:
         target_tree = self._get_target_tree(target_db_id)
-        target_forms_by_label = {
-            res.label: res.id
-            for res in target_tree.resources
+        target_forms = [
+            res for res in target_tree.resources
             if res.type == DatabaseTreeResourceType.FORM
-        }
-        return {
-            source_form_id: target_forms_by_label[source_label]
-            for source_form_id, source_label in self.source_forms_by_id.items()
-            if source_label in target_forms_by_label and target_forms_by_label[source_label] != source_form_id
-        }
+        ]
+        
+        form_id_map = {}
+        for source_form_id, source_label in self.source_forms_by_id.items():
+            target_form = find_resource_by_prefix(target_forms, source_label)
+            if target_form and target_form.id != source_form_id:
+                form_id_map[source_form_id] = target_form.id
+        return form_id_map
 
     def _collect_referenced_ids(self, schema_dict: dict) -> Tuple[Set[str], Set[str]]:
         referenced_form_ids: Set[str] = set()
@@ -186,20 +188,19 @@ class SchemaIdTranslator:
             return {}
 
         target_tree = self._get_target_tree(target_db_id)
-        target_forms_by_label = {
-            res.label: res.id
-            for res in target_tree.resources
+        target_forms = [
+            res for res in target_tree.resources
             if res.type == DatabaseTreeResourceType.FORM
-        }
+        ]
 
         needed_form_labels = {pair[0] for pair in needed_pairs}
         target_field_ids_by_pair: Dict[Tuple[str, str], str] = {}
         for form_label in needed_form_labels:
-            target_form_id = target_forms_by_label.get(form_label)
-            if not target_form_id:
+            target_form = find_resource_by_prefix(target_forms, form_label)
+            if not target_form:
                 continue
             try:
-                target_schema = self._get_target_form_schema(target_db_id, target_form_id)
+                target_schema = self._get_target_form_schema(target_db_id, target_form.id)
             except Exception:
                 continue
             for field in target_schema.elements:
