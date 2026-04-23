@@ -213,6 +213,7 @@ class SchemaFieldDTO(BaseModel):
     unique: Optional[bool] = Field(default=False, alias="unique")
     read_only: Optional[bool] = Field(default=False, alias="readOnly")
     default_value_formula: Optional[str] = Field(default=None, alias="defaultValueFormula")
+    default_value: Optional[str] = Field(default=None, alias="defaultValue")
     type: str = Field(alias="type")
     type_parameters: Optional[FieldTypeParametersUpdateDTO] = Field(default=None, alias="typeParameters")
 
