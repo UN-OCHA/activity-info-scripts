@@ -21,7 +21,7 @@ app = typer.Typer(no_args_is_help=True)
 
 
 @app.command(help="Nick's test scripts: Print Form Schema.")
-def formschema(
+def form_schema(
         form_id: Annotated[str, typer.Argument(help="The ActivityInfo ID of the form")],
 ):
     """
@@ -34,20 +34,19 @@ def formschema(
 
     pprint(schema, expand_all=True)
 
+@app.command(help="Nick's test scripts: Print DB Tree.")
+def db_tree(
+        db_id: Annotated[str, typer.Argument(help="The ActivityInfo ID of the db")],
+):
+    """
+    Print the form schema to console.
+    """
+    client = get_client()
 
+    with handle_api_errors(f"Failed to get tree for {db_id}"):
+        tree = client.api.get_database_tree(db_id)
 
-
-    # for field in schema.elements:
-    #     field_trans_val = get_translation(field.label)
-    #     form_strings.append(DatabaseTranslation(id=f"field:{field.id}:label", original=field.label,
-    #                                             translated=field_trans_val or "", autoTranslated=False))
-    #     if field.description:
-    #         desc_trans_val = get_translation(field.description)
-    #         form_strings.append(
-    #             DatabaseTranslation(id=f"field:{field.id}:description", original=field.description,
-    #                                 translated=desc_trans_val or "", autoTranslated=False))
-    #
-    # updated_form_strings = [t for t in form_strings if t.translated]
+    pprint(tree, expand_all=True)
 
 
 

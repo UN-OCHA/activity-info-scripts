@@ -39,7 +39,7 @@ def get_record_id_by_ccode(records: List[Dict[str, Any]], ccode: str) -> Optiona
 
 
 def get_record_id_by_org_abbrev(records: List[Dict[str, Any]],abbrev: str) -> Optional[str]:
-    """Find record ID in form 2.1 Partners where GLOBORG.ABBREV matches."""
+    """Find record ID in Partners form where GLOBORG.ABBREV matches."""
     abbrev_clean = abbrev.strip().lower()
     for rec in records:
         # Based on spec "GLOBORG.ABBREV referenced field"
@@ -94,19 +94,31 @@ def add_bulk(
         target_tree = client.api.get_database_tree(target_database_id)
         existing_users = client.api.get_database_users(target_database_id)
 
-    coordination_entities_form = find_resource_by_prefix(target_tree.resources, "1.1")
-    partners_form = find_resource_by_prefix(target_tree.resources, "2.1")
-    
-    if not coordination_entities_form or not partners_form:
-        console.print("[red]Error: Could not find forms 1.1 and/or 2.1.[/red]")
+    db_type = "HPC" if target_tree.label.startswith("HPC.tools") else "AIT" if target_tree.label.startswith("AIT") else "Other"
+
+    if db_type == "HPC":
+        coordination_entities_form = find_resource_by_prefix(target_tree.resources, "1.1")
+        partners_form = find_resource_by_prefix(target_tree.resources, "2.1")
+        if not coordination_entities_form or not partners_form:
+            console.print("[red]Error: Could not find forms 1.1 and/or 2.1.[/red]")
+            raise typer.Exit(code=1)
+
+        with handle_api_errors("Could not retrieve coordination or partner records"):
+            coordination_entity_records = client.api.get_form(coordination_entities_form.id)
+            partner_records = client.api.get_form(partners_form.id)
+
+    elif db_type == "AIT":
+        partners_form = find_resource_by_prefix(target_tree.resources, "Partner")
+        if not partners_form:
+            console.print("[red]Error: Could not find Partner form.[/red]")
+            raise typer.Exit(code=1)
+
+        with handle_api_errors("Could not retrieve partner records"):
+            partner_records = client.api.get_form(partners_form.id)
+
+    else:
+        console.print("[red]Error: database type not recognised as HPC.tools or AIT")
         raise typer.Exit(code=1)
-
-    coordination_entities_form_id = coordination_entities_form.id
-    partners_form_id = partners_form.id
-
-    with handle_api_errors("Could not retrieve coordination or partner records"):
-        coordination_entity_records = client.api.get_form(coordination_entities_form_id)
-        partner_records = client.api.get_form(partners_form_id)
 
     # Map role labels to IDs from the target database
     db_roles = {role.label.strip().lower(): role for role in target_tree.roles}
@@ -173,23 +185,23 @@ def add_bulk(
                     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
                      "Message": "Unknown cde"})
                 continue
-            role_params = {"cde": f"{coordination_entities_form_id}:{rec_id}"}
+            role_params = {"cde": f"{coordination_entities_form.id}:{rec_id}"}
 
-        elif role_label_raw == "CM Partner":
+        elif role_label_raw in ("CM Partner", "Partner Data Entry"):
             if not org_raw:
                 results.append(
                     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
-                     "Message": "Missing org for CM Partner"})
+                     "Message": "Missing org for CM Partner/Parter Data Entry"})
                 continue
 
-            # Find record in 2.1 Partners
+            # Find record in Partners
             rec_id = get_record_id_by_org_abbrev(partner_records, org_raw)
             if not rec_id:
                 results.append(
                     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
                      "Message": "Unknown org"})
                 continue
-            role_params = {"org": f"{partners_form_id}:{rec_id}"}
+            role_params = {"org": f"{partners_form.id}:{rec_id}"}
 
         # User identification
         email_clean = email_raw.lower()
@@ -277,6 +289,9 @@ def add_bulk(
         return
 
     if not yes and not typer.confirm("\nProceed with these changes?"):
+        report_df = pd.DataFrame(results)
+        report_df.to_csv(output_csv, index=False)
+        console.print(f"[bold green]Status report written to {output_csv}[/bold green]")
         raise typer.Abort()
 
     # --- 5. Execution ---
