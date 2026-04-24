@@ -32,7 +32,7 @@ class SchemaIdTranslator:
         "prefixFormula",
     }
     DIRECT_FORM_ID_KEYS = {"formId"}
-    DIRECT_FIELD_ID_KEYS = {"recordLabelFieldId"}
+    DIRECT_FIELD_ID_KEYS = {"recordLabelFieldId", "fieldId"}
 
     def __init__(self, client, source_form_id: str):
         self.client = client

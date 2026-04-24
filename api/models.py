@@ -168,6 +168,11 @@ class TypeParameterLookupConfig(BaseModel):
     formula: Optional[str] = None
     lookupLabel: Optional[str] = None
 
+class FieldTypeParametersTranslationConfig(BaseModel):
+    model_config = {"populate_by_name": True}
+    field_id: str = Field(alias="fieldId")
+    languages: List[str] = Field(alias="languages")
+
 
 class TypeParameters(BaseModel):
     range: Optional[List[Dict[str, str]]] = None
@@ -194,6 +199,7 @@ class FieldTypeParametersUpdateDTO(BaseModel):
     formula: Optional[str] = Field(default=None, alias="formula")
     prefix_formula: Optional[str] = Field(default=None, alias="prefixFormula")
     lookup_configs: Optional[List[TypeParameterLookupConfig]] = Field(default=None, alias="lookupConfigs")
+    translation_config: Optional[FieldTypeParametersTranslationConfig] = Field(default=None, alias="translationConfig")
     aggregation: Optional[str] = Field(default=None, alias="aggregation")
     presentation: Optional[str] = Field(default=None, alias="presentation")
 
