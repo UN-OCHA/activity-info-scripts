@@ -36,6 +36,34 @@ def safe_apply_patch(patch_list: List[dict], schema_dict: dict) -> dict:
 
     for op in patch_list:
         try:
+            # Handle custom 'beforeCode' for semantic element positioning
+            path = op.get("path", "")
+            if op.get("op") == "add" and path.startswith("/elements/") and len(path.split("/")) == 3:
+                field_code = jsonpointer.unescape(path.split("/")[2])
+                elements = patched_dict.get("elements", {})
+                
+                if "beforeCode" in op:
+                    before_code = op["beforeCode"]
+                    value = op.get("value")
+                    
+                    if before_code is None:
+                        # Insert at beginning
+                        new_elements = {field_code: value}
+                        new_elements.update(elements)
+                        patched_dict["elements"] = new_elements
+                    elif before_code in elements:
+                        # Insert after before_code
+                        new_elements = {}
+                        for k, v in elements.items():
+                            new_elements[k] = v
+                            if k == before_code:
+                                new_elements[field_code] = value
+                        patched_dict["elements"] = new_elements
+                    else:
+                        # Append to end
+                        elements[field_code] = value
+                    continue
+
             # We apply one operation at a time to allow skipping failing ones
             p = jsonpatch.JsonPatch([op])
             patched_dict = p.apply(patched_dict)
@@ -671,8 +699,6 @@ def patch(
         console.print(f"[bold cyan]Fetching initial schema for form {form_id}...[/bold cyan]")
         schema1 = client.api.get_form_schema(form_id)
         schema1_dict = schema1.model_dump()
-        # Convert elements list to dict keyed by code (fallback to ID) for portable semantic patching
-        schema1_dict["elements"] = {e["code"] or e["id"]: e for e in schema1_dict["elements"]}
 
     console.print(f"\n[bold yellow]Initial schema captured for '{schema1.label}' ({form_id}).[/bold yellow]")
     console.print("Please go to the ActivityInfo UI and make your desired changes to the form schema.")
@@ -685,10 +711,77 @@ def patch(
         console.print(f"[bold cyan]Fetching updated schema for form {form_id}...[/bold cyan]")
         schema2 = client.api.get_form_schema(form_id)
         schema2_dict = schema2.model_dump()
-        schema2_dict["elements"] = {e["code"] or e["id"]: e for e in schema2_dict["elements"]}
 
-    patch_obj = jsonpatch.make_patch(schema1_dict, schema2_dict)
-    patch_list = list(patch_obj)
+    # Create mapping from ID to original semantic key (code or ID) for portable path translation
+    id_to_key = {e["id"]: (e["code"] or e["id"]) for e in schema1_dict["elements"]}
+
+    # Key both schemas by internal ID for stable identity-based diffing
+    s1_id_keyed = schema1_dict.copy()
+    s1_id_keyed["elements"] = {e["id"]: e for e in schema1_dict["elements"]}
+    
+    s2_id_keyed = schema2_dict.copy()
+    s2_id_keyed["elements"] = {e["id"]: e for e in schema2_dict["elements"]}
+
+    # Generate raw patch based on stable IDs
+    raw_patch = jsonpatch.make_patch(s1_id_keyed, s2_id_keyed)
+    
+    # Transform paths from internal IDs back to portable semantic keys (codes)
+    # and capture positional metadata for new elements.
+    s2_ids = [e["id"] for e in schema2_dict["elements"]]
+    patch_list = []
+    for op in raw_patch:
+        op_dict = op.copy()
+        path = op_dict["path"]
+        if path.startswith("/elements/"):
+            parts = path.split("/")
+            # parts[2] is the escaped field ID
+            field_id = jsonpointer.unescape(parts[2])
+            
+            # Use original key if it existed, otherwise use new key (for 'add' operations)
+            if field_id in id_to_key:
+                key = id_to_key[field_id]
+            else:
+                new_element = s2_id_keyed["elements"].get(field_id)
+                key = (new_element.get("code") or field_id) if new_element else field_id
+            
+            # Reconstruct path using the semantic key
+            escaped_key = jsonpointer.escape(key)
+            new_path = f"/elements/{escaped_key}"
+            if len(parts) > 3:
+                new_path += "/" + "/".join(parts[3:])
+            op_dict["path"] = new_path
+
+            # Add positional metadata for 'add' operations of full elements
+            if op_dict["op"] == "add" and len(parts) == 3:
+                try:
+                    idx = s2_ids.index(field_id)
+                    if idx > 0:
+                        pred_id = s2_ids[idx-1]
+                        # Capture the predecessor's code as the 'before' reference
+                        pred_element = s2_id_keyed["elements"][pred_id]
+                        op_dict["beforeCode"] = pred_element.get("code") or pred_id
+                    else:
+                        # idx == 0 means it should be at the very beginning
+                        op_dict["beforeCode"] = None
+                except ValueError:
+                    pass
+
+        patch_list.append(op_dict)
+
+    # Sort the patch list to ensure that 'add' operations for elements follow 
+    # the target schema order. This handles cases where one new field depends 
+    # on another new field as its 'beforeCode'.
+    def patch_sort_key(op):
+        path = op.get("path", "")
+        if op.get("op") == "add" and path.startswith("/elements/") and len(path.split("/")) == 3:
+            field_code_or_id = jsonpointer.unescape(path.split("/")[2])
+            # Find the ID associated with this code/ID in s2
+            for eid, element in s2_id_keyed["elements"].items():
+                if (element.get("code") or eid) == field_code_or_id:
+                    return (0, s2_ids.index(eid))
+        return (1, 0) # Non-add operations or other paths come after ordered adds
+
+    patch_list.sort(key=patch_sort_key)
 
     if not patch_list:
         console.print("[yellow]No changes detected between the two schema versions.[/yellow]")
