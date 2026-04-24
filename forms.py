@@ -1,9 +1,9 @@
 import json
 import os
-import re
 from typing import Annotated, Optional, List
 
 import jsonpatch
+import jsonpointer
 import typer
 from cuid2 import Cuid
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
@@ -14,7 +14,8 @@ from api.models import (
     SchemaFieldDTO, FieldType, FieldTypeParametersUpdateDTO,
     TypeParameterLookupConfig, UpdateDatabaseDTO, FormSchema
 )
-from common import filter_data_forms, get_records_with_multiref, get_field_info, find_resource_by_prefix
+from common import filter_data_forms, get_records_with_multiref, get_field_info, find_resource_by_prefix, \
+    find_all_resources_by_prefix
 from id_translation import SchemaIdTranslator
 from utils import get_client, handle_api_errors, console
 
@@ -24,6 +25,35 @@ app = typer.Typer(no_args_is_help=True)
 # Prefixes used to identify specific configuration forms within the ActivityInfo database
 DATA_FORM_PREFIX = "0.1.2"
 REFERENCE_FORM_PREFIX = "0.1.3"
+
+
+def safe_apply_patch(patch_list: List[dict], schema_dict: dict) -> dict:
+    """
+    Apply a JSON patch list to a schema dict, skipping operations that fail 
+    due to missing fields for remove, replace, or test operations.
+    """
+    patched_dict = schema_dict.copy()
+
+    for op in patch_list:
+        try:
+            # We apply one operation at a time to allow skipping failing ones
+            p = jsonpatch.JsonPatch([op])
+            patched_dict = p.apply(patched_dict)
+        except (jsonpatch.JsonPatchException, jsonpointer.JsonPointerException, KeyError, IndexError):
+            # If the operation fails, we check if it's one we can skip
+            if op.get("op") in ("remove", "replace", "test"):
+                # Specifically if it's about a field in elements
+                path = op.get("path", "")
+                if path.startswith("/elements/"):
+                    # Skip silently for fields
+                    continue
+                # For other paths, we still skip as requested: "if it doesn't find a field to modify or delete it simply skips"
+                continue
+            else:
+                # For 'add' or 'move' or 'copy', we might want to know if it fails, 
+                # but the user said "simply skips and moves on"
+                continue
+    return patched_dict
 
 
 @app.command(help="Create data forms from 0.1.2 in a given target database", no_args_is_help=True)
@@ -608,7 +638,8 @@ def create_reference(
 def patch(
         form_id: Annotated[Optional[str], typer.Argument(help="The ID of the form to patch")] = None,
         label: Annotated[Optional[str], typer.Option("--label", "-l", help="The label of the form to patch")] = None,
-        database_id: Annotated[Optional[str], typer.Option("--db", "-d", help="The ID of the database (required if using label)")] = None,
+        database_id: Annotated[
+            Optional[str], typer.Option("--db", "-d", help="The ID of the database (required if using label)")] = None,
 ):
     """
     Generate a JSON patch for a form schema.
@@ -625,10 +656,12 @@ def patch(
         if not label or not database_id:
             console.print("[red]Error: You must provide either a form ID or both --label and --db.[/red]")
             raise typer.Exit(code=1)
-        
+
         with handle_api_errors(f"Could not fetch tree for database {database_id}"):
             tree = client.api.get_database_tree(database_id)
-            form_res = next((res for res in tree.resources if res.type == DatabaseTreeResourceType.FORM and res.label == label), None)
+            form_res = next(
+                (res for res in tree.resources if res.type == DatabaseTreeResourceType.FORM and res.label == label),
+                None)
             if not form_res:
                 console.print(f"[red]Error: Form '{label}' not found in database {database_id}[/red]")
                 raise typer.Exit(code=1)
@@ -652,10 +685,8 @@ def patch(
         console.print(f"[bold cyan]Fetching updated schema for form {form_id}...[/bold cyan]")
         schema2 = client.api.get_form_schema(form_id)
         schema2_dict = schema2.model_dump()
-        # Convert elements list to dict keyed by code (fallback to ID) for portable semantic patching
         schema2_dict["elements"] = {e["code"] or e["id"]: e for e in schema2_dict["elements"]}
 
-    # Generate JSON patch
     patch_obj = jsonpatch.make_patch(schema1_dict, schema2_dict)
     patch_list = list(patch_obj)
 
@@ -663,17 +694,15 @@ def patch(
         console.print("[yellow]No changes detected between the two schema versions.[/yellow]")
         return
 
-    # Display the patch
     console.print("\n[bold green]Generated Semantic JSON Patch:[/bold green]")
     console.print_json(data=patch_list)
-    
-    # Save to file with metadata for easier application across databases
-    payload = {
+
+    payload = [{
         "form_id": form_id,
         "form_label": schema1.label,
         "patch": patch_list
-    }
-    
+    }]
+
     filename = f"form_patch_{form_id}.json"
     with open(filename, "w") as f:
         json.dump(payload, f, indent=2)
@@ -686,6 +715,8 @@ def apply(
         target_database_ids: Annotated[List[str], typer.Argument(help="The list of target database IDs")],
         patch_file: Annotated[
             str, typer.Option("--patch", "-p", help="Path to the JSON patch file")] = "form_patch.json",
+        multi: Annotated[bool, typer.Option("--multi", "-m",
+                                            help="Allow multiple form matches for each targeting technique")] = False,
         dry_run: Annotated[bool, typer.Option(help="Do not actually perform any changes")] = False,
         yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation prompt")] = False,
 ):
@@ -693,12 +724,11 @@ def apply(
     Apply a semantic JSON patch generated by the 'patch' command to one or more databases.
     
     This command:
-    1. Loads the semantic patch (and metadata if available).
-    2. Identifies the form by label across databases.
-    3. Fetches the current schema for that form in each target database.
-    4. Converts the schema's 'elements' to a code-keyed structure for patching.
-    5. Applies the patch and translates internal IDs.
-    6. Re-converts to list-based structure and pushes the update.
+    1. Loads the semantic patch (or array of patches) and metadata.
+    2. Identifies target forms by ID, label, or prefix across databases.
+    3. Fetches the current schema for each target form.
+    4. Applies the patch(es) and translates internal IDs.
+    5. Re-converts to list-based structure and pushes the update.
     """
     client = get_client()
 
@@ -709,44 +739,86 @@ def apply(
     with open(patch_file, "r") as f:
         patch_data = json.load(f)
 
-    target_form_id = None
-    target_form_label = None
-    if isinstance(patch_data, dict) and "patch" in patch_data:
-        patch_list = patch_data["patch"]
-        target_form_id = patch_data.get("form_id")
-        target_form_label = patch_data.get("form_label")
+    if isinstance(patch_data, list) and len(patch_data) > 0:
+        if "op" in patch_data[0]:
+            patch_entries = [{"patch": patch_data}]
+        else:
+            patch_entries = patch_data
+    elif isinstance(patch_data, dict):
+        if "patch" in patch_data:
+            patch_entries = [patch_data]
+        else:
+            patch_entries = [{"patch": [patch_data]}]
     else:
-        patch_list = patch_data
-
-    # Reconstruct jsonpatch object
-    patch = jsonpatch.JsonPatch(patch_list)
-
-    if not target_form_id:
-        # Determine targeted form from patch content or filename
-        for op in patch_list:
-            path = op.get("path", "")
-            if path == "/id" and isinstance(op.get("value"), str):
-                target_form_id = op.get("value")
-                break
-
-        if not target_form_id:
-            patch_name = os.path.basename(patch_file)
-            match = re.fullmatch(r"form_patch_([A-Za-z0-9]+)(?:\.json)?", patch_name)
-            if match:
-                target_form_id = match.group(1)
-
-    if not target_form_id:
-        console.print("[red]Error: Could not determine target form ID from patch or filename.[/red]")
+        console.print(f"[red]Error: Invalid patch file format in {patch_file}[/red]")
         raise typer.Exit(code=1)
 
-    # If we don't have the label yet, fetch the source schema to get it
-    if not target_form_label:
-        with handle_api_errors(f"Could not fetch source schema for form {target_form_id} to identify label"):
-            source_schema = client.api.get_form_schema(target_form_id)
-            target_form_label = source_schema.label
+    def get_source_form_id(e):
+        fid = e.get("form_id")
+        if fid:
+            return fid.split()[0] if isinstance(fid, str) else fid[0]
+
+        patch_list = entry.get("patch", [])
+        for op in patch_list:
+            if op.get("path") == "/id" and isinstance(op.get("value"), str):
+                return op.get("value")
+        return None
+
+    for entry in patch_entries:
+        if not entry.get("form_label") and not entry.get("form_prefix") and not entry.get("form_id"):
+            sid = get_source_form_id(entry)
+            if sid:
+                with handle_api_errors(f"Could not fetch label for source form {sid}"):
+                    source_schema = client.api.get_form_schema(sid)
+                    entry["form_label"] = source_schema.label
+
+    def find_target_forms_in_db(tree, entry, multi_mode):
+        forms = [res for res in tree.resources if res.type == DatabaseTreeResourceType.FORM]
+        target_ids = set()
+        results = []
+
+        def add_resource(res):
+            if res.id not in target_ids:
+                target_ids.add(res.id)
+                results.append(res)
+
+        fid_spec = entry.get("form_id")
+        if fid_spec:
+            ids = fid_spec.split() if isinstance(fid_spec, str) else fid_spec
+            for fid in ids:
+                found = next((f for f in forms if f.id == fid), None)
+                if found: add_resource(found)
+
+        label = entry.get("form_label")
+        if label:
+            if multi_mode:
+                for f in forms:
+                    if f.label == label: add_resource(f)
+            else:
+                found = next((f for f in forms if f.label == label), None)
+                if found: add_resource(found)
+
+        prefix_spec = entry.get("form_prefix")
+        if prefix_spec:
+            prefixes = [prefix_spec] if isinstance(prefix_spec, str) else prefix_spec
+            for prefix in prefixes:
+                if multi_mode:
+                    matches = find_all_resources_by_prefix(forms, prefix)
+                    for m in matches: add_resource(m)
+                else:
+                    match = find_resource_by_prefix(forms, prefix)
+                    if match: add_resource(match)
+
+        return results
 
     planned_updates = []
-    translator = SchemaIdTranslator(client, target_form_id)
+    translators = {}
+
+    def get_translator(source_form_id):
+        if source_form_id not in translators:
+            with handle_api_errors(f"Could not initialize translator for source form {source_form_id}"):
+                translators[source_form_id] = SchemaIdTranslator(client, source_form_id)
+        return translators[source_form_id]
 
     def build_compact_schema_preview(patched_schema_dict: dict, max_fields: int = 10) -> str:
         """Return a compact, human-readable snapshot of the patched schema."""
@@ -816,71 +888,84 @@ def apply(
         task = progress.add_task("Preparing patch preview...", total=len(target_database_ids))
 
         for db_id in target_database_ids:
-            progress.update(task, description=f"Simulating patch for {db_id}...")
-            with handle_api_errors(f"Could not simulate patch for {db_id}"):
-                # 0. Find form by label in target database
+            progress.update(task, description=f"Simulating patches for {db_id}...")
+            with handle_api_errors(f"Could not simulate patches for {db_id}"):
                 target_tree = client.api.get_database_tree(db_id)
-                target_form_res = next(
-                    (res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM and res.label == target_form_label), 
-                    None
-                )
-                
-                if not target_form_res:
-                    console.print(f"[yellow]Skipping {db_id}: Form '{target_form_label}' not found.[/yellow]")
-                    progress.advance(task)
-                    continue
+                forms_in_db = [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM]
 
-                actual_target_form_id = target_form_res.id
+                # Group entries by target form
+                form_to_entries = {f.id: [] for f in forms_in_db}
+                for entry in patch_entries:
+                    matched_forms = find_target_forms_in_db(target_tree, entry, multi)
+                    for mf in matched_forms:
+                        form_to_entries[mf.id].append(entry)
 
-                # 1. Fetch current schema
-                schema = client.api.get_form_schema(actual_target_form_id)
-                schema_dict = schema.model_dump()
+                # Process each form that has matching patches
+                for form_res in forms_in_db:
+                    entries_to_apply = form_to_entries.get(form_res.id, [])
+                    if not entries_to_apply:
+                        continue
 
-                # 2. Semantic conversion (list to dict keyed by code/id)
-                schema_dict["elements"] = {e["code"] or e["id"]: e for e in schema_dict["elements"]}
-                original_elements = schema_dict["elements"]
+                    # 1. Fetch current schema
+                    schema = client.api.get_form_schema(form_res.id)
+                    schema_dict = schema.model_dump()
 
-                # 3. Apply patch
-                patched_dict = patch.apply(schema_dict)
-                
-                # Ensure the ID and databaseId are preserved for the target database
-                patched_dict["id"] = actual_target_form_id
-                patched_dict["databaseId"] = db_id
-                
-                report = translator.translate_schema(patched_dict, db_id)
-                patched_dict = report.translated_schema
-                patched_elements = patched_dict.get("elements", {})
-                unresolved_count = len(report.unresolved_source_form_ids) + len(report.unresolved_source_field_ids)
-                unresolved_preview = (
-                    ", ".join(report.unresolved_source_form_ids[:3] + report.unresolved_source_field_ids[:3])
-                    if unresolved_count else "-"
-                )
-                if unresolved_count > 6:
-                    unresolved_preview = f"{unresolved_preview}, ..."
-                planned_updates.append({
-                    "db_id": db_id,
-                    "form_id": actual_target_form_id,
-                    "form_label": schema.label,
-                    "change_preview": build_compact_change_preview(original_elements, patched_elements),
-                    "schema_preview": build_compact_schema_preview(patched_dict),
-                    "form_id_translations": report.form_id_replacements,
-                    "field_id_translations": report.field_id_replacements,
-                    "unresolved_count": unresolved_count,
-                    "unresolved_preview": unresolved_preview,
-                    "patched_schema_dict": patched_dict
-                })
+                    # 2. Semantic conversion (list to dict keyed by code/id)
+                    schema_dict["elements"] = {e["code"] or e["id"]: e for e in schema_dict["elements"]}
+                    original_elements = schema_dict["elements"].copy()
+
+                    current_schema_dict = schema_dict
+                    unresolved_count = 0
+                    unresolved_tokens = []
+
+                    # 3. Apply all patches in sequence
+                    for entry in entries_to_apply:
+                        # Apply patch safely (skipping missing fields)
+                        current_schema_dict = safe_apply_patch(entry.get("patch", []), current_schema_dict)
+
+                        # Translate IDs if source context is available
+                        sid = get_source_form_id(entry)
+                        if sid:
+                            translator = get_translator(sid)
+                            report = translator.translate_schema(current_schema_dict, db_id)
+                            current_schema_dict = report.translated_schema
+                            unresolved_count += len(report.unresolved_source_form_ids) + len(
+                                report.unresolved_source_field_ids)
+                            unresolved_tokens.extend(
+                                report.unresolved_source_form_ids + report.unresolved_source_field_ids)
+
+                    # Ensure the ID and databaseId are preserved for the target database
+                    current_schema_dict["id"] = form_res.id
+                    current_schema_dict["databaseId"] = db_id
+
+                    patched_elements = current_schema_dict.get("elements", {})
+                    unresolved_preview = ", ".join(unresolved_tokens[:6]) if unresolved_count else "-"
+                    if unresolved_count > 6:
+                        unresolved_preview = f"{unresolved_preview}, ..."
+
+                    planned_updates.append({
+                        "db_id": db_id,
+                        "form_id": form_res.id,
+                        "form_label": schema.label,
+                        "change_preview": build_compact_change_preview(original_elements, patched_elements),
+                        "schema_preview": build_compact_schema_preview(current_schema_dict),
+                        "unresolved_count": unresolved_count,
+                        "unresolved_preview": unresolved_preview,
+                        "patched_schema_dict": current_schema_dict,
+                        "patches_applied": len(entries_to_apply)
+                    })
             progress.advance(task)
 
     if not planned_updates:
-        console.print("[yellow]No target forms found matching the patch label.[/yellow]")
+        console.print("[yellow]No target forms found matching the patch criteria.[/yellow]")
         return
 
     # --- Preview Table ---
-    table = Table(title=f"Patch Preview: Form '{target_form_label}'")
+    table = Table(title=f"Patch Preview: {os.path.basename(patch_file)}")
     table.add_column("Database ID", style="cyan")
     table.add_column("Form ID", style="magenta")
-    table.add_column("Form ID Translations", style="blue")
-    table.add_column("Field ID Translations", style="blue")
+    table.add_column("Form Label", style="white")
+    table.add_column("Patches", style="blue")
     table.add_column("Unresolved IDs", style="red")
     table.add_column("Changes", style="yellow")
     table.add_column("Resulting Schema (Compact)", style="green")
@@ -889,8 +974,8 @@ def apply(
         table.add_row(
             up["db_id"],
             up["form_id"],
-            str(up["form_id_translations"]),
-            str(up["field_id_translations"]),
+            up["form_label"],
+            str(up["patches_applied"]),
             f"{up['unresolved_count']} ({up['unresolved_preview']})" if up["unresolved_count"] else "0",
             up["change_preview"],
             up["schema_preview"]
@@ -907,26 +992,27 @@ def apply(
         console.print("\n[bold red]Cannot apply patch: unresolved source IDs remain after translation.[/bold red]")
         for up in blocked_updates:
             console.print(
-                f"[red]- {up['db_id']}[/red]: {up['unresolved_count']} unresolved token(s) "
+                f"[red]- {up['db_id']} / {up['form_label']}[/red]: {up['unresolved_count']} unresolved token(s) "
                 f"({up['unresolved_preview']})"
             )
         console.print("[dim]Hint: Ensure equivalent forms/fields exist in target DB (matching labels/codes).[/dim]")
         raise typer.Exit(code=1)
 
-    if not yes and not typer.confirm("\nApply these patches to all listed databases?"):
+    if not yes and not typer.confirm("\nApply these patches to all listed forms?"):
         raise typer.Abort()
 
     # --- Execution ---
     with console.status("Applying patches...") as status:
         for up in planned_updates:
-            status.update(f"Updating {up['db_id']}...")
+            status.update(f"Updating {up['form_label']} in {up['db_id']}...")
             # Reverse semantic conversion
             final_dict = up["patched_schema_dict"]
             final_dict["elements"] = list(final_dict["elements"].values())
 
             patched_schema = FormSchema.model_validate(final_dict)
             client.api.update_form_schema(patched_schema)
-            console.print(f"[green]Successfully patched form '{up['form_label']}' ({up['form_id']}) in database {up['db_id']}.[/green]")
+            console.print(
+                f"[green]Successfully patched form '{up['form_label']}' ({up['form_id']}) in database {up['db_id']}.[/green]")
 
     console.print("\n[bold green]Batch application completed.[/bold green]")
 

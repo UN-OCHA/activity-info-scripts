@@ -1,4 +1,4 @@
-from typing import List, Any, Optional
+from typing import List, Optional
 
 from api import ActivityInfoClient
 from api.models import DatabaseTree, DatabaseTreeResourceType, Resource, FieldType, FormSchema
@@ -37,7 +37,7 @@ def filter_data_forms(tree: DatabaseTree, folder_id: str) -> List[Resource]:
     ]
 
 
-def find_resource_by_prefix(items: List[Any], prefix: str) -> Optional[Any]:
+def find_resource_by_prefix(items: List[Resource], prefix: str) -> Optional[Resource]:
     """
     Find an item by its 'label' attribute prefix, preferring matches followed by standard delimiters.
     
@@ -53,7 +53,7 @@ def find_resource_by_prefix(items: List[Any], prefix: str) -> Optional[Any]:
     Returns:
         The best matching item or None.
     """
-    matches = [item for item in items if item.label.startswith(prefix)]
+    matches = find_all_resources_by_prefix(items, prefix)
     if not matches:
         return None
 
@@ -69,6 +69,20 @@ def find_resource_by_prefix(items: List[Any], prefix: str) -> Optional[Any]:
 
     # 3. Fallback to the first match (e.g., prefix='3.1' matches '3.1A')
     return matches[0]
+
+
+def find_all_resources_by_prefix(items: List[Resource], prefix: str) -> List[Resource]:
+    """
+    Find all items whose 'label' attribute starts with the given prefix.
+    
+    Args:
+        items: List of objects (must have a 'label' attribute).
+        prefix: The label prefix to look for.
+        
+    Returns:
+        A list of matching items.
+    """
+    return [item for item in items if item.label.startswith(prefix)]
 
 
 def get_records_with_multiref(client: ActivityInfoClient, form_id: str):
