@@ -17,6 +17,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "httpx" },
     { name = "jsonpatch" },
+    { name = "jsonpointer" },
     { name = "lark" },
     { name = "mypy" },
     { name = "openpyxl" },
@@ -39,6 +40,7 @@ dev = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "jsonpatch" },
+    { name = "jsonpointer", specifier = ">=3.1.1" },
     { name = "lark" },
     { name = "mypy", specifier = ">=1.11" },
     { name = "openpyxl", specifier = ">=3.1.5" },

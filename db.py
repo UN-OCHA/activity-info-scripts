@@ -1,3 +1,4 @@
+import asyncio
 import typer
 from rich.table import Table
 
@@ -16,6 +17,10 @@ def list_databases():
     on the ActivityInfo platform and displays their ID, Label, and Description in 
     a formatted table.
     """
+    asyncio.run(_list_databases_async())
+
+
+async def _list_databases_async():
     # Instantiate the ActivityInfo API client
     client = get_client()
 
@@ -24,7 +29,7 @@ def list_databases():
         # Wrap the call in our standard error handler to catch and display any issues
         with handle_api_errors("Could not fetch databases"):
             # Call the API to get the user's accessible databases
-            databases = client.api.get_user_databases()
+            databases = await client.get_user_databases_get()
 
     # Check if the result set is empty and inform the user
     if not databases:
@@ -40,7 +45,7 @@ def list_databases():
     # Iterate through the database objects and add them to the table
     for db in databases:
         # Ensure that missing descriptions are handled gracefully as empty strings
-        table.add_row(db.databaseId, db.label, db.description or "")
+        table.add_row(db.database_id, db.label, db.description or "")
 
     # Output the final table to the terminal
     console.print(table)

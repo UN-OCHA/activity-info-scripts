@@ -1,29 +1,26 @@
+import asyncio
 import os.path
 import re
 from typing import Annotated, Set, List, Dict, Any, Optional, cast
 
 import pandas as pd
 import typer
-
 from rich.table import Table
-from api.models import (
+
+from activityinfo.client.models import (
     AddDatabaseUserDTO,
     UpdateDatabaseUserRoleDTO,
     DatabaseRole,
     UserPreflightDTO
 )
-from utils import get_client, handle_api_errors, console
 from common import find_resource_by_prefix
+from utils import get_client, handle_api_errors, console
 
 # Initialize a Typer sub-application for user management
 app = typer.Typer(no_args_is_help=True)
 
 # SPPB roles as per spec
 USER_ROLES = ["Global Administrator", "CM Administrator", "CM Coordinator", "CM Partner"]
-
-# Form IDs for parameters as per spec
-# FORM_ID_COORDINATION_ENTITIES = "c9mpkvrml3u24bz1a9"
-# FORM_ID_PARTNERS = "cezl1y0mms4u30z1poo"
 
 # Standard email regex for pre-validation (spec says preflight API can also do this)
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
@@ -38,7 +35,7 @@ def get_record_id_by_ccode(records: List[Dict[str, Any]], ccode: str) -> Optiona
     return None
 
 
-def get_record_id_by_org_abbrev(records: List[Dict[str, Any]],abbrev: str) -> Optional[str]:
+def get_record_id_by_org_abbrev(records: List[Dict[str, Any]], abbrev: str) -> Optional[str]:
     """Find record ID in Partners form where GLOBORG.ABBREV matches."""
     abbrev_clean = abbrev.strip().lower()
     for rec in records:
@@ -62,6 +59,19 @@ def add_bulk(
     Synchronize database users with an external list provided in a CSV file.
     Implements SPPB-43 requirements including parameter matching and preflight checks.
     """
+    asyncio.run(_add_bulk_async(
+        target_database_id, input_file_path, remove_users, dry_run, yes, output_csv
+    ))
+
+
+async def _add_bulk_async(
+        target_database_id: str,
+        input_file_path: str,
+        remove_users: bool,
+        dry_run: bool,
+        yes: bool,
+        output_csv: str
+):
     client = get_client()
 
     # --- 1. Load and Validate Input File ---
@@ -91,10 +101,16 @@ def add_bulk(
 
     # --- 2. Retrieve Target Database State ---
     with handle_api_errors("Could not get target database information"):
-        target_tree = client.api.get_database_tree(target_database_id)
-        existing_users = client.api.get_database_users(target_database_id)
+        target_tree = await client.get_database_tree_get(target_database_id)
+        existing_users = cast(List[Dict[str, Any]], await client.get_database_users_get(target_database_id))
 
-    db_type = "HPC" if target_tree.label.startswith("HPC.tools") else "AIT" if target_tree.label.startswith("AIT") else "Other"
+    db_type = "HPC" if target_tree.label.startswith("HPC.tools") else "AIT" if target_tree.label.startswith(
+        "AIT") else "Other"
+
+    coordination_entity_records: List[Dict[str, Any]] = []
+    partner_records: List[Dict[str, Any]] = []
+    coordination_entities_form = None
+    partners_form = None
 
     if db_type == "HPC":
         coordination_entities_form = find_resource_by_prefix(target_tree.resources, "1.1")
@@ -104,8 +120,9 @@ def add_bulk(
             raise typer.Exit(code=1)
 
         with handle_api_errors("Could not retrieve coordination or partner records"):
-            coordination_entity_records = client.api.get_form(coordination_entities_form.id)
-            partner_records = client.api.get_form(partners_form.id)
+            coordination_entity_records = cast(List[Dict[str, Any]],
+                                               await client.get_form_get(coordination_entities_form.id))
+            partner_records = cast(List[Dict[str, Any]], await client.get_form_get(partners_form.id))
 
     elif db_type == "AIT":
         partners_form = find_resource_by_prefix(target_tree.resources, "Partner")
@@ -114,7 +131,7 @@ def add_bulk(
             raise typer.Exit(code=1)
 
         with handle_api_errors("Could not retrieve partner records"):
-            partner_records = client.api.get_form(partners_form.id)
+            partner_records = cast(List[Dict[str, Any]], await client.get_form_get(partners_form.id))
 
     else:
         console.print("[red]Error: database type not recognised as HPC.tools or AIT")
@@ -132,7 +149,7 @@ def add_bulk(
 
     for idx, row in data.iterrows():
 
-        print(f"Processing {idx+1} of {len(data)}")
+        print(f"Processing {idx + 1} of {len(data)}")
 
         # Spec: Stop if empty row reached
         if pd.isna(row[email_col]) and pd.isna(row.get("role")):
@@ -150,7 +167,7 @@ def add_bulk(
 
         # Email preflight
         with handle_api_errors(f"Preflight failed for {email_raw}"):
-            preflight = client.api.user_preflight(target_database_id, UserPreflightDTO(email=email_raw))
+            preflight = await client.user_preflight_post(target_database_id, UserPreflightDTO(email=email_raw))
 
         if not preflight.valid_email:
             results.append(
@@ -185,7 +202,8 @@ def add_bulk(
                     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
                      "Message": "Unknown cde"})
                 continue
-            role_params = {"cde": f"{coordination_entities_form.id}:{rec_id}"}
+            if coordination_entities_form:
+                role_params = {"cde": f"{coordination_entities_form.id}:{rec_id}"}
 
         elif role_label_raw in ("CM Partner", "Partner Data Entry"):
             if not org_raw:
@@ -201,13 +219,14 @@ def add_bulk(
                     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
                      "Message": "Unknown org"})
                 continue
-            role_params = {"org": f"{partners_form.id}:{rec_id}"}
+            if partners_form:
+                role_params = {"org": f"{partners_form.id}:{rec_id}"}
 
         # User identification
         email_clean = email_raw.lower()
         known_emails.add(email_clean)
 
-        existing_user = next((u for u in existing_users if u.email.lower() == email_clean), None)
+        existing_user = next((u for u in existing_users if str(u.get("email", "")).lower() == email_clean), None)
 
         # Name fallback
         final_name = name_raw if name_raw else (preflight.name if preflight.name else email_raw)
@@ -224,14 +243,15 @@ def add_bulk(
         else:
             # Check if role or params changed
             changed = False
-            if existing_user.role.id != role_id:
+            user_role = existing_user.get("role", {})
+            if user_role.get("id") != role_id:
                 changed = True
-            elif existing_user.role.parameters != role_params:
+            elif user_role.get("parameters") != role_params:
                 changed = True
 
             if changed:
                 user_updates.append({
-                    "user_id": existing_user.user_id,
+                    "user_id": existing_user.get("userId"),
                     "email": email_clean,
                     "role": DatabaseRole(id=role_id, parameters=role_params),
                     "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw}
@@ -242,10 +262,10 @@ def add_bulk(
                      "Message": ""})
 
     # Identify Deletions
-    user_deletions = []
+    user_deletions: List[Dict[str, Any]] = []
     if remove_users:
         for u in existing_users:
-            if u.email.lower() not in known_emails:
+            if str(u.get("email", "")).lower() not in known_emails:
                 user_deletions.append(u)
 
     # --- 4. Recap and Confirmation ---
@@ -262,18 +282,20 @@ def add_bulk(
             role_obj = cast(DatabaseRole, add['role'])
             role_label = role_id_to_label.get(role_obj.id, role_obj.id)
             params = str(role_obj.parameters) if role_obj.parameters else "-"
-            table.add_row("Add", add['email'], role_label, params, style="green")
+            table.add_row("Add", str(add['email']), role_label, params, style="green")
 
         for up in user_updates:
             role_obj = cast(DatabaseRole, up['role'])
             role_label = role_id_to_label.get(role_obj.id, role_obj.id)
             params = str(role_obj.parameters) if role_obj.parameters else "-"
-            table.add_row("Modify", up['email'], role_label, params, style="yellow")
+            table.add_row("Modify", str(up['email']), role_label, params, style="yellow")
 
         for dele in user_deletions:
-            role_label = role_id_to_label.get(dele.role.id, dele.role.id)
-            params = str(dele.role.parameters) if dele.role.parameters else "-"
-            table.add_row("Delete", dele.email, role_label, params, style="red")
+            role_data = dele.get("role", {})
+            role_id_val = role_data.get("id", "")
+            role_label = role_id_to_label.get(role_id_val, role_id_val)
+            params = str(role_data.get("parameters", "-"))
+            table.add_row("Delete", str(dele.get("email", "")), role_label, params, style="red")
 
         console.print(table)
     else:
@@ -299,7 +321,7 @@ def add_bulk(
         for add in user_additions:
             status.update(f"Adding user: {add['email']}")
             with handle_api_errors(f"Could not add user {add['email']}"):
-                client.api.add_database_user(target_database_id, AddDatabaseUserDTO(
+                await client.add_database_user_post(target_database_id, AddDatabaseUserDTO(
                     name=cast(str, add['name']),
                     email=cast(str, add['email']),
                     locale=cast(str, add['locale']),
@@ -311,20 +333,22 @@ def add_bulk(
         for up in user_updates:
             status.update(f"Updating user: {up['email']}")
             with handle_api_errors(f"Could not update user {up['email']}"):
-                client.api.update_database_user_role(target_database_id, cast(str, up['user_id']),
-                                                     UpdateDatabaseUserRoleDTO(
-                                                         assignments=[cast(DatabaseRole, up['role'])]
-                                                     ))
+                await client.update_database_user_role_post(target_database_id, cast(str, up['user_id']),
+                                                            UpdateDatabaseUserRoleDTO(
+                                                                assignments=[cast(DatabaseRole, up['role'])]
+                                                            ))
                 results.append({**up['orig_row'], "Status": "Modified", "Message": ""})
 
         for dele in user_deletions:
-            status.update(f"Deleting user: {dele.email}")
-            with handle_api_errors(f"Could not delete user {dele.email}"):
+            status.update(f"Deleting user: {dele.get('email')}")
+            with handle_api_errors(f"Could not delete user {dele.get('email')}"):
                 # Capture current role for reporting
-                role_lbl = next((r.label for r in target_tree.roles if r.id == dele.role.id), dele.role.id)
-                client.api.delete_database_user(target_database_id, dele.user_id)
-                results.append({"Email": dele.email, "Role": role_lbl, "cde": "", "org": "", "Status": "Deleted",
-                                "Message": ""})
+                role_id_val = dele.get("role", {}).get("id", "")
+                role_lbl = next((r.label for r in target_tree.roles if r.id == role_id_val), role_id_val)
+                await client.delete_database_user_delete(target_database_id, cast(str, dele.get("userId")))
+                results.append(
+                    {"Email": str(dele.get("email", "")), "Role": role_lbl, "cde": "", "org": "", "Status": "Deleted",
+                     "Message": ""})
 
     # --- 5. Output Report ---
     report_df = pd.DataFrame(results)

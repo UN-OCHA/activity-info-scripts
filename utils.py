@@ -1,12 +1,12 @@
 import os
 from contextlib import contextmanager
+from typing import Dict, Any
 
 import typer
 from dotenv import load_dotenv
 from rich.console import Console
 
-from api import ActivityInfoClient
-from api.client import APIError
+from activityinfo.client import Configuration, ApiClient, DefaultApi
 
 # Load environment variables from a .env file if it exists
 load_dotenv()
@@ -15,58 +15,40 @@ load_dotenv()
 console = Console()
 
 
-def get_client() -> ActivityInfoClient:
-    """
-    Initialize and return an ActivityInfo API client.
-    
-    The client requires an API token, which it attempts to retrieve from the 'API_TOKEN'
-    environment variable. If not found, it prompts the user for the token interactively.
-    
-    The base URL for the ActivityInfo API can also be configured via 'ACTIVITYINFO_BASE_URL',
-    defaulting to the standard ActivityInfo production resource endpoint.
-    
-    Returns:
-        ActivityInfoClient: An authenticated instance of the ActivityInfo client.
-    """
-    # Retrieve configuration from environment variables
-    token = os.getenv("API_TOKEN")
-    base_url = os.getenv("ACTIVITYINFO_BASE_URL", "https://www.activityinfo.org/resources/")
-
-    # Fallback to interactive prompt if token is missing
-    if token is None:
-        token = typer.prompt("Please enter your ActivityInfo API token", hide_input=True)
-    
-    return ActivityInfoClient(base_url, token)
+def get_client() -> DefaultApi:
+    configuration = Configuration(
+        host=os.getenv("ACTIVITYINFO_BASE_URL", "https://www.activityinfo.org/resources/"),
+        access_token=os.getenv("API_TOKEN")
+    )
+    client = ApiClient(configuration)
+    return DefaultApi(client)
 
 
 @contextmanager
-def handle_api_errors(message: str = "An error occurred"):
+def handle_api_errors(message: str):
     """
-    A context manager to uniformly handle errors arising from API calls and other operations.
-    
-    This wrapper captures both expected 'APIError' exceptions from our client and 
-    unexpected Python exceptions. It prints a formatted error message to the console 
-    and exits the CLI with a non-zero status code.
-    
-    Args:
-        message (str): A descriptive message to prefix the specific error output.
-        
-    Yields:
-        None: Executes the wrapped block of code.
-        
-    Raises:
-        typer.Exit: Terminates the CLI process with an exit code of 1 on error.
+    Context manager to handle API errors and display them nicely in the console.
     """
     try:
-        # Execute the code block within the 'with' statement
         yield
-    except APIError as e:
-        # Format and display errors that were explicitly raised by the API client
-        console.print(f"[bold red]API Error:[/bold red] {message}")
-        console.print(f"[red]{str(e)}[/red]")
-        raise typer.Exit(code=1)
     except Exception as e:
-        # Catch all other unexpected errors to ensure a clean exit with a helpful message
-        console.print(f"[bold red]Unexpected Error:[/bold red] {message}")
-        console.print(f"[red]{str(e)}[/red]")
+        console.print(f"[bold red]Error:[/bold red] {message}: {e}")
+        # In a CLI tool, we usually want to exit on fatal API errors
         raise typer.Exit(code=1)
+
+
+def build_nested_dict(flat_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Converts a flat dictionary with dot-separated keys into a nested dictionary.
+    Example: {'a.b': 1, 'a.c': 2, 'd': 3} -> {'a': {'b': 1, 'c': 2}, 'd': 3}
+    """
+    nested: Dict[str, Any] = {}
+    for key, value in flat_dict.items():
+        parts = key.split(".")
+        curr = nested
+        for part in parts[:-1]:
+            if part not in curr:
+                curr[part] = {}
+            curr = curr[part]
+        curr[parts[-1]] = value
+    return nested

@@ -1,12 +1,19 @@
+import asyncio
 from itertools import groupby
-from typing import Annotated, Optional, List, Dict
+from typing import Annotated, Optional, List, Dict, Any, cast
 
 import typer
 from cuid2 import Cuid
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
-from api.models import SchemaFieldDTO, FieldTypeParametersUpdateDTO, FieldType, TypeParameterLookupConfig, \
+from activityinfo.client.models import (
+    SchemaFieldDTO,
+    FieldTypeParametersUpdateDTO,
+    TypeParameterLookupConfig,
+    RecordUpdateDTO,
+    UpdateFormRecordsDTO,
     FormSchema
+)
 from common import filter_data_forms, get_records_with_multiref
 from utils import get_client, console, handle_api_errors
 
@@ -32,11 +39,13 @@ def strip_metric_prefix(code: str) -> str:
 
 def is_metric_field(code: str) -> bool:
     """Checks if a field code corresponds to an Amount or Metric field."""
+    if not code: return False
     return code.startswith("AMOUNT_") or code.startswith("METRIC_")
 
 
 def is_disag_field(code: str) -> bool:
     """Checks if a field code corresponds to a Disaggregation field."""
+    if not code: return False
     return code.startswith("DISAG_")
 
 
@@ -56,7 +65,8 @@ def get_metric_base_code(code: str) -> str:
 def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the target database")],
            root_folder_id: Annotated[
                Optional[str], typer.Argument(help="The root folder ID of the data folders (optional)")] = None,
-           remove_fields: Annotated[bool, typer.Option(help="Remove existing fields missing from the config")] = False,
+           remove_fields: Annotated[
+               bool, typer.Option(help="Remove existing fields missing from the config")] = False,
            rebuild_fields: Annotated[bool, typer.Option(help="Rebuild existing fields from the config")] = False):
     """
     Synchronize 'Amount' fields (Metrics) in data forms based on the 0.3.3 configuration.
@@ -67,6 +77,13 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
     3. Internal calculation (_ICALC)
     4. A final Coalesced field (Final)
     """
+    asyncio.run(_metric_async(target_database_id, root_folder_id, remove_fields, rebuild_fields))
+
+
+async def _metric_async(target_database_id: str,
+                        root_folder_id: Optional[str],
+                        remove_fields: bool,
+                        rebuild_fields: bool):
     client = get_client()
     cuid = Cuid(length=18)
 
@@ -79,8 +96,7 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
         task = progress.add_task("Fetching database configuration...", total=None)
 
         # --- 2. Retrieve State ---
-        with handle_api_errors(f"Could not get tree for {target_database_id}"):
-            target_tree = client.api.get_database_tree(target_database_id)
+        target_tree = await client.get_database_tree_get(target_database_id)
 
         # --- 3. Identify Target Data Forms ---
         # First, find forms in folders starting with 3, 4, 5, 6
@@ -91,7 +107,7 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
         config_form_names = set()
         if config_form_012:
             with handle_api_errors("Could not obtain 0.1.2 config form records"):
-                config_records = client.api.get_form(config_form_012.id)
+                config_records = cast(List[Dict[str, Any]], await client.get_form_get(config_form_012.id))
                 for rec in config_records:
                     name = rec.get("SYSNAME") or rec.get("SYS_NAME")
                     if name:
@@ -117,10 +133,11 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
 
         progress.update(task, description=f"Fetching records from {metric_config_form.label}...")
         with handle_api_errors(f"Could not get records for {metric_config_form.id}"):
-            records = client.api.get_form(metric_config_form.id)
+            records = cast(List[Dict[str, Any]], await client.get_form_get(metric_config_form.id))
 
         # Sort and group records by target form name
-        records.sort(key=lambda r: (r.get("DFORM.SYSNAME") or "", r.get("REFORDER") or ""))
+        records.sort(key=lambda r: (r.get("DFORM.SYSNAME") or r.get("DFORM_SYSNAME") or r.get("SYSNAME") or "",
+                                    r.get("REFORDER") or ""))
         form_records_by_sysname = {
             sysname: list(items)
             for sysname, items in
@@ -142,14 +159,15 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                 continue
 
             with handle_api_errors(f"Could not process schema for {sysname}"):
-                schema = client.api.get_form_schema(target_form_res.id)
+                schema = await client.get_form_schema_get(target_form_res.id)
 
                 # --- Find Insertion Point ---
                 # Metrics should appear after ID and Segmentation fields but before other custom fields
                 insertion_index = 0
                 for i, element in enumerate(schema.elements):
                     code = element.code
-                    if code in ["PROJ", "IND", "CSL", "CST"] or code.startswith("SEG_") or code.startswith("DISAG_"):
+                    if code in ["PROJ", "IND", "CSL", "CST"] or (
+                            code and (code.startswith("SEG_") or code.startswith("DISAG_"))):
                         insertion_index = i + 1
 
                 # Partition elements for easier injection
@@ -161,10 +179,11 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                 # Group existing metrics by their base code
                 metric_schemas: Dict[str, List[SchemaFieldDTO]] = {}
                 for e in existing_metric_elements:
-                    base_code = get_metric_base_code(e.code)
-                    if base_code not in metric_schemas:
-                        metric_schemas[base_code] = []
-                    metric_schemas[base_code].append(e)
+                    if e.code:
+                        base_code = get_metric_base_code(e.code)
+                        if base_code not in metric_schemas:
+                            metric_schemas[base_code] = []
+                        metric_schemas[base_code].append(e)
 
                 final_metric_base_codes = []
                 processed_base_codes = set()
@@ -184,7 +203,7 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
 
                     display_refcode = record.get("DISPLAY.REFCODE") or record.get("DISPLAY_REFCODE") or record.get(
                         "DISPLAY")
-                    name = record.get("NAME")
+                    name = record.get("NAME") or base_code
                     ccode = record.get("CCODE")
                     eform_refcode = record.get("DFORM.EFORM.REFCODE") or record.get(
                         "DFORM_EFORM_REFCODE") or record.get("EFORM_REFCODE") or record.get("EFORM")
@@ -220,7 +239,7 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                             code=f"AMOUNT_{base_code}_MAN",
                             label=f"{name} (Manual)",
                             required=False,
-                            type=FieldType.quantity,
+                            type="quantity",
                             relevanceCondition=relevance_man,
                             typeParameters=FieldTypeParametersUpdateDTO(units="", aggregation="SUM")
                         ))
@@ -233,7 +252,7 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                         required=False,
                         dataEntryVisible=False,
                         tableVisible=False,
-                        type=FieldType.quantity,
+                        type="quantity",
                         relevanceCondition=relevance_others,
                         typeParameters=FieldTypeParametersUpdateDTO(units="", aggregation="SUM")
                     ))
@@ -246,7 +265,7 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                         required=False,
                         dataEntryVisible=False,
                         tableVisible=False,
-                        type=FieldType.calculated,
+                        type="calculated",
                         relevanceCondition=relevance_others,
                         typeParameters=FieldTypeParametersUpdateDTO(formula="VALUE(\"#\")")
                     ))
@@ -261,7 +280,7 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                         code=f"AMOUNT_{base_code}",
                         label=name,
                         required=False,
-                        type=FieldType.calculated,
+                        type="calculated",
                         relevanceCondition=relevance_others,
                         typeParameters=FieldTypeParametersUpdateDTO(formula=formula)
                     ))
@@ -285,7 +304,7 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                         final_metric_elements.extend(metric_schemas[bc])
 
                 schema.elements = non_metric_before + final_metric_elements + other_elements
-                client.api.update_form_schema(schema)
+                await client.update_form_schema_post(target_form_res.id, schema)
 
             progress.advance(task)
 
@@ -304,6 +323,13 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
     These fields act as keys in the data form and point to specific reference forms 
     (e.g., Age/Gender groups, Locations).
     """
+    asyncio.run(_disagg_async(target_database_id, root_folder_id, remove_fields, rebuild_fields))
+
+
+async def _disagg_async(target_database_id: str,
+                        root_folder_id: Optional[str],
+                        remove_fields: bool,
+                        rebuild_fields: bool):
     client = get_client()
     cuid = Cuid(length=18)
 
@@ -315,7 +341,7 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
         # --- Initialization & State ---
         task = progress.add_task("Fetching database configuration...", total=None)
         with handle_api_errors(f"Could not get tree for {target_database_id}"):
-            target_tree = client.api.get_database_tree(target_database_id)
+            target_tree = await client.get_database_tree_get(target_database_id)
 
         # Retrieve exhaustive list of target forms
         folder_forms = filter_data_forms(target_tree, root_folder_id or target_database_id)
@@ -323,7 +349,7 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
         config_form_names = set()
         if config_form_012:
             with handle_api_errors("Could not obtain 0.1.2 config form records"):
-                config_records = client.api.get_form(config_form_012.id)
+                config_records = cast(List[Dict[str, Any]], await client.get_form_get(config_form_012.id))
                 for rec in config_records:
                     name = rec.get("SYSNAME") or rec.get("SYS_NAME")
                     if name: config_form_names.add(name)
@@ -346,9 +372,10 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
 
         progress.update(task, description=f"Fetching records from {disagg_config_form.label}...")
         with handle_api_errors(f"Could not get records for {disagg_config_form.id}"):
-            records = client.api.get_form(disagg_config_form.id)
+            records = cast(List[Dict[str, Any]], await client.get_form_get(disagg_config_form.id))
 
-        records.sort(key=lambda r: (r.get("DFORM.SYSNAME") or "", r.get("REFORDER") or ""))
+        records.sort(key=lambda r: (r.get("DFORM.SYSNAME") or r.get("DFORM_SYSNAME") or r.get("SYSNAME") or "",
+                                    r.get("REFORDER") or ""))
         form_records_by_sysname = {
             sysname: list(items)
             for sysname, items in
@@ -368,13 +395,13 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                 continue
 
             with handle_api_errors(f"Could not process schema for {sysname}"):
-                schema = client.api.get_form_schema(target_form_res.id)
+                schema = await client.get_form_schema_get(target_form_res.id)
 
                 # Find injection point (after segments, before metrics)
                 insertion_index = 0
                 for i, element in enumerate(schema.elements):
                     code = element.code
-                    if code in ["PROJ", "IND", "CSL", "CST"] or code.startswith("SEG_"):
+                    if code in ["PROJ", "IND", "CSL", "CST"] or (code and code.startswith("SEG_")):
                         insertion_index = i + 1
 
                 elements_before = schema.elements[:insertion_index]
@@ -382,7 +409,7 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                 disag_elements = [e for e in rest_elements if is_disag_field(e.code)]
                 other_elements = [e for e in rest_elements if not is_disag_field(e.code)]
 
-                existing_disags_by_code = {e.code: e for e in disag_elements}
+                existing_disags_by_code = {e.code: e for e in disag_elements if e.code}
                 final_disag_codes = []
                 processed_codes = set()
 
@@ -394,7 +421,7 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                     final_disag_codes.append(ref_code)
                     processed_codes.add(ref_code)
 
-                    name = record.get("NAME")
+                    name = record.get("NAME") or ref_code
                     ccode = record.get("CCODE")
                     eform_refcode = record.get("DFORM.EFORM.REFCODE") or record.get("DFORM_EFORM_REFCODE")
                     rform_sysname = record.get("RFORM.SYSNAME") or record.get("RFORM_SYSNAME")
@@ -416,7 +443,7 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                         code=ref_code,
                         label=name,
                         required=True,  # References in disaggregations are almost always keys/required
-                        type=FieldType.reference,
+                        type="reference",
                         key=True,
                         relevanceCondition=relevance,
                         typeParameters=FieldTypeParametersUpdateDTO(
@@ -434,7 +461,7 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                 remaining_codes = [c for c in existing_disags_by_code.keys() if c not in processed_codes]
                 if remove_fields and remaining_codes:
                     with handle_api_errors(f"Checking for data in fields being removed from {sysname}"):
-                        records_to_check = client.api.get_form(target_form_res.id)
+                        records_to_check = cast(List[Dict[str, Any]], await client.get_form_get(target_form_res.id))
 
                     records_to_delete = []
                     for rec in records_to_check:
@@ -446,13 +473,14 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                                     f_id and (rec.get(f_id) or rec.get(f"{f_id}.@id"))):
                                 should_delete = True
                                 break
-                        if should_delete: records_to_delete.append(rec["@id"])
+                        if should_delete: records_to_delete.append(cast(str, rec["@id"]))
 
                     if records_to_delete:
-                        from api.models import RecordUpdateDTO
-                        client.api.update_form_records(
-                            [RecordUpdateDTO(formId=target_form_res.id, recordId=rid, deleted=True, fields={}) for rid
-                             in records_to_delete])
+                        await client.update_form_records_post(UpdateFormRecordsDTO(
+                            changes=[RecordUpdateDTO(formId=target_form_res.id, recordId=rid, deleted=True, fields={})
+                                     for rid
+                                     in records_to_delete]
+                        ))
 
                     for c in remaining_codes:
                         if c in existing_disags_by_code: del existing_disags_by_code[c]
@@ -463,7 +491,7 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
                 final_ordered_disags = [existing_disags_by_code[c] for c in final_disag_codes if
                                         c in existing_disags_by_code]
                 schema.elements = elements_before + final_ordered_disags + other_elements
-                client.api.update_form_schema(schema)
+                await client.update_form_schema_post(target_form_res.id, schema)
 
             progress.advance(task)
 
@@ -481,6 +509,12 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
     Level 1 (Coordination Entity) -> Level 2 (Logframe Entity) -> Level 3 (Activity Entity) -> Level 4 (Data Form).
     Fields are either explicit manual entries or inherited calculations from the parent level.
     """
+    asyncio.run(_segment_async(target_database_id, remove_fields, rebuild_fields))
+
+
+async def _segment_async(target_database_id: str,
+                         remove_fields: bool,
+                         rebuild_fields: bool):
     client = get_client()
     cuid = Cuid(length=18)
 
@@ -492,7 +526,7 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
 
         # --- 1. Map Hierarchy Levels ---
         with handle_api_errors(f"Could not get tree for {target_database_id}"):
-            target_tree = client.api.get_database_tree(target_database_id)
+            target_tree = await client.get_database_tree_get(target_database_id)
 
         cde_form = next((res for res in target_tree.resources if res.label.startswith("1.1")), None)
         lfe_form = next((res for res in target_tree.resources if res.label.startswith("1.2")), None)
@@ -503,7 +537,8 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
         level3_forms = []
         if entity_config_res:
             with handle_api_errors(f"Could not fetch {ENTITY_CONFIG_FORM_011}"):
-                for rec in client.api.get_form(entity_config_res.id):
+                config_recs = cast(List[Dict[str, Any]], await client.get_form_get(entity_config_res.id))
+                for rec in config_recs:
                     prefix = rec.get("SYSPREFIX")
                     if prefix:
                         f_res = next((res for res in target_tree.resources if res.label.startswith(prefix)), None)
@@ -515,7 +550,8 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
         level4_forms = []
         if data_config_res:
             with handle_api_errors(f"Could not fetch {DATA_CONFIG_FORM_012}"):
-                for rec in client.api.get_form(data_config_res.id):
+                config_recs = cast(List[Dict[str, Any]], await client.get_form_get(data_config_res.id))
+                for rec in config_recs:
                     sysname = rec.get("SYSNAME")
                     if sysname:
                         f_res = next((res for res in target_tree.resources if res.label == sysname), None)
@@ -530,10 +566,11 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
             raise typer.Exit(1)
 
         with handle_api_errors(f"Could not fetch {seg_config_res.label}"):
-            seg_records = get_records_with_multiref(client, seg_config_res.id)
+            seg_records = await get_records_with_multiref(client, seg_config_res.id)
 
-        seg_records.sort(key=lambda r: (int(r.get("SEGDIM.REFORDER") or 0), int(r.get("SEGLEVEL.REFLEVEL") or 0)))
-        grouped_seg_records = {}
+        seg_records.sort(key=lambda r: (int(r.get("SEGDIM.REFORDER") or r.get("SEGDIM_REFORDER") or 0),
+                                        int(r.get("SEGLEVEL.REFLEVEL") or r.get("SEGLEVEL_REFLEVEL") or 0)))
+        grouped_seg_records: Dict[str, List[Dict[str, Any]]] = {}
         for r in seg_records:
             seg_dim_code = r.get("SEGDIM.REFCODE") or r.get("SEGDIM_REFCODE")
             if seg_dim_code: grouped_seg_records.setdefault(seg_dim_code, []).append(r)
@@ -542,17 +579,22 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
         progress.update(task, description="Processing segmentation...", total=len(grouped_seg_records))
         schema_cache: Dict[str, FormSchema] = {}
 
-        def get_cached_schema(f_id: str) -> FormSchema:
-            if f_id not in schema_cache: schema_cache[f_id] = client.api.get_form_schema(f_id)
+        async def get_cached_schema(f_id: str) -> FormSchema:
+            if f_id not in schema_cache: schema_cache[f_id] = await client.get_form_schema_get(f_id)
             return schema_cache[f_id]
 
         for seg_dim_code, records in grouped_seg_records.items():
             progress.update(task, description=f"Processing SEGDIM: {seg_dim_code}")
 
             # Robust level extraction
-            def get_level(r):
+            def get_level(r: Dict[str, Any]) -> int:
                 val = r.get("SEGLEVEL.REFLEVEL") or r.get("SEGLEVEL_REFLEVEL")
-                return int(val) if val is not None else 5
+                if val is None:
+                    return 5
+                try:
+                    return int(val)
+                except (ValueError, TypeError):
+                    return 5
 
             min_level = min(get_level(r) for r in records)
             if min_level > 4: continue
@@ -562,11 +604,11 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                 level_record = next((r for r in records if get_level(r) == current_level), None)
                 is_initial = (current_level == min_level)
 
-                targets = []
+                targets: List[tuple] = []
                 if current_level == 1 and cde_form:
-                    targets.append((get_cached_schema(cde_form.id), {}, True))
+                    targets.append((await get_cached_schema(cde_form.id), {}, True))
                 elif current_level == 2 and lfe_form:
-                    targets.append((get_cached_schema(lfe_form.id), {}, True))
+                    targets.append((await get_cached_schema(lfe_form.id), {}, True))
                 elif current_level == 3:
                     if level_record:
                         explicit_refcodes = {f.get("REFCODE") for f in level_record.get("EFORMS", []) if
@@ -574,9 +616,9 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                         for l3 in level3_forms:
                             is_explicit = not explicit_refcodes or l3["refcode"] in explicit_refcodes
                             if is_explicit or not is_initial: targets.append(
-                                (get_cached_schema(l3["resource"].id), l3, is_explicit))
+                                (await get_cached_schema(l3["resource"].id), l3, is_explicit))
                     elif not is_initial:
-                        for l3 in level3_forms: targets.append((get_cached_schema(l3["resource"].id), l3, False))
+                        for l3 in level3_forms: targets.append((await get_cached_schema(l3["resource"].id), l3, False))
                 elif current_level == 4:
                     if level_record:
                         explicit_ccodes = {f.get("CCODE") for f in level_record.get("DFORMS", []) if f.get("CCODE")}
@@ -592,9 +634,9 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                                 is_explicit = True
 
                             if is_explicit or not is_initial: targets.append(
-                                (get_cached_schema(l4["resource"].id), l4, is_explicit))
+                                (await get_cached_schema(l4["resource"].id), l4, is_explicit))
                     elif not is_initial:
-                        for l4 in level4_forms: targets.append((get_cached_schema(l4["resource"].id), l4, False))
+                        for l4 in level4_forms: targets.append((await get_cached_schema(l4["resource"].id), l4, False))
 
                 # Inject Fields into Schema
                 for schema, meta, is_explicit in targets:
@@ -605,11 +647,13 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                             if el.code == "NAME": insertion_index = i + 1; break
                     elif current_level == 3:
                         for i, el in enumerate(schema.elements):
-                            if (el.type == FieldType.section and el.label == "Additional Details") or el.code == "ADD_DETAILS": 
-                                insertion_index = i + 1; break
+                            if (
+                                    el.type == "section" and el.label == "Additional Details") or el.code == "ADD_DETAILS":
+                                insertion_index = i + 1;
+                                break
                     elif current_level == 4:
                         for i, el in enumerate(schema.elements):
-                            if el.code in ["PROJ", "IND", "CSL", "CST"] or el.code.startswith("SEG_"): 
+                            if el.code in ["PROJ", "IND", "CSL", "CST"] or (el.code and el.code.startswith("SEG_")):
                                 insertion_index = i + 1
 
                     existing_field = next((el for el in schema.elements if el.code == seg_dim_code), None)
@@ -617,25 +661,25 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
 
                     new_fields = []
                     ref_rec = level_record if level_record else records[0]
-                    seg_dim_name = ref_rec.get("SEGDIM.NAME") or ref_rec.get("SEGDIM_NAME")
+                    seg_dim_name = ref_rec.get("SEGDIM.NAME") or ref_rec.get("SEGDIM_NAME") or seg_dim_code
                     seg_dim_type = ref_rec.get("SEGDIM.TYPE") or ref_rec.get("SEGDIM_TYPE")
                     optmand = ref_rec.get("OPTMAND")
                     required = (optmand == "Mandatory")
 
                     # --- Local Relevance Helper ---
-                    def get_relevance(lvl, rec, meta_info):
-                        def get_list(key1, key2):
+                    def get_relevance(lvl: int, rec: Dict[str, Any], meta_info: Dict[str, Any]) -> str:
+                        def get_list(key1: str, key2: str) -> str:
                             items = rec.get(key1) or rec.get(key2) or []
                             return "|".join([str(i.get("REFCODE")) for i in items if i.get("REFCODE")])
 
                         cdls = get_list("CDLS", "CDLS")
                         lfls = get_list("LFLS", "LFLS")
                         atypes = get_list("ATYPES", "ATYPES")
-                        
+
                         # Fix prefix logic: only add dot if prefix is NOT empty
                         eform_ref = meta_info.get("eform_refcode") or ""
                         prefix = f"{eform_ref}." if eform_ref else ""
-                        
+
                         parts = []
                         if lvl == 1 and cdls:
                             parts.append(f'REGEXMATCH(CDL.REFCODE, "^({cdls})$")')
@@ -645,10 +689,12 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                             et_items = rec.get("ETYPES") or []
                             et_codes = {e.get("REFCODE") for e in et_items if e.get("REFCODE")}
                             sub = []
-                            if "CDE" in et_codes or not et_codes: sub.append(
-                                f'({prefix}ETYPE.REFCODE == "CDE" && {f"REGEXMATCH({prefix}CDE.CDL.REFCODE, ^({cdls})$)" if cdls else "TRUE"})')
-                            if "LFE" in et_codes or not et_codes: sub.append(
-                                f'({prefix}ETYPE.REFCODE == "LFE" && {f"REGEXMATCH({prefix}LFE.LFL.REFCODE, ^({lfls})$)" if lfls else "TRUE"})')
+                            if "CDE" in et_codes or not et_codes:
+                                rel_match = f'REGEXMATCH({prefix}CDE.CDL.REFCODE, "^({cdls})$")' if cdls else "TRUE"
+                                sub.append(f'({prefix}ETYPE.REFCODE == "CDE" && {rel_match})')
+                            if "LFE" in et_codes or not et_codes:
+                                rel_match = f'REGEXMATCH({prefix}LFE.LFL.REFCODE, "^({lfls})$")' if lfls else "TRUE"
+                                sub.append(f'({prefix}ETYPE.REFCODE == "LFE" && {rel_match})')
                             if sub: parts.append("(" + " || ".join(sub) + ")")
                             if atypes: parts.append(f'REGEXMATCH({prefix}ATYPE.REFCODE, "^({atypes})$")')
                         return " && ".join(parts) if parts else "TRUE"
@@ -661,10 +707,15 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                             sysname = ref_rec.get("SYSNAME") or ref_rec.get("SYS_NAME")
                             f_id = next((r.id for r in target_tree.resources if r.label == sysname), "")
                         elif seg_dim_type == "Entity":
-                            f_id = lfe_form.id if seg_dim_code == "SEG_LFE" else next(
-                                (r.id for r in target_tree.resources if r.label.startswith("G2.4C")), "")
+                            if lfe_form and seg_dim_code == "SEG_LFE":
+                                f_id = lfe_form.id
+                            else:
+                                f_id = next(
+                                    (r.id for r in target_tree.resources if r.label and r.label.startswith("G2.4C")),
+                                    "")
                         elif seg_dim_type == "Partner":
-                            f_id = next((r.id for r in target_tree.resources if r.label.startswith("2.1")), "")
+                            f_id = next((r.id for r in target_tree.resources if r.label and r.label.startswith("2.1")),
+                                        "")
 
                         eform_ref = meta.get("eform_refcode") or ""
                         parent_ref = ""
@@ -672,7 +723,7 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                             parent_ref = "CDE."
                         elif current_level == 3:
                             # Level 3 is special as it can have multiple parents
-                            parent_ref = 'IF(ETYPE.REFCODE == "CDE", CDE., LFE.)' 
+                            parent_ref = 'IF(ETYPE.REFCODE == "CDE", CDE., LFE.)'
                         elif current_level == 4:
                             parent_ref = f"{eform_ref}." if eform_ref else ""
 
@@ -687,7 +738,7 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                         ref_field = SchemaFieldDTO(id=cuid.generate(), code=field_code, label=str(seg_dim_name or ""),
                                                    required=True if seg_dim_type == "Partner" else (
                                                        required if is_initial else True), relevanceCondition=rel,
-                                                   type=FieldType.reference,
+                                                   type="reference",
                                                    typeParameters=FieldTypeParametersUpdateDTO(cardinality="single",
                                                                                                range=[{"formId": f_id}],
                                                                                                lookupConfigs=[
@@ -705,7 +756,7 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                                 f'IF(ETYPE.REFCODE == "CDE", CDE.{seg_dim_code}, LFE.{seg_dim_code})' if current_level == 3 else f'{eform_ref + "." if eform_ref else ""}{seg_dim_code}')
                             new_fields.append(
                                 SchemaFieldDTO(id=cuid.generate(), code=seg_dim_code, label=str(seg_dim_name or ""),
-                                               required=False, type=FieldType.calculated, dataEntryVisible=False,
+                                               required=False, type="calculated", dataEntryVisible=False,
                                                tableVisible=False, typeParameters=FieldTypeParametersUpdateDTO(
                                         formula=f"COALESCE({ref_field.id}, {inh_form})")))
                     else:
@@ -715,7 +766,7 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                             f'IF(ETYPE.REFCODE == "CDE", CDE.{seg_dim_code}, LFE.{seg_dim_code})' if current_level == 3 else f'{eform_ref + "." if eform_ref else ""}{seg_dim_code}')
                         new_fields.append(
                             SchemaFieldDTO(id=cuid.generate(), code=seg_dim_code, label=str(seg_dim_name or ""),
-                                           required=False, type=FieldType.calculated, dataEntryVisible=False,
+                                           required=False, type="calculated", dataEntryVisible=False,
                                            tableVisible=False,
                                            typeParameters=FieldTypeParametersUpdateDTO(formula=inh_form)))
 
@@ -725,16 +776,16 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
                     for idx in sorted(existing_indices, reverse=True):
                         schema.elements.pop(idx)
                         if idx < insertion_index: insertion_index -= 1
-                    for f in reversed(new_fields): 
+                    for f in reversed(new_fields):
                         schema.elements.insert(insertion_index, f)
-                        insertion_index += 1 # Maintain order for next SEGDIM in SAME target
+                        insertion_index += 1  # Maintain order for next SEGDIM in SAME target
 
             progress.advance(task)
 
         # Final Batch Commit of all modified schemas
         progress.update(task, description="Saving form schemas...")
         for form_id, schema in schema_cache.items():
-            with handle_api_errors(f"Updating {form_id}"): client.api.update_form_schema(schema)
+            with handle_api_errors(f"Updating {form_id}"): await client.update_form_schema_post(form_id, schema)
 
     console.print("[bold green]Success:[/bold green] Segmentation fields adjusted.")
 

@@ -1,56 +1,51 @@
-# import csv
-from typing import Annotated, Optional
+import asyncio
+from typing import Annotated
 
-# import pandas as pd
 import typer
-# from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from rich.pretty import pprint
 
-from api.models import (
-    RecordUpdateDTO,
-    UpdateDatabaseDTO,
-    DatabaseTreeResourceType,
-    UpdateDatabaseTranslationsDTO,
-    DatabaseTranslation
-)
-# from common import get_records_with_multiref
-from utils import get_client, console, handle_api_errors
+from utils import get_client, handle_api_errors
 
 # Initialize a Typer sub-application for nick tests
 app = typer.Typer(no_args_is_help=True)
 
 
 @app.command(help="Nick's test scripts: Print Form Schema.")
-def form_schema(
-        form_id: Annotated[str, typer.Argument(help="The ActivityInfo ID of the form")],
+def print_schema(
+        form_id: Annotated[str, typer.Argument(help="The ID of the form")]
 ):
     """
     Print the form schema to console.
     """
+    asyncio.run(_print_schema_async(form_id))
+
+
+async def _print_schema_async(form_id: str):
     client = get_client()
 
     with handle_api_errors(f"Failed to get schema for {form_id}"):
-        schema = client.api.get_form_schema(form_id)
+        schema = await client.get_form_schema_get(form_id)
 
     pprint(schema, expand_all=True)
 
+
 @app.command(help="Nick's test scripts: Print DB Tree.")
-def db_tree(
-        db_id: Annotated[str, typer.Argument(help="The ActivityInfo ID of the db")],
+def print_tree(
+        db_id: Annotated[str, typer.Argument(help="The ID of the database")]
 ):
     """
     Print the form schema to console.
     """
+    asyncio.run(_print_tree_async(db_id))
+
+
+async def _print_tree_async(db_id: str):
     client = get_client()
 
     with handle_api_errors(f"Failed to get tree for {db_id}"):
-        tree = client.api.get_database_tree(db_id)
+        tree = await client.get_database_tree_get(db_id)
 
     pprint(tree, expand_all=True)
-
-
-
-
 
 
 if __name__ == "__main__":

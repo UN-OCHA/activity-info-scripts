@@ -1,0 +1,1 @@
+openapi-generator generate -i activityinfo_openapi.json -g python -o ./activityinfo --additional-properties=library=httpx,packageName=client

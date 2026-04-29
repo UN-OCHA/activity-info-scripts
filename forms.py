@@ -1,6 +1,7 @@
+import asyncio
 import json
 import os
-from typing import Annotated, Optional, List
+from typing import Annotated, Optional, List, Dict, Any, cast
 
 import jsonpatch
 import jsonpointer
@@ -9,10 +10,11 @@ from cuid2 import Cuid
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from rich.table import Table
 
-from api.models import (
-    DatabaseTreeResourceType, AddFormDTO, DatabaseTreeResourceVisibility,
-    SchemaFieldDTO, FieldType, FieldTypeParametersUpdateDTO,
-    TypeParameterLookupConfig, UpdateDatabaseDTO, FormSchema
+from activityinfo.client.models import (
+    AddFormDTO,
+    SchemaFieldDTO, FieldTypeParametersUpdateDTO,
+    TypeParameterLookupConfig, UpdateDatabaseDTO, FormSchema,
+    FormClass, FormResource
 )
 from common import filter_data_forms, get_records_with_multiref, get_field_info, find_resource_by_prefix, \
     find_all_resources_by_prefix
@@ -41,11 +43,11 @@ def safe_apply_patch(patch_list: List[dict], schema_dict: dict) -> dict:
             if op.get("op") == "add" and path.startswith("/elements/") and len(path.split("/")) == 3:
                 field_code = jsonpointer.unescape(path.split("/")[2])
                 elements = patched_dict.get("elements", {})
-                
+
                 if "beforeCode" in op:
                     before_code = op["beforeCode"]
                     value = op.get("value")
-                    
+
                     if before_code is None:
                         # Insert at beginning
                         new_elements = {field_code: value}
@@ -101,6 +103,15 @@ def create_data(
     that the target database has corresponding forms created with the correct 
     parent-child relationships and mandatory fields (Indicator, Project, etc.).
     """
+    asyncio.run(_create_data_async(target_database_id, root_folder_id, remove_forms, rebuild_forms))
+
+
+async def _create_data_async(
+        target_database_id: str,
+        root_folder_id: Optional[str] = None,
+        remove_forms: bool = False,
+        rebuild_forms: bool = False
+):
     client = get_client()
 
     with Progress(
@@ -117,7 +128,7 @@ def create_data(
         # --- 2. Retrieve Target State ---
         # Fetch the database tree to understand the current structure and folders
         with handle_api_errors(f"Could not get tree for {target_database_id}"):
-            target_tree = client.api.get_database_tree(target_database_id)
+            target_tree = await client.get_database_tree_get(target_database_id)
 
         # --- 3. Filter and Identify Existing Data Forms ---
         data_forms = filter_data_forms(target_tree, root_folder_id or target_database_id)
@@ -134,7 +145,7 @@ def create_data(
 
         progress.update(task, description=f"Fetching records from {data_config_form.label}...")
         with handle_api_errors(f"Could not get records for {data_config_form.id}"):
-            records = client.api.get_form(data_config_form.id)
+            records = cast(List[Dict[str, Any]], await client.get_form_get(data_config_form.id))
 
         # --- 5. Iterate and Process each Form Definition ---
         progress.update(task, description="Processing forms...", total=len(records))
@@ -173,8 +184,8 @@ def create_data(
 
             # Locate the actual folder resource in the database tree
             parent_folder = find_resource_by_prefix(
-                [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FOLDER and (
-                        res.parentId == root_folder_id or res.parentId == target_database_id)],
+                [res for res in target_tree.resources if res.type == "FOLDER" and (
+                        res.parent_id == root_folder_id or res.parent_id == target_database_id)],
                 target_folder_prefix
             )
 
@@ -187,169 +198,100 @@ def create_data(
             # Dynamically build the list of fields (elements) for the form based on its type (IND, CSL, CST)
             elements: List[SchemaFieldDTO] = []
 
-            def get_ref_form_id(prefix: str):
-                """Helper to find IDs of reference forms based on their label prefix."""
-                form = find_resource_by_prefix(
-                    [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM],
-                    prefix
+            # 1. Base mandatory fields for all data forms
+            elements.append(SchemaFieldDTO(
+                code="INDICATOR",
+                id=cuid.generate(),
+                label="Indicator",
+                required=True,
+                type="reference",
+                typeParameters=FieldTypeParametersUpdateDTO(
+                    cardinality="single",
+                    range=[{"formId": "c62m9clm8jux492"}]  # Global Indicator reference
                 )
-                if not form:
-                    raise ValueError(f"Form with prefix {prefix} not found")
-                return form.id
+            ))
+            elements.append(SchemaFieldDTO(
+                code="PROJECT",
+                id=cuid.generate(),
+                label="Project",
+                required=True,
+                type="reference",
+                typeParameters=FieldTypeParametersUpdateDTO(
+                    cardinality="single",
+                    range=[{"formId": "cl6j6kwlkclnt1z2"}]  # Global Project reference
+                )
+            ))
 
-            # Add Project reference field if applicable
-            if record["USERLEVEL.REFCODE"] == "LP":
-                elements.append(SchemaFieldDTO(
-                    code="PROJECT",
-                    id=cuid.generate(),
-                    key=True,
-                    label="Project",
-                    required=True,
-                    type=FieldType.reference,
-                    typeParameters=FieldTypeParametersUpdateDTO(
-                        cardinality="single",
-                        range=[{"formId": get_ref_form_id("2.2_")}],
-                        lookupConfigs=[
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="LEADORG.GLOBORG.NAME",
-                                                      lookupLabel="Lead Organization"),
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="REFLABEL", lookupLabel="Project")
-                        ]
-                    )
-                ))
-
-            # Add Indicator reference field if applicable
-            if record["EFORM.REFCODE"] == "IND":
-                elements.append(SchemaFieldDTO(
-                    code="IND",
-                    id=cuid.generate(),
-                    key=True,
-                    label="Indicator",
-                    required=True,
-                    type=FieldType.reference,
-                    validationCondition="IND.ETYPE.REFCODE == \"CDE\" || !ISBLANK(SEARCH(\"|LC|\", IND.LFE.LFL.USERLEVEL_REFCODES))",
-                    typeParameters=FieldTypeParametersUpdateDTO(
-                        cardinality="single",
-                        range=[{"formId": get_ref_form_id("1.3")}],
-                        lookupConfigs=[
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="CDE.REFLABEL",
-                                                      lookupLabel="Coordination Entity"),
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="LFE.REFLABEL",
-                                                      lookupLabel="Logframe Entity"),
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="REFLABEL", lookupLabel="Indicator")
-                        ]
-                    )
-                ))
-
-            # Similar logic for Caseload and Cost Attachments...
-            if record["EFORM.REFCODE"] == "CSL":
-                elements.append(SchemaFieldDTO(
-                    code="CSL",
-                    id=cuid.generate(),
-                    key=True,
-                    label="Caseload Attachment",
-                    required=True,
-                    type=FieldType.reference,
-                    validationCondition="CSL.ETYPE.REFCODE == \"CDE\" || !ISBLANK(SEARCH(\"|LC|\", CSL.LFE.LFL.USERLEVEL_REFCODES))",
-                    typeParameters=FieldTypeParametersUpdateDTO(
-                        cardinality="single",
-                        range=[{"formId": get_ref_form_id("1.4")}],
-                        lookupConfigs=[
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="CDE.REFLABEL",
-                                                      lookupLabel="Coordination Entity"),
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="LFE.REFLABEL",
-                                                      lookupLabel="Logframe Entity"),
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="REFLABEL",
-                                                      lookupLabel="Caseload Attachment")
-                        ]
-                    )
-                ))
-
-            if record["EFORM.REFCODE"] == "CST":
-                elements.append(SchemaFieldDTO(
-                    code="CST",
-                    id=cuid.generate(),
-                    key=True,
-                    label="Cost Attachment",
-                    required=True,
-                    type=FieldType.reference,
-                    validationCondition="CST.ETYPE.REFCODE == \"CDE\" || !ISBLANK(SEARCH(\"|LC|\", CST.LFE.LFL.USERLEVEL_REFCODES))",
-                    typeParameters=FieldTypeParametersUpdateDTO(
-                        cardinality="single",
-                        range=[{"formId": get_ref_form_id("1.5")}],
-                        lookupConfigs=[
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="CDE.REFLABEL",
-                                                      lookupLabel="Coordination Entity"),
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="LFE.REFLABEL",
-                                                      lookupLabel="Logframe Entity"),
-                            TypeParameterLookupConfig(id=cuid.generate(), formula="REFLABEL",
-                                                      lookupLabel="Cost Attachment")
-                        ]
-                    )
-                ))
+            # --- REFLABEL construction ---
+            reflabel_id = cuid.generate()
+            elements.append(SchemaFieldDTO(
+                code="REFLABEL",
+                id=reflabel_id,
+                label="Reference Label",
+                required=False,
+                type="calculated",
+                typeParameters=FieldTypeParametersUpdateDTO(
+                    formula="CONCAT(INDICATOR.NAME, \" - \", PROJECT.NAME)"
+                ),
+                dataEntryVisible=False,
+                tableVisible=False
+            ))
 
             # --- Update or Create Form in Database ---
             if existing_form_res:
                 # REBUILD: Merge our standardized fields with any custom fields already in the form
                 with handle_api_errors(f"Could not rebuild form {form_name}"):
-                    schema = client.api.get_form_schema(existing_form_res.id)
+                    schema = await client.get_form_schema_get(existing_form_res.id)
 
                     # ID preservation logic: ensure we don't change IDs of fields that match our codes
                     for new_elem in elements:
                         old_elem = next((e for e in schema.elements if e.code == new_elem.code), None)
                         if old_elem:
                             new_elem.id = old_elem.id
-                            if new_elem.type_parameters and new_elem.type_parameters.lookup_configs and \
-                                    old_elem.type_parameters and old_elem.type_parameters.lookup_configs:
-                                for i, new_lc in enumerate(new_elem.type_parameters.lookup_configs):
-                                    if i < len(old_elem.type_parameters.lookup_configs):
-                                        new_lc.id = old_elem.type_parameters.lookup_configs[i].id
 
-                    # Identify existing fields that are NOT part of our standard core fields
-                    basic_codes_possible = {"PROJECT", "IND", "CSL", "CST"}
-                    other_elements = [e for e in schema.elements if e.code not in basic_codes_possible]
+                    # Identify 'custom' fields that aren't managed by this automation
+                    managed_codes = [e.code for e in elements]
+                    other_elements = [e for e in schema.elements if e.code not in managed_codes]
 
-                    # Concatenate standard core fields with existing custom ones
                     schema.elements = elements + other_elements
-                    client.api.update_form_schema(schema)
+                    await client.update_form_schema_post(existing_form_res.id, schema)
             else:
                 # CREATE: Define a brand new form structure
                 form_id = cuid.generate()
                 with handle_api_errors(f"Could not create form {form_name}"):
-                    client.api.add_form(AddFormDTO(
-                        formClass=AddFormDTO.FormClass(
+                    await client.add_form_post(target_database_id, AddFormDTO(
+                        formClass=FormClass(
                             databaseId=target_database_id,
                             id=form_id,
                             label=form_name,
                             schemaVersion=1,
-                            parentFormId=None,
+                            recordLabelFieldId=reflabel_id,
                             elements=elements,
                         ),
-                        formResource=AddFormDTO.FormResource(
+                        formResource=FormResource(
                             id=form_id,
                             label=form_name,
                             parentId=parent_folder.id,
-                            type=DatabaseTreeResourceType.FORM,
-                            visibility=DatabaseTreeResourceVisibility.PRIVATE,
+                            type="FORM",
+                            visibility="PRIVATE",
                         )
                     ))
-
             progress.advance(task)
 
-        # --- 6. Optional Cleanup ---
-        # Remove forms from the target folder that are no longer present in the configuration
+        # --- 6. Cleanup ---
         extra_forms = [form for form in data_forms if form.label not in processed_sysnames]
         if remove_forms and extra_forms:
             progress.update(task, description="Removing extra forms...")
             extra_labels = [f.label for f in extra_forms]
             console.print(f"[yellow]Removing extra forms:[/yellow] {', '.join(extra_labels)}")
             with handle_api_errors("Could not delete extra forms"):
-                client.api.update_database(target_database_id, UpdateDatabaseDTO(
+                await client.update_database_post(target_database_id, UpdateDatabaseDTO(
                     resourceDeletions=[form.id for form in extra_forms],
                     resourceUpdates=[],
                     languageUpdates=[]
                 ))
 
-    console.print("[bold green]Creation process completed successfully.[/bold green]")
+    console.print("[bold green]Data form creation process completed successfully.[/bold green]")
 
 
 @app.command(help="Create reference forms from 0.1.3 in a given target database", no_args_is_help=True)
@@ -369,6 +311,15 @@ def create_reference(
     This command follows a dependency-aware order to ensure that parent forms are created 
     before child forms. It maps global reference data to country-specific forms.
     """
+    asyncio.run(_create_reference_async(target_cm_database_id, grm_database_id, remove_forms, rebuild_forms))
+
+
+async def _create_reference_async(
+        target_cm_database_id: str,
+        grm_database_id: str,
+        remove_forms: bool = False,
+        rebuild_forms: bool = False
+):
     client = get_client()
     cuid = Cuid(length=18)
 
@@ -383,11 +334,11 @@ def create_reference(
 
         # Retrieve structural trees for both CM (Target) and GRM (Source)
         with handle_api_errors(f"Could not get tree for {target_cm_database_id}"):
-            target_tree = client.api.get_database_tree(target_cm_database_id)
+            target_tree = await client.get_database_tree_get(target_cm_database_id)
 
         # Identify the standard folder (prefixed '0.4') where reference forms reside
         parent_folder = find_resource_by_prefix(
-            [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FOLDER],
+            [res for res in target_tree.resources if res.type == "FOLDER"],
             "0.4"
         )
         if not parent_folder:
@@ -396,13 +347,13 @@ def create_reference(
 
         reference_forms_in_target = [
             res for res in target_tree.resources
-            if res.type == DatabaseTreeResourceType.FORM and res.parentId == parent_folder.id
+            if res.type == "FORM" and res.parent_id == parent_folder.id
         ]
         reference_forms_by_name = {f.label: f for f in reference_forms_in_target}
 
         # Find the configuration form that defines which reference forms to sync
         reference_config_form = find_resource_by_prefix(
-            [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM],
+            [res for res in target_tree.resources if res.type == "FORM"],
             REFERENCE_FORM_PREFIX
         )
         if not reference_config_form:
@@ -414,7 +365,7 @@ def create_reference(
 
         # Get the definitions including multi-value reference fields (Global forms to link)
         with handle_api_errors(f"Could not get records for {reference_config_form.id}"):
-            records = get_records_with_multiref(client, reference_config_form.id)
+            records = await get_records_with_multiref(client, reference_config_form.id)
 
         # --- 1. Dependency-Aware Sorting ---
         # Sort forms so that parents (referenced via PARENT_RFORM_REFCODE) are created first
@@ -444,14 +395,14 @@ def create_reference(
         progress.update(task, description="Creating reference forms...", total=len(ordered_records))
 
         with handle_api_errors(f"Could not get tree for {grm_database_id}"):
-            grm_tree = client.api.get_database_tree(grm_database_id)
+            grm_tree = await client.get_database_tree_get(grm_database_id)
 
         # Schema cache to minimize repetitive API calls
-        schema_cache = {}
+        schema_cache: Dict[str, FormSchema] = {}
 
-        def get_cached_schema(form_id):
+        async def get_cached_schema(form_id: str) -> FormSchema:
             if form_id not in schema_cache:
-                schema_cache[form_id] = client.api.get_form_schema(form_id)
+                schema_cache[form_id] = await client.get_form_schema_get(form_id)
             return schema_cache[form_id]
 
         created_forms_by_refcode_man = {}
@@ -474,7 +425,7 @@ def create_reference(
                 progress.advance(task)
                 continue
 
-            elements = []
+            elements: List[SchemaFieldDTO] = []
 
             # --- Logic for SUB (Sub-set) or CMB (Combined) forms ---
             # These link to one or more Global Reference forms
@@ -488,7 +439,7 @@ def create_reference(
                             f"[yellow]Warning: GRM form {glob_sys_name} not found. Skipping {sys_name}[/yellow]")
                         continue
 
-                    grm_schema = get_cached_schema(grm_form.id)
+                    grm_schema = await get_cached_schema(grm_form.id)
                     field_id, field_label = get_field_info(grm_schema)
 
                     # Add a reference field pointing to the global form
@@ -498,7 +449,7 @@ def create_reference(
                         key=True,
                         label=f"Equivalent Global {x.get('NAME', '')}",
                         required=True,
-                        type=FieldType.reference,
+                        type="reference",
                         typeParameters=FieldTypeParametersUpdateDTO(
                             cardinality="single",
                             range=[{"formId": grm_form.id}],
@@ -528,7 +479,7 @@ def create_reference(
                 id=cuid.generate(),
                 label="Reference Code",
                 required=True,
-                type=FieldType.FREE_TEXT,
+                type="free_text",
                 defaultValueFormula=refcode_formula,
                 typeParameters=FieldTypeParametersUpdateDTO(barcode=False),
                 readOnly=True if def_refcode == "SUB" else False,
@@ -550,7 +501,7 @@ def create_reference(
                 id=cuid.generate(),
                 label="Name",
                 required=True,
-                type=FieldType.FREE_TEXT,
+                type="free_text",
                 defaultValueFormula=name_formula,
                 typeParameters=FieldTypeParametersUpdateDTO(barcode=False),
                 readOnly=True if def_refcode == "SUB" else False,
@@ -564,7 +515,7 @@ def create_reference(
                 parent_form_id = created_forms_by_refcode_man.get(parent_refcode)
 
                 if parent_form_id:
-                    parent_schema = get_cached_schema(parent_form_id)
+                    parent_schema = await get_cached_schema(parent_form_id)
                     p_field_id, p_field_label = get_field_info(parent_schema)
 
                     elements.append(SchemaFieldDTO(
@@ -572,7 +523,7 @@ def create_reference(
                         id=cuid.generate(),
                         label=parent_rec.get("NAME") if parent_rec else "Parent",
                         required=True,
-                        type=FieldType.reference,
+                        type="reference",
                         typeParameters=FieldTypeParametersUpdateDTO(
                             cardinality="single",
                             range=[{"formId": parent_form_id}],
@@ -594,7 +545,7 @@ def create_reference(
                 id=reflabel_id,
                 label="Reference Label",
                 required=False,
-                type=FieldType.calculated,
+                type="calculated",
                 typeParameters=FieldTypeParametersUpdateDTO(
                     formula="CONCAT(REFCODE, \" - \", NAME)"
                 ),
@@ -605,7 +556,7 @@ def create_reference(
             # --- Update/Create Implementation ---
             if existing:
                 with handle_api_errors(f"Could not rebuild form {sys_name}"):
-                    schema = client.api.get_form_schema(existing.id)
+                    schema = await client.get_form_schema_get(existing.id)
                     reflabel_id = next((e.id for e in elements if e.code == "REFLABEL"), reflabel_id)
 
                     # Preservation of IDs for stability
@@ -621,13 +572,13 @@ def create_reference(
 
                     schema.elements = elements
                     schema.record_label_field_id = reflabel_id
-                    client.api.update_form_schema(schema)
+                    await client.update_form_schema_post(existing.id, schema)
                     created_forms_by_refcode_man[ref_code_man] = existing.id
             else:
                 form_id = cuid.generate()
                 with handle_api_errors(f"Could not create form {sys_name}"):
-                    client.api.add_form(AddFormDTO(
-                        formClass=AddFormDTO.FormClass(
+                    await client.add_form_post(target_cm_database_id, AddFormDTO(
+                        formClass=FormClass(
                             databaseId=target_cm_database_id,
                             id=form_id,
                             parentFormId=None,
@@ -636,12 +587,12 @@ def create_reference(
                             recordLabelFieldId=reflabel_id,
                             elements=elements,
                         ),
-                        formResource=AddFormDTO.FormResource(
+                        formResource=FormResource(
                             id=form_id,
                             label=sys_name,
                             parentId=parent_folder.id,
-                            type=DatabaseTreeResourceType.FORM,
-                            visibility=DatabaseTreeResourceVisibility.PRIVATE,
+                            type="FORM",
+                            visibility="PRIVATE",
                         )
                     ))
 
@@ -653,7 +604,7 @@ def create_reference(
         if remove_forms and extra_forms:
             progress.update(task, description="Removing extra forms...")
             with handle_api_errors("Could not delete extra forms"):
-                client.api.update_database(target_cm_database_id, UpdateDatabaseDTO(
+                await client.update_database_post(target_cm_database_id, UpdateDatabaseDTO(
                     resourceDeletions=[form.id for form in extra_forms],
                     resourceUpdates=[],
                     languageUpdates=[]
@@ -678,6 +629,14 @@ def patch(
     4. Fetches the updated schema.
     5. Generates and saves a JSON patch between the two versions.
     """
+    asyncio.run(_patch_async(form_id, label, database_id))
+
+
+async def _patch_async(
+        form_id: Optional[str] = None,
+        label: Optional[str] = None,
+        database_id: Optional[str] = None
+):
     client = get_client()
 
     if not form_id:
@@ -686,9 +645,9 @@ def patch(
             raise typer.Exit(code=1)
 
         with handle_api_errors(f"Could not fetch tree for database {database_id}"):
-            tree = client.api.get_database_tree(database_id)
+            tree = await client.get_database_tree_get(database_id)
             form_res = next(
-                (res for res in tree.resources if res.type == DatabaseTreeResourceType.FORM and res.label == label),
+                (res for res in tree.resources if res.type == "FORM" and res.label == label),
                 None)
             if not form_res:
                 console.print(f"[red]Error: Form '{label}' not found in database {database_id}[/red]")
@@ -697,8 +656,8 @@ def patch(
 
     with handle_api_errors(f"Could not fetch initial schema for form {form_id}"):
         console.print(f"[bold cyan]Fetching initial schema for form {form_id}...[/bold cyan]")
-        schema1 = client.api.get_form_schema(form_id)
-        schema1_dict = schema1.model_dump()
+        schema1 = await client.get_form_schema_get(form_id)
+        schema1_dict = schema1.model_dump(by_alias=True)
 
     console.print(f"\n[bold yellow]Initial schema captured for '{schema1.label}' ({form_id}).[/bold yellow]")
     console.print("Please go to the ActivityInfo UI and make your desired changes to the form schema.")
@@ -709,22 +668,22 @@ def patch(
 
     with handle_api_errors(f"Could not fetch updated schema for form {form_id}"):
         console.print(f"[bold cyan]Fetching updated schema for form {form_id}...[/bold cyan]")
-        schema2 = client.api.get_form_schema(form_id)
-        schema2_dict = schema2.model_dump()
+        schema2 = await client.get_form_schema_get(form_id)
+        schema2_dict = schema2.model_dump(by_alias=True)
 
     # Create mapping from ID to original semantic key (code or ID) for portable path translation
-    id_to_key = {e["id"]: (e["code"] or e["id"]) for e in schema1_dict["elements"]}
+    id_to_key = {e["id"]: (e.get("code") or e["id"]) for e in schema1_dict["elements"]}
 
     # Key both schemas by internal ID for stable identity-based diffing
     s1_id_keyed = schema1_dict.copy()
     s1_id_keyed["elements"] = {e["id"]: e for e in schema1_dict["elements"]}
-    
+
     s2_id_keyed = schema2_dict.copy()
     s2_id_keyed["elements"] = {e["id"]: e for e in schema2_dict["elements"]}
 
     # Generate raw patch based on stable IDs
     raw_patch = jsonpatch.make_patch(s1_id_keyed, s2_id_keyed)
-    
+
     # Transform paths from internal IDs back to portable semantic keys (codes)
     # and capture positional metadata for new elements.
     s2_ids = [e["id"] for e in schema2_dict["elements"]]
@@ -736,14 +695,14 @@ def patch(
             parts = path.split("/")
             # parts[2] is the escaped field ID
             field_id = jsonpointer.unescape(parts[2])
-            
+
             # Use original key if it existed, otherwise use new key (for 'add' operations)
             if field_id in id_to_key:
                 key = id_to_key[field_id]
             else:
                 new_element = s2_id_keyed["elements"].get(field_id)
                 key = (new_element.get("code") or field_id) if new_element else field_id
-            
+
             # Reconstruct path using the semantic key
             escaped_key = jsonpointer.escape(key)
             new_path = f"/elements/{escaped_key}"
@@ -756,7 +715,7 @@ def patch(
                 try:
                     idx = s2_ids.index(field_id)
                     if idx > 0:
-                        pred_id = s2_ids[idx-1]
+                        pred_id = s2_ids[idx - 1]
                         # Capture the predecessor's code as the 'before' reference
                         pred_element = s2_id_keyed["elements"][pred_id]
                         op_dict["beforeCode"] = pred_element.get("code") or pred_id
@@ -779,7 +738,7 @@ def patch(
             for eid, element in s2_id_keyed["elements"].items():
                 if (element.get("code") or eid) == field_code_or_id:
                     return (0, s2_ids.index(eid))
-        return (1, 0) # Non-add operations or other paths come after ordered adds
+        return (1, 0)  # Non-add operations or other paths come after ordered adds
 
     patch_list.sort(key=patch_sort_key)
 
@@ -823,6 +782,16 @@ def apply(
     4. Applies the patch(es) and translates internal IDs.
     5. Re-converts to list-based structure and pushes the update.
     """
+    asyncio.run(_apply_async(target_database_ids, patch_file, multi, dry_run, yes))
+
+
+async def _apply_async(
+        target_database_ids: List[str],
+        patch_file: str = "form_patch.json",
+        multi: bool = False,
+        dry_run: bool = False,
+        yes: bool = False,
+):
     client = get_client()
 
     if not os.path.exists(patch_file):
@@ -851,7 +820,7 @@ def apply(
         if fid:
             return fid.split()[0] if isinstance(fid, str) else fid[0]
 
-        patch_list = entry.get("patch", [])
+        patch_list = e.get("patch", [])
         for op in patch_list:
             if op.get("path") == "/id" and isinstance(op.get("value"), str):
                 return op.get("value")
@@ -862,11 +831,11 @@ def apply(
             sid = get_source_form_id(entry)
             if sid:
                 with handle_api_errors(f"Could not fetch label for source form {sid}"):
-                    source_schema = client.api.get_form_schema(sid)
+                    source_schema = await client.get_form_schema_get(sid)
                     entry["form_label"] = source_schema.label
 
     def find_target_forms_in_db(tree, entry, multi_mode):
-        forms = [res for res in tree.resources if res.type == DatabaseTreeResourceType.FORM]
+        forms = [res for res in tree.resources if res.type == "FORM"]
         target_ids = set()
         results = []
 
@@ -905,9 +874,9 @@ def apply(
         return results
 
     planned_updates = []
-    translators = {}
+    translators: Dict[str, SchemaIdTranslator] = {}
 
-    def get_translator(source_form_id):
+    async def get_translator(source_form_id: str) -> SchemaIdTranslator:
         if source_form_id not in translators:
             with handle_api_errors(f"Could not initialize translator for source form {source_form_id}"):
                 translators[source_form_id] = SchemaIdTranslator(client, source_form_id)
@@ -983,11 +952,11 @@ def apply(
         for db_id in target_database_ids:
             progress.update(task, description=f"Simulating patches for {db_id}...")
             with handle_api_errors(f"Could not simulate patches for {db_id}"):
-                target_tree = client.api.get_database_tree(db_id)
-                forms_in_db = [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM]
+                target_tree = await client.get_database_tree_get(db_id)
+                forms_in_db = [res for res in target_tree.resources if res.type == "FORM"]
 
                 # Group entries by target form
-                form_to_entries = {f.id: [] for f in forms_in_db}
+                form_to_entries: Dict[str, List[Dict[str, Any]]] = {f.id: [] for f in forms_in_db}
                 for entry in patch_entries:
                     matched_forms = find_target_forms_in_db(target_tree, entry, multi)
                     for mf in matched_forms:
@@ -1000,11 +969,11 @@ def apply(
                         continue
 
                     # 1. Fetch current schema
-                    schema = client.api.get_form_schema(form_res.id)
-                    schema_dict = schema.model_dump()
+                    schema = await client.get_form_schema_get(form_res.id)
+                    schema_dict = schema.model_dump(by_alias=True)
 
                     # 2. Semantic conversion (list to dict keyed by code/id)
-                    schema_dict["elements"] = {e["code"] or e["id"]: e for e in schema_dict["elements"]}
+                    schema_dict["elements"] = {(e.get("code") or e["id"]): e for e in schema_dict["elements"]}
                     original_elements = schema_dict["elements"].copy()
 
                     current_schema_dict = schema_dict
@@ -1019,7 +988,7 @@ def apply(
                         # Translate IDs if source context is available
                         sid = get_source_form_id(entry)
                         if sid:
-                            translator = get_translator(sid)
+                            translator = await get_translator(sid)
                             report = translator.translate_schema(current_schema_dict, db_id)
                             current_schema_dict = report.translated_schema
                             unresolved_count += len(report.unresolved_source_form_ids) + len(
@@ -1065,13 +1034,13 @@ def apply(
 
     for up in planned_updates:
         table.add_row(
-            up["db_id"],
-            up["form_id"],
-            up["form_label"],
+            str(up["db_id"]),
+            str(up["form_id"]),
+            str(up["form_label"]),
             str(up["patches_applied"]),
             f"{up['unresolved_count']} ({up['unresolved_preview']})" if up["unresolved_count"] else "0",
-            up["change_preview"],
-            up["schema_preview"]
+            str(up["change_preview"]),
+            str(up["schema_preview"])
         )
 
     console.print(table)
@@ -1099,11 +1068,21 @@ def apply(
         for up in planned_updates:
             status.update(f"Updating {up['form_label']} in {up['db_id']}...")
             # Reverse semantic conversion
-            final_dict = up["patched_schema_dict"]
-            final_dict["elements"] = list(final_dict["elements"].values())
+            final_dict = cast(Dict[str, Any], up["patched_schema_dict"])
+
+            # Map semantic elements back to list for model validation
+            elements_list = list(final_dict["elements"].values())
+
+            # Ensure the dict has the camelCase keys expected by FormSchema.model_validate
+            final_dict["schemaVersion"] = final_dict.get("schemaVersion") or final_dict.get("schema_version") or 1
+            final_dict["databaseId"] = final_dict.get("databaseId") or final_dict.get("database_id")
+            final_dict["recordLabelFieldId"] = final_dict.get("recordLabelFieldId") or final_dict.get(
+                "record_label_field_id")
+            final_dict["parentFormId"] = final_dict.get("parentFormId") or final_dict.get("parent_form_id")
+            final_dict["elements"] = elements_list
 
             patched_schema = FormSchema.model_validate(final_dict)
-            client.api.update_form_schema(patched_schema)
+            await client.update_form_schema_post(str(up["form_id"]), patched_schema)
             console.print(
                 f"[green]Successfully patched form '{up['form_label']}' ({up['form_id']}) in database {up['db_id']}.[/green]")
 

@@ -1154,10 +1154,6 @@
           "ownerRef": {
             "$ref": "#/components/schemas/OwnerRef"
           },
-          "billingAccountId": {
-            "title": "Billingaccountid",
-            "type": "int64"
-          },
           "language": {
             "title": "Language",
             "type": "string"

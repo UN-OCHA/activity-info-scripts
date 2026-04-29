@@ -1,7 +1,6 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, cast
 
-from api import ActivityInfoClient
-from api.models import DatabaseTree, DatabaseTreeResourceType, Resource, FieldType, FormSchema
+from activityinfo.client import DatabaseTree, Resource, DefaultApi, FormSchema
 
 # Folders prefixed with these numbers are considered 'Data' folders in our standard structure
 DATA_FOLDER_PREFIXES = ["3", "4", "5", "6"]
@@ -24,16 +23,16 @@ def filter_data_forms(tree: DatabaseTree, folder_id: str) -> List[Resource]:
     # 1. Identify valid parent folders
     top_level_folders = [
         res for res in tree.resources
-        if res.type == DatabaseTreeResourceType.FOLDER
-           and res.parentId == folder_id
+        if res.type == "FOLDER"
+           and res.parent_id == folder_id
            and res.label.startswith(tuple(DATA_FOLDER_PREFIXES))
     ]
 
     # 2. Return forms that reside within those folders
     return [
         res for res in tree.resources
-        if res.type == DatabaseTreeResourceType.FORM
-           and res.parentId in [folder.id for folder in top_level_folders]
+        if res.type == "FORM"
+           and res.parent_id in [folder.id for folder in top_level_folders]
     ]
 
 
@@ -85,7 +84,7 @@ def find_all_resources_by_prefix(items: List[Resource], prefix: str) -> List[Res
     return [item for item in items if item.label.startswith(prefix)]
 
 
-def get_records_with_multiref(client: ActivityInfoClient, form_id: str):
+async def get_records_with_multiref(client: DefaultApi, form_id: str) -> List[Dict[str, Any]]:
     """
     Fetch records for a form and resolve multi-select reference fields.
     
@@ -94,19 +93,19 @@ def get_records_with_multiref(client: ActivityInfoClient, form_id: str):
     replaces those IDs with the actual record dictionaries for easier processing.
     
     Args:
-        client: An authenticated ActivityInfoClient.
+        client: An authenticated DefaultApi.
         form_id: The ID of the form to fetch records from.
         
     Returns:
         A list of record dictionaries with resolved multi-select references.
     """
-    base_records = client.api.get_form(form_id)
-    schema = client.api.get_form_schema(form_id)
+    base_records = cast(List[Dict[str, Any]], await client.get_form_get(form_id))
+    schema = await client.get_form_schema_get(form_id)
 
     # Identify fields that use multi-select references
     multiref_fields = [
         field for field in schema.elements
-        if field.type == FieldType.multiselectreference
+        if field.type == "reference"
     ]
 
     for field in multiref_fields:
@@ -118,7 +117,7 @@ def get_records_with_multiref(client: ActivityInfoClient, form_id: str):
 
         # Fetch the records of the referenced form to build a lookup map
         ref_form_id = field.type_parameters.range[0]["formId"]
-        ref_records = client.api.get_form(ref_form_id)
+        ref_records = cast(List[Dict[str, Any]], await client.get_form_get(ref_form_id))
         ref_records_map = {rec["@id"]: rec for rec in ref_records}
 
         # The ID key is usually 'CODE.@id' in the API response

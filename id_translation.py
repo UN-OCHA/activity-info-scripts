@@ -2,7 +2,6 @@ import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
-from api.models import DatabaseTreeResourceType
 from common import find_resource_by_prefix
 
 
@@ -49,7 +48,7 @@ class SchemaIdTranslator:
         self.source_forms_by_id: Dict[str, str] = {
             res.id: res.label
             for res in source_tree.resources
-            if res.type == DatabaseTreeResourceType.FORM
+            if res.type == "FORM"
         }
         self.source_form_ids: Set[str] = set(self.source_forms_by_id.keys())
 
@@ -128,7 +127,7 @@ class SchemaIdTranslator:
         target_tree = self._get_target_tree(target_db_id)
         target_forms = [
             res for res in target_tree.resources
-            if res.type == DatabaseTreeResourceType.FORM
+            if res.type == "FORM"
         ]
         
         form_id_map = {}
@@ -190,7 +189,7 @@ class SchemaIdTranslator:
         target_tree = self._get_target_tree(target_db_id)
         target_forms = [
             res for res in target_tree.resources
-            if res.type == DatabaseTreeResourceType.FORM
+            if res.type == "FORM"
         ]
 
         needed_form_labels = {pair[0] for pair in needed_pairs}
