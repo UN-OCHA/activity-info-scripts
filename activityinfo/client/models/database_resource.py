@@ -45,6 +45,16 @@ class DatabaseResource(BaseModel):
             raise ValueError("must be one of enum values ('DATABASE', 'FOLDER', 'REPORT', 'FORM', 'SUB_FORM')")
         return value
 
+    @field_validator('visibility')
+    def visibility_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['PUBLIC', 'PRIVATE', 'REFERENCE']):
+            raise ValueError("must be one of enum values ('PUBLIC', 'PRIVATE', 'REFERENCE')")
+        return value
+
     model_config = ConfigDict(
         validate_by_name=True,
         validate_by_alias=True,
@@ -84,14 +94,6 @@ class DatabaseResource(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of visibility
-        if self.visibility:
-            _dict['visibility'] = self.visibility.to_dict()
-        # set to None if visibility (nullable) is None
-        # and model_fields_set contains the field
-        if self.visibility is None and "visibility" in self.model_fields_set:
-            _dict['visibility'] = None
-
         return _dict
 
     @classmethod
@@ -108,7 +110,7 @@ class DatabaseResource(BaseModel):
             "type": obj.get("type"),
             "parentId": obj.get("parentId"),
             "label": obj.get("label"),
-            "visibility": AnyOf.from_dict(obj["visibility"]) if obj.get("visibility") is not None else None,
+            "visibility": obj.get("visibility"),
             "icon": obj.get("icon")
         })
         return _obj

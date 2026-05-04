@@ -17,9 +17,8 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
-from activityinfo.client.models.security_category import SecurityCategory
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -28,10 +27,17 @@ class Permission(BaseModel):
     """
     An individual operation (add/edit/view) and any associated record-level condition, either associated with a Grant for a specific database resource, or assigned to a role directly for higher-level database operations.
     """ # noqa: E501
-    operation: Optional[StrictStr] = Field(description="One of a number of predetermined values")
+    operation: StrictStr = Field(description="One of a number of predetermined values")
     filter: Optional[StrictStr] = Field(default=None, description="A formula which restricts a permission to specific records. Only record-level permissions can be filtered.")
-    security_categories: Optional[List[SecurityCategory]] = Field(default=None, description="The security categories that have been defined for this permission.", alias="securityCategories")
+    security_categories: Optional[List[StrictStr]] = Field(default=None, description="The security categories that have been defined for this permission.", alias="securityCategories")
     __properties: ClassVar[List[str]] = ["operation", "filter", "securityCategories"]
+
+    @field_validator('operation')
+    def operation_validate_enum(cls, value):
+        """Validates the enum"""
+        if value not in set(['VIEW', 'DISCOVER', 'ADD_RECORD', 'EDIT_RECORD', 'MANAGE_REFERENCE_DATA', 'DELETE_RECORD', 'BULK_DELETE', 'EXPORT_RECORDS', 'MANAGE_USERS', 'LOCK_RECORDS', 'ADD_RESOURCE', 'EDIT_RESOURCE', 'DELETE_RESOURCE', 'MANAGE_COLLECTION_LINKS', 'AUDIT', 'SHARE_REPORTS', 'PUBLISH_REPORTS', 'MANAGE_ROLES', 'MANAGE_AUTOMATIONS', 'MANAGE_TRANSLATIONS', 'RESOLVE_DUPLICATES', 'SHARE_VIEWS', 'MANAGE_IMPORT_CONFIGS', 'VIEW_FIELD', 'EDIT_FIELD']):
+            raise ValueError("must be one of enum values ('VIEW', 'DISCOVER', 'ADD_RECORD', 'EDIT_RECORD', 'MANAGE_REFERENCE_DATA', 'DELETE_RECORD', 'BULK_DELETE', 'EXPORT_RECORDS', 'MANAGE_USERS', 'LOCK_RECORDS', 'ADD_RESOURCE', 'EDIT_RESOURCE', 'DELETE_RESOURCE', 'MANAGE_COLLECTION_LINKS', 'AUDIT', 'SHARE_REPORTS', 'PUBLISH_REPORTS', 'MANAGE_ROLES', 'MANAGE_AUTOMATIONS', 'MANAGE_TRANSLATIONS', 'RESOLVE_DUPLICATES', 'SHARE_VIEWS', 'MANAGE_IMPORT_CONFIGS', 'VIEW_FIELD', 'EDIT_FIELD')")
+        return value
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -72,21 +78,6 @@ class Permission(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of operation
-        if self.operation:
-            _dict['operation'] = self.operation.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of each item in security_categories (list)
-        _items = []
-        if self.security_categories:
-            for _item_security_categories in self.security_categories:
-                if _item_security_categories:
-                    _items.append(_item_security_categories.to_dict())
-            _dict['securityCategories'] = _items
-        # set to None if operation (nullable) is None
-        # and model_fields_set contains the field
-        if self.operation is None and "operation" in self.model_fields_set:
-            _dict['operation'] = None
-
         return _dict
 
     @classmethod
@@ -99,9 +90,9 @@ class Permission(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "operation": AnyOf.from_dict(obj["operation"]) if obj.get("operation") is not None else None,
+            "operation": obj.get("operation"),
             "filter": obj.get("filter"),
-            "securityCategories": [SecurityCategory.from_dict(_item) for _item in obj["securityCategories"]] if obj.get("securityCategories") is not None else None
+            "securityCategories": obj.get("securityCategories")
         })
         return _obj
 

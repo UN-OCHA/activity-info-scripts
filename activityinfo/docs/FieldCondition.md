@@ -6,7 +6,7 @@ A field-level condition associated with a Grant for a single database resource (
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**operations** | [**List[Optional[AnyOf]]**](AnyOf.md) | The field operations (view and/or edit) allowed for this condition | 
+**operations** | **List[str]** | The field operations (view and/or edit) allowed for this condition | 
 **criteria** | **str** | Whether the condition requires all or any of the condition&#39;s rules to be met | 
 **rules** | [**List[FieldConditionRule]**](FieldConditionRule.md) | The condition&#39;s rules | 
 

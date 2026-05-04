@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List
 from activityinfo.client.models.field_condition_rule import FieldConditionRule
 from typing import Optional, Set
 from typing_extensions import Self
@@ -28,10 +28,18 @@ class FieldCondition(BaseModel):
     """
     A field-level condition associated with a Grant for a single database resource (database, folder, form, subform)
     """ # noqa: E501
-    operations: List[Optional[StrictStr]] = Field(description="The field operations (view and/or edit) allowed for this condition")
+    operations: List[StrictStr] = Field(description="The field operations (view and/or edit) allowed for this condition")
     criteria: StrictStr = Field(description="Whether the condition requires all or any of the condition's rules to be met")
     rules: List[FieldConditionRule] = Field(description="The condition's rules")
     __properties: ClassVar[List[str]] = ["operations", "criteria", "rules"]
+
+    @field_validator('operations')
+    def operations_validate_enum(cls, value):
+        """Validates the enum"""
+        for i in value:
+            if i not in set(['VIEW_FIELD', 'EDIT_FIELD']):
+                raise ValueError("each list item must be one of ('VIEW_FIELD', 'EDIT_FIELD')")
+        return value
 
     @field_validator('criteria')
     def criteria_validate_enum(cls, value):
@@ -79,13 +87,6 @@ class FieldCondition(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of each item in operations (list)
-        _items = []
-        if self.operations:
-            for _item_operations in self.operations:
-                if _item_operations:
-                    _items.append(_item_operations.to_dict())
-            _dict['operations'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in rules (list)
         _items = []
         if self.rules:
@@ -105,7 +106,7 @@ class FieldCondition(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "operations": [AnyOf.from_dict(_item) for _item in obj["operations"]] if obj.get("operations") is not None else None,
+            "operations": obj.get("operations"),
             "criteria": obj.get("criteria"),
             "rules": [FieldConditionRule.from_dict(_item) for _item in obj["rules"]] if obj.get("rules") is not None else None
         })

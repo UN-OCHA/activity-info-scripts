@@ -6,9 +6,9 @@ An individual operation (add/edit/view) and any associated record-level conditio
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**operation** | [**AnyOf**](AnyOf.md) | One of a number of predetermined values | 
+**operation** | **str** | One of a number of predetermined values | 
 **filter** | **str** | A formula which restricts a permission to specific records. Only record-level permissions can be filtered. | [optional] 
-**security_categories** | [**List[SecurityCategory]**](SecurityCategory.md) | The security categories that have been defined for this permission. | [optional] 
+**security_categories** | **List[str]** | The security categories that have been defined for this permission. | [optional] 
 
 ## Example
 

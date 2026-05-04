@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
@@ -28,10 +28,21 @@ class AuditDatabaseRequest(BaseModel):
     AuditDatabaseRequest
     """ # noqa: E501
     resource_filter: Optional[StrictStr] = Field(default=None, description="The id of a form, folder, or report. If provided, the result will only include events that relate to this resource.", alias="resourceFilter")
-    type_filter: Optional[List[Optional[StrictStr]]] = Field(default=None, description="Only include events of the given types.", alias="typeFilter")
+    type_filter: Optional[List[StrictStr]] = Field(default=None, description="Only include events of the given types.", alias="typeFilter")
     start_time: StrictInt = Field(description="The start time of the request, in milliseconds since the unix epoch. The results will include the first 100 - 150 events that occurred before this time.", alias="startTime")
     end_time: Optional[StrictInt] = Field(default=None, description="The end time of the request, in milliseconds since the unix epoch. The results will include the events that occurred after the end time and before the start time.", alias="endTime")
     __properties: ClassVar[List[str]] = ["resourceFilter", "typeFilter", "startTime", "endTime"]
+
+    @field_validator('type_filter')
+    def type_filter_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        for i in value:
+            if i not in set(['RECORD', 'FORM', 'REPORT', 'FOLDER', 'DATABASE', 'LOCK', 'USER_PERMISSION', 'ROLE', 'AUTOMATION']):
+                raise ValueError("each list item must be one of ('RECORD', 'FORM', 'REPORT', 'FOLDER', 'DATABASE', 'LOCK', 'USER_PERMISSION', 'ROLE', 'AUTOMATION')")
+        return value
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -72,13 +83,6 @@ class AuditDatabaseRequest(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of each item in type_filter (list)
-        _items = []
-        if self.type_filter:
-            for _item_type_filter in self.type_filter:
-                if _item_type_filter:
-                    _items.append(_item_type_filter.to_dict())
-            _dict['typeFilter'] = _items
         return _dict
 
     @classmethod
@@ -92,7 +96,7 @@ class AuditDatabaseRequest(BaseModel):
 
         _obj = cls.model_validate({
             "resourceFilter": obj.get("resourceFilter"),
-            "typeFilter": [AnyOf.from_dict(_item) for _item in obj["typeFilter"]] if obj.get("typeFilter") is not None else None,
+            "typeFilter": obj.get("typeFilter"),
             "startTime": obj.get("startTime"),
             "endTime": obj.get("endTime")
         })

@@ -19,7 +19,7 @@ Name | Type | Description | Notes
 **read_only** | **bool** | If true, the value for this field cannot be modified by any user (but it can be set by default on record add). | [optional] [default to False]
 **default_value** | **str** | The default value for this field, set on record add | [optional] 
 **default_value_formula** | **str** | An ActivityInfo formula that generates the default value for this field, set on record add | [optional] 
-**type** | [**AnyOf**](AnyOf.md) | The field type. | 
+**type** | **str** | The field type. | 
 **security_category_id** | **str** |  | [optional] 
 **type_parameters** | [**FormSchemaElementParameter**](FormSchemaElementParameter.md) | Additional type-specific properties of this field. | [optional] 
 

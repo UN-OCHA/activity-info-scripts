@@ -52,6 +52,16 @@ class FormSchemaElementParameter(BaseModel):
     translation_config: Optional[FormSchemaElementParameterTranslation] = Field(default=None, description="For fields of type 'FREE_TEXT', 'NARRATIVE' or 'calculated', the translation config specifies which other field this is a translation of, and into which language.", alias="translationConfig")
     __properties: ClassVar[List[str]] = ["prefixFormula", "digits", "units", "aggregation", "inputMask", "barcode", "formula", "cardinality", "values", "presentation", "range", "lookupConfigs", "formId", "fieldId", "captureMethods", "requiredAccuracy", "manualEntryAllowed", "indentationLevel", "translationConfig"]
 
+    @field_validator('cardinality')
+    def cardinality_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['single', 'multiple']):
+            raise ValueError("must be one of enum values ('single', 'multiple')")
+        return value
+
     @field_validator('presentation')
     def presentation_validate_enum(cls, value):
         """Validates the enum"""
@@ -112,9 +122,6 @@ class FormSchemaElementParameter(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of cardinality
-        if self.cardinality:
-            _dict['cardinality'] = self.cardinality.to_dict()
         # override the default output from pydantic by calling `to_dict()` of each item in values (list)
         _items = []
         if self.values:
@@ -139,11 +146,6 @@ class FormSchemaElementParameter(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of translation_config
         if self.translation_config:
             _dict['translationConfig'] = self.translation_config.to_dict()
-        # set to None if cardinality (nullable) is None
-        # and model_fields_set contains the field
-        if self.cardinality is None and "cardinality" in self.model_fields_set:
-            _dict['cardinality'] = None
-
         return _dict
 
     @classmethod
@@ -163,7 +165,7 @@ class FormSchemaElementParameter(BaseModel):
             "inputMask": obj.get("inputMask"),
             "barcode": obj.get("barcode"),
             "formula": obj.get("formula"),
-            "cardinality": AnyOf.from_dict(obj["cardinality"]) if obj.get("cardinality") is not None else None,
+            "cardinality": obj.get("cardinality"),
             "values": [FormSchemaElementParameterValue.from_dict(_item) for _item in obj["values"]] if obj.get("values") is not None else None,
             "presentation": obj.get("presentation"),
             "range": [RangeInner.from_dict(_item) for _item in obj["range"]] if obj.get("range") is not None else None,

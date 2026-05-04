@@ -3,19 +3,19 @@ name = "client"
 version = "1.0.0"
 description = "ActivityInfo API"
 authors = [
-    { name = "OpenAPI Generator Community", email = "team@openapitools.org" },
+  {name = "OpenAPI Generator Community",email = "team@openapitools.org"},
 ]
 readme = "README.md"
 keywords = ["OpenAPI", "OpenAPI-Generator", "ActivityInfo API"]
 requires-python = ">=3.9"
 
 dependencies = [
-    "python-dateutil (>=2.8.2)",
-    "httpx (>=0.28.1)",
-    "aiohttp (>=3.8.4)",
-    "aiohttp-retry (>=2.8.3)",
-    "pydantic (>=2.11)",
-    "typing-extensions (>=4.7.1)",
+  "python-dateutil (>=2.8.2)",
+  "httpx (>=0.28.1)",
+  "aiohttp (>=3.8.4)",
+  "aiohttp-retry (>=2.8.3)",
+  "pydantic (>=2.11)",
+  "typing-extensions (>=4.7.1)",
 ]
 
 [project.urls]
@@ -37,18 +37,14 @@ mypy = ">= 1.5"
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-include = ["client*"]
-exclude = ["test*"]
-
 [tool.pylint.'MESSAGES CONTROL']
 extension-pkg-whitelist = "pydantic"
 
 [tool.mypy]
 files = [
-    "client",
-    #"test",  # auto-generated tests
-    "tests", # hand-written tests
+  "client",
+  #"test",  # auto-generated tests
+  "tests", # hand-written tests
 ]
 # TODO: enable "strict" once all these individual checks are passing
 # strict = true
@@ -84,7 +80,7 @@ disallow_any_generics = true
 
 [[tool.mypy.overrides]]
 module = [
-    "client.configuration",
+  "client.configuration",
 ]
 warn_unused_ignores = true
 strict_equality = true

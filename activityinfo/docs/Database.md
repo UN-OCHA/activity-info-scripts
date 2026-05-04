@@ -23,7 +23,7 @@ Name | Type | Description | Notes
 **resources** | [**List[DatabaseResource]**](DatabaseResource.md) | The set of resources (folders, forms, and subforms) that belong to this database. | 
 **locks** | [**List[DatabaseLock]**](DatabaseLock.md) | The record locks that have been defined on this database. | [optional] 
 **grants** | [**List[Grant]**](Grant.md) | The direct (non-role) permission grants that have been made to the requesting user for this database. | [optional] 
-**billing_account_id** | **str** |  | 
+**billing_account_id** | **int** |  | 
 **billing_plan** | **str** | The billing plan name under which this database falls. The billing plan can have an affect on which features are avialable within this database. | 
 
 ## Example

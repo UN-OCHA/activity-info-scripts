@@ -8,7 +8,7 @@ Name | Type | Description | Notes
 **id** | **str** | The job&#39;s id | [optional] 
 **user_id** | **str** | The id of the user who started the job | [optional] 
 **descriptor** | **Dict[str, object]** | The job descriptor used to start this job | [optional] 
-**state** | [**AnyOf**](AnyOf.md) | The job&#39;s current state | [optional] 
+**state** | **str** | The job&#39;s current state | [optional] 
 **job_result** | **Dict[str, object]** |  | [optional] 
 **percent_complete** | **float** |  | [optional] 
 **error** | [**MessageResponse**](MessageResponse.md) | If the job state is FAILED, the reason for the failure. | [optional] 

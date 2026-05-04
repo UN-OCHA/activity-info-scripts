@@ -12,7 +12,7 @@ Name | Type | Description | Notes
 **input_mask** | **str** | For fields of type &#39;FREE_TEXT&#39; (user type &#39;Text&#39; or &#39;Barcode&#39;), provides a pattern-based input mask | [optional] 
 **barcode** | **bool** | For fields of type &#39;FREE_TEXT&#39; (user type &#39;Text&#39; or &#39;Barcode&#39;), true when field is barcode | [optional] 
 **formula** | **str** | For fields of type &#39;calculated&#39;, provides the formula for the field&#39;s value | [optional] 
-**cardinality** | [**AnyOf**](AnyOf.md) | For fields of type &#39;enumerated&#39; (user type &#39;Single selection&#39; or &#39;Multiple selection&#39;), indicates whether single or multiple select | [optional] 
+**cardinality** | **str** | For fields of type &#39;enumerated&#39; (user type &#39;Single selection&#39; or &#39;Multiple selection&#39;), indicates whether single or multiple select | [optional] 
 **values** | [**List[FormSchemaElementParameterValue]**](FormSchemaElementParameterValue.md) | For fields of type &#39;enumerated&#39; (user type &#39;Single selection&#39; or &#39;Multiple selection&#39;), provided the list of valid choices | [optional] 
 **presentation** | **str** | For fields of type &#39;enumerated&#39; (user type &#39;Single selection&#39; or &#39;Multiple selection&#39;), indicate whether shown as dropdown or not. Only relevant for multiple selection, i.e. where cardinality: multiple | [optional] 
 **range** | [**List[RangeInner]**](RangeInner.md) | For fields of type &#39;reference&#39; or &#39;multiselectreference&#39; (user type &#39;Reference&#39;, &#39;User&#39;, or &#39;Multiple Reference&#39;), provides the id of the form that this field references. For &#39;User&#39;, this reference is &#39;{dbid}@users&#39;. | [optional] 

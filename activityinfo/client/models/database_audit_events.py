@@ -39,7 +39,7 @@ class DatabaseAuditEvents(BaseModel):
     database_user_id: Optional[StrictStr] = Field(default=None, description="For user permission events, this is the id of the user who was affected.", alias="databaseUserId")
     description: StrictStr = Field(description="A human-readable description of the event.")
     type: List[StrictStr] = Field(description="The type of event. Values: DATABASE_TREE, USER, RECORD, FORM, AUTOMATION")
-    resource_types: List[Optional[StrictStr]] = Field(description="One or more type(s) of the resource(s) affected", alias="resourceTypes")
+    resource_types: List[StrictStr] = Field(description="One or more type(s) of the resource(s) affected", alias="resourceTypes")
     resource_id: StrictStr = Field(description="Id of the affected resource OR id of the database if more than one resource type is present", alias="resourceId")
     added: StrictBool = Field(description="True if this event concerns an addition.")
     updated: StrictBool = Field(description="True if this event concerns an update.")
@@ -56,6 +56,14 @@ class DatabaseAuditEvents(BaseModel):
         for i in value:
             if i not in set(['DATABASE_TREE', 'USER', 'RECORD', 'FORM', 'AUTOMATION']):
                 raise ValueError("each list item must be one of ('DATABASE_TREE', 'USER', 'RECORD', 'FORM', 'AUTOMATION')")
+        return value
+
+    @field_validator('resource_types')
+    def resource_types_validate_enum(cls, value):
+        """Validates the enum"""
+        for i in value:
+            if i not in set(['RECORD', 'FORM', 'REPORT', 'FOLDER', 'DATABASE', 'LOCK', 'USER_PERMISSION', 'ROLE', 'AUTOMATION']):
+                raise ValueError("each list item must be one of ('RECORD', 'FORM', 'REPORT', 'FOLDER', 'DATABASE', 'LOCK', 'USER_PERMISSION', 'ROLE', 'AUTOMATION')")
         return value
 
     model_config = ConfigDict(
@@ -103,13 +111,6 @@ class DatabaseAuditEvents(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of record_ref
         if self.record_ref:
             _dict['recordRef'] = self.record_ref.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of each item in resource_types (list)
-        _items = []
-        if self.resource_types:
-            for _item_resource_types in self.resource_types:
-                if _item_resource_types:
-                    _items.append(_item_resource_types.to_dict())
-            _dict['resourceTypes'] = _items
         # override the default output from pydantic by calling `to_dict()` of automation
         if self.automation:
             _dict['automation'] = self.automation.to_dict()
@@ -134,7 +135,7 @@ class DatabaseAuditEvents(BaseModel):
             "databaseUserId": obj.get("databaseUserId"),
             "description": obj.get("description"),
             "type": obj.get("type"),
-            "resourceTypes": [AnyOf.from_dict(_item) for _item in obj["resourceTypes"]] if obj.get("resourceTypes") is not None else None,
+            "resourceTypes": obj.get("resourceTypes"),
             "resourceId": obj.get("resourceId"),
             "added": obj.get("added"),
             "updated": obj.get("updated"),

@@ -14,7 +14,7 @@ Name | Type | Description | Notes
 **database_user_id** | **str** | For user permission events, this is the id of the user who was affected. | [optional] 
 **description** | **str** | A human-readable description of the event. | 
 **type** | **List[str]** | The type of event. Values: DATABASE_TREE, USER, RECORD, FORM, AUTOMATION | 
-**resource_types** | [**List[Optional[AnyOf]]**](AnyOf.md) | One or more type(s) of the resource(s) affected | 
+**resource_types** | **List[str]** | One or more type(s) of the resource(s) affected | 
 **resource_id** | **str** | Id of the affected resource OR id of the database if more than one resource type is present | 
 **added** | **bool** | True if this event concerns an addition. | 
 **updated** | **bool** | True if this event concerns an update. | 

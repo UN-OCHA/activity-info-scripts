@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from datetime import date
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional, Union
 from activityinfo.client.models.user_role import UserRole
 from typing import Optional, Set
@@ -45,6 +45,36 @@ class User(BaseModel):
     last_login_time: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, alias="lastLoginTime")
     activation_status: Optional[StrictStr] = Field(default=None, description="The user's current account status.", alias="activationStatus")
     __properties: ClassVar[List[str]] = ["databaseId", "userId", "name", "email", "role", "version", "inviteDate", "inviteTime", "deliveryStatus", "inviteAccepted", "locked", "userLicenseType", "lastLoginDate", "lastLoginTime", "activationStatus"]
+
+    @field_validator('delivery_status')
+    def delivery_status_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['UNKNOWN', 'OK', 'HARD_BOUNCE', 'SPAM_COMPLAINT', 'MANUAL_SUPPRESSION']):
+            raise ValueError("must be one of enum values ('UNKNOWN', 'OK', 'HARD_BOUNCE', 'SPAM_COMPLAINT', 'MANUAL_SUPPRESSION')")
+        return value
+
+    @field_validator('user_license_type')
+    def user_license_type_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['NONE', 'BASIC', 'FULL']):
+            raise ValueError("must be one of enum values ('NONE', 'BASIC', 'FULL')")
+        return value
+
+    @field_validator('activation_status')
+    def activation_status_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['NO_ACCOUNT', 'PENDING', 'ACTIVE', 'INACTIVE', 'CLOSED']):
+            raise ValueError("must be one of enum values ('NO_ACCOUNT', 'PENDING', 'ACTIVE', 'INACTIVE', 'CLOSED')")
+        return value
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -88,30 +118,6 @@ class User(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of role
         if self.role:
             _dict['role'] = self.role.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of delivery_status
-        if self.delivery_status:
-            _dict['deliveryStatus'] = self.delivery_status.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of user_license_type
-        if self.user_license_type:
-            _dict['userLicenseType'] = self.user_license_type.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of activation_status
-        if self.activation_status:
-            _dict['activationStatus'] = self.activation_status.to_dict()
-        # set to None if delivery_status (nullable) is None
-        # and model_fields_set contains the field
-        if self.delivery_status is None and "delivery_status" in self.model_fields_set:
-            _dict['deliveryStatus'] = None
-
-        # set to None if user_license_type (nullable) is None
-        # and model_fields_set contains the field
-        if self.user_license_type is None and "user_license_type" in self.model_fields_set:
-            _dict['userLicenseType'] = None
-
-        # set to None if activation_status (nullable) is None
-        # and model_fields_set contains the field
-        if self.activation_status is None and "activation_status" in self.model_fields_set:
-            _dict['activationStatus'] = None
-
         return _dict
 
     @classmethod
@@ -132,13 +138,13 @@ class User(BaseModel):
             "version": obj.get("version"),
             "inviteDate": obj.get("inviteDate"),
             "inviteTime": obj.get("inviteTime"),
-            "deliveryStatus": AnyOf.from_dict(obj["deliveryStatus"]) if obj.get("deliveryStatus") is not None else None,
+            "deliveryStatus": obj.get("deliveryStatus"),
             "inviteAccepted": obj.get("inviteAccepted"),
             "locked": obj.get("locked"),
-            "userLicenseType": AnyOf.from_dict(obj["userLicenseType"]) if obj.get("userLicenseType") is not None else None,
+            "userLicenseType": obj.get("userLicenseType"),
             "lastLoginDate": obj.get("lastLoginDate"),
             "lastLoginTime": obj.get("lastLoginTime"),
-            "activationStatus": AnyOf.from_dict(obj["activationStatus"]) if obj.get("activationStatus") is not None else None
+            "activationStatus": obj.get("activationStatus")
         })
         return _obj
 

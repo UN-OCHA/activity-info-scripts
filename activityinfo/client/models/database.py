@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from activityinfo.client.models.database_lock import DatabaseLock
 from activityinfo.client.models.database_resource import DatabaseResource
@@ -52,7 +52,7 @@ class Database(BaseModel):
     resources: List[DatabaseResource] = Field(description="The set of resources (folders, forms, and subforms) that belong to this database.")
     locks: Optional[List[DatabaseLock]] = Field(default=None, description="The record locks that have been defined on this database.")
     grants: Optional[List[Grant]] = Field(default=None, description="The direct (non-role) permission grants that have been made to the requesting user for this database.")
-    billing_account_id: StrictStr = Field(alias="billingAccountId")
+    billing_account_id: StrictInt = Field(alias="billingAccountId")
     billing_plan: StrictStr = Field(description="The billing plan name under which this database falls. The billing plan can have an affect on which features are avialable within this database.", alias="billingPlan")
     __properties: ClassVar[List[str]] = ["databaseId", "userId", "version", "label", "description", "ownerRef", "language", "originalLanguage", "languages", "suspended", "role", "roles", "storage", "publishedTemplate", "securityCategories", "resources", "locks", "grants", "billingAccountId", "billingPlan"]
 

@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 **type** | **str** | The resource type. Values: DATABASE, FOLDER, REPORT, FORM, SUB_FORM | [optional] 
 **parent_id** | **str** | The id of this resource&#39;s parent, for example, a folder id. If this is a top-level folder or form, then the parentId will be the id of the database itself. | [optional] 
 **label** | **str** | The resource&#39;s human-readable label. | [optional] 
-**visibility** | [**AnyOf**](AnyOf.md) | The resource&#39;s visibility. Values: PUBLIC, PRIVATE, REFERENCE | [optional] 
+**visibility** | **str** | The resource&#39;s visibility. Values: PUBLIC, PRIVATE, REFERENCE | [optional] 
 **icon** | **str** | Icon for the resource. | [optional] 
 
 ## Example

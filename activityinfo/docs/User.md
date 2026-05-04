@@ -13,13 +13,13 @@ Name | Type | Description | Notes
 **version** | **int** | A monotonically-increasing version number. This version is incremented each time a change is made to the users permissions. | [optional] 
 **invite_date** | **date** | The date on which the user was invited to this database. | [optional] 
 **invite_time** | **float** |  | [optional] 
-**delivery_status** | [**AnyOf**](AnyOf.md) |  | [optional] 
+**delivery_status** | **str** |  | [optional] 
 **invite_accepted** | **bool** | True if the user has accepted the invitation to create an ActivityInfo account. | [optional] 
 **locked** | **bool** | True if this user&#39;s account has been locked following too many failed authentication attempts. | [optional] 
-**user_license_type** | [**AnyOf**](AnyOf.md) | The type of user license required for this user, in this database. | [optional] 
+**user_license_type** | **str** | The type of user license required for this user, in this database. | [optional] 
 **last_login_date** | **date** | Date of last login on the platform. | [optional] 
 **last_login_time** | **float** |  | [optional] 
-**activation_status** | [**AnyOf**](AnyOf.md) | The user&#39;s current account status. | [optional] 
+**activation_status** | **str** | The user&#39;s current account status. | [optional] 
 
 ## Example
 

@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional, Union
 from activityinfo.client.models.message_response import MessageResponse
 from typing import Optional, Set
@@ -36,6 +36,16 @@ class JobStatus(BaseModel):
     percent_complete: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, alias="percentComplete")
     error: Optional[MessageResponse] = Field(default=None, description="If the job state is FAILED, the reason for the failure.")
     __properties: ClassVar[List[str]] = ["id", "userId", "descriptor", "state", "jobResult", "percentComplete", "error"]
+
+    @field_validator('state')
+    def state_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['STARTED', 'COMPLETED', 'FAILED']):
+            raise ValueError("must be one of enum values ('STARTED', 'COMPLETED', 'FAILED')")
+        return value
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -76,17 +86,9 @@ class JobStatus(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of state
-        if self.state:
-            _dict['state'] = self.state.to_dict()
         # override the default output from pydantic by calling `to_dict()` of error
         if self.error:
             _dict['error'] = self.error.to_dict()
-        # set to None if state (nullable) is None
-        # and model_fields_set contains the field
-        if self.state is None and "state" in self.model_fields_set:
-            _dict['state'] = None
-
         return _dict
 
     @classmethod
@@ -102,7 +104,7 @@ class JobStatus(BaseModel):
             "id": obj.get("id"),
             "userId": obj.get("userId"),
             "descriptor": obj.get("descriptor"),
-            "state": AnyOf.from_dict(obj["state"]) if obj.get("state") is not None else None,
+            "state": obj.get("state"),
             "jobResult": obj.get("jobResult"),
             "percentComplete": obj.get("percentComplete"),
             "error": MessageResponse.from_dict(obj["error"]) if obj.get("error") is not None else None

@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from activityinfo.client.models.form_schema_element_parameter import FormSchemaElementParameter
 from typing import Optional, Set
@@ -42,10 +42,17 @@ class FormSchemaElement(BaseModel):
     read_only: Optional[StrictBool] = Field(default=False, description="If true, the value for this field cannot be modified by any user (but it can be set by default on record add).", alias="readOnly")
     default_value: Optional[StrictStr] = Field(default=None, description="The default value for this field, set on record add", alias="defaultValue")
     default_value_formula: Optional[StrictStr] = Field(default=None, description="An ActivityInfo formula that generates the default value for this field, set on record add", alias="defaultValueFormula")
-    type: Optional[StrictStr] = Field(description="The field type.")
+    type: StrictStr = Field(description="The field type.")
     security_category_id: Optional[StrictStr] = Field(default=None, alias="securityCategoryId")
     type_parameters: Optional[FormSchemaElementParameter] = Field(default=None, description="Additional type-specific properties of this field.", alias="typeParameters")
     __properties: ClassVar[List[str]] = ["id", "code", "label", "description", "relevanceCondition", "validationCondition", "dataEntryVisible", "tableVisible", "required", "key", "unique", "readOnly", "defaultValue", "defaultValueFormula", "type", "securityCategoryId", "typeParameters"]
+
+    @field_validator('type')
+    def type_validate_enum(cls, value):
+        """Validates the enum"""
+        if value not in set(['serial', 'month', 'attachment', 'geopoint', 'FREE_TEXT', 'quantity', 'enumerated', 'multiselectreference', 'epiweek', 'subform', 'date', 'calculated', 'reversereference', 'reference', 'fortnight', 'section', 'NARRATIVE']):
+            raise ValueError("must be one of enum values ('serial', 'month', 'attachment', 'geopoint', 'FREE_TEXT', 'quantity', 'enumerated', 'multiselectreference', 'epiweek', 'subform', 'date', 'calculated', 'reversereference', 'reference', 'fortnight', 'section', 'NARRATIVE')")
+        return value
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -86,17 +93,9 @@ class FormSchemaElement(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of type
-        if self.type:
-            _dict['type'] = self.type.to_dict()
         # override the default output from pydantic by calling `to_dict()` of type_parameters
         if self.type_parameters:
             _dict['typeParameters'] = self.type_parameters.to_dict()
-        # set to None if type (nullable) is None
-        # and model_fields_set contains the field
-        if self.type is None and "type" in self.model_fields_set:
-            _dict['type'] = None
-
         return _dict
 
     @classmethod
@@ -123,7 +122,7 @@ class FormSchemaElement(BaseModel):
             "readOnly": obj.get("readOnly") if obj.get("readOnly") is not None else False,
             "defaultValue": obj.get("defaultValue"),
             "defaultValueFormula": obj.get("defaultValueFormula"),
-            "type": AnyOf.from_dict(obj["type"]) if obj.get("type") is not None else None,
+            "type": obj.get("type"),
             "securityCategoryId": obj.get("securityCategoryId"),
             "typeParameters": FormSchemaElementParameter.from_dict(obj["typeParameters"]) if obj.get("typeParameters") is not None else None
         })

@@ -6,7 +6,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **resource_filter** | **str** | The id of a form, folder, or report. If provided, the result will only include events that relate to this resource. | [optional] 
-**type_filter** | [**List[Optional[AnyOf]]**](AnyOf.md) | Only include events of the given types. | [optional] 
+**type_filter** | **List[str]** | Only include events of the given types. | [optional] 
 **start_time** | **int** | The start time of the request, in milliseconds since the unix epoch. The results will include the first 100 - 150 events that occurred before this time. | 
 **end_time** | **int** | The end time of the request, in milliseconds since the unix epoch. The results will include the events that occurred after the end time and before the start time. | [optional] 
 
