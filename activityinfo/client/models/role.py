@@ -19,8 +19,8 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from client.models.filtered_permission import FilteredPermission
-from client.models.grant import Grant
+from activityinfo.client.models.filtered_permission import FilteredPermission
+from activityinfo.client.models.grant import Grant
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python

@@ -5,15 +5,16 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**row_sources** | [**List[QueryRowsRowSource]**](QueryRowsRowSource.md) |  | [optional] 
-**form_id** | **str** |  | [optional] 
-**columns** | [**List[QueryRowsColumn]**](QueryRowsColumn.md) |  | 
-**filter** | **str** |  | [optional] 
-**filter_sets** | [**List[QueryRowsFilterSet]**](QueryRowsFilterSet.md) |  | [optional] 
-**sort** | [**List[QueryRowsSort]**](QueryRowsSort.md) |  | [optional] 
+**row_sources** | [**List[QuerySource]**](QuerySource.md) | Exactly one RowSource is required. | 
+**form_id** | **str** | CUID of the root form to query. This is deprecated in favour of rowSources | [optional] 
+**columns** | [**List[QueryColumn]**](QueryColumn.md) | The list of columns to retrieve | 
+**filter** | **str** | A boolean-valued ActivityInfo formula to filter the records included in this query. Resulting rows must match both the filter formula, if provided, and all the provided filterSets. Filter sets are more efficient than formulas when you have a large number of values. | [optional] 
+**filter_sets** | [**List[QueryFilterSet]**](QueryFilterSet.md) | Set-based filters to apply to records returned by the query, each of which is a pair of a formula and a set of values to include. Resulting rows must match both the filter formula, if provided, and all the provided filterSets. Filter sets are more efficient than formulas when you have a large number of values. | [optional] 
+**sort** | [**List[QuerySort]**](QuerySort.md) | Sort instructions specified with a formula and a direction. Only one sort instruction can be specified, so sorting on multiple columns must be done with a single formula expression. | [optional] 
 **truncate_strings** | **bool** |  | [optional] 
 **validation** | **Dict[str, object]** |  | [optional] 
 **drafts** | **str** |  | [optional] 
+**tags** | **List[str]** |  | [optional] 
 
 ## Example
 

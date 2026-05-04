@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **user_id** | **str** |  | [optional] 
 **activation_status** | **str** |  | 
-**name** | **str** |  | 
+**name** | **str** |  | [optional] 
 **added_to_database** | **bool** |  | 
 **valid_email** | **bool** |  | 
 **localized_error_message** | **str** |  | [optional] 

@@ -10,6 +10,7 @@
 """  # noqa: E501
 
 
+import aiohttp_retry
 import base64
 import copy
 import http.client as httplib
@@ -194,7 +195,7 @@ class Configuration:
         server_operation_variables: Optional[Dict[int, ServerVariablesT]]=None,
         ignore_operation_servers: bool=False,
         ssl_ca_cert: Optional[str]=None,
-        retries: Optional[Union[int, Any]] = None,
+        retries: Optional[Union[int, aiohttp_retry.RetryOptionsBase]] = None,
         ca_cert_data: Optional[Union[str, bytes]] = None,
         cert_file: Optional[str]=None,
         key_file: Optional[str]=None,
@@ -542,6 +543,14 @@ class Configuration:
         return [
             {
                 'url': "https://www.activityinfo.org/resources",
+                'description': "No description provided",
+            },
+            {
+                'url': "https://3w.humanitarianaction.info/resources",
+                'description': "No description provided",
+            },
+            {
+                'url': "https://tools.humanitarianaction.info/resources",
                 'description': "No description provided",
             }
         ]

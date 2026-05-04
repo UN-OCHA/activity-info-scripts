@@ -4,32 +4,36 @@ All URIs are relative to *https://www.activityinfo.org/resources*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**add_database_post**](DefaultApi.md#add_database_post) | **POST** /databases | Create a new database.
-[**add_database_user_post**](DefaultApi.md#add_database_user_post) | **POST** /databases/{database_id}/users | Invite or add a new user to a database with a specific role.
-[**add_form_post**](DefaultApi.md#add_form_post) | **POST** /databases/{database_id}/forms | Add a new form to a specific database.
-[**delete_database_user_delete**](DefaultApi.md#delete_database_user_delete) | **DELETE** /databases/{database_id}/users/{user_id} | Remove a user&#39;s access to a specific database.
-[**get_database_translations_get**](DefaultApi.md#get_database_translations_get) | **GET** /databases/{database_id}/dictionary/database/{language_code} | Fetch all database-level translations for a specific language.
-[**get_database_tree_get**](DefaultApi.md#get_database_tree_get) | **GET** /databases/{database_id} | Fetch the full hierarchical tree structure of a database.
-[**get_database_users_get**](DefaultApi.md#get_database_users_get) | **GET** /databases/{database_id}/users | List all users who have access to the specified database.
-[**get_form_get**](DefaultApi.md#get_form_get) | **GET** /form/{form_id}/query | Query and retrieve all records for a specific form.
-[**get_form_schema_get**](DefaultApi.md#get_form_schema_get) | **GET** /form/{form_id}/schema | Retrieve the design/schema (fields, types, formulas) for a specific form.
-[**get_form_translations_get**](DefaultApi.md#get_form_translations_get) | **GET** /databases/{database_id}/dictionary/form/{form_id}/{language_code} | Retrieve all translated labels for a specific form and its fields.
-[**get_form_tree_get**](DefaultApi.md#get_form_tree_get) | **GET** /form/{form_id}/tree | Fetch the form and all its related forms (references).
-[**get_user_databases_get**](DefaultApi.md#get_user_databases_get) | **GET** /databases | List all databases the authenticated user has access to.
-[**query_rows_post**](DefaultApi.md#query_rows_post) | **POST** /query/rows | Query form rows with formulas, filters, and sorting.
-[**update_database_post**](DefaultApi.md#update_database_post) | **POST** /databases/{database_id} | Modify database-level settings (e.g., enabled languages).
-[**update_database_translations_post**](DefaultApi.md#update_database_translations_post) | **POST** /databases/{database_id}/translations/{language_code} | Update global translations for a specific database.
-[**update_database_user_role_post**](DefaultApi.md#update_database_user_role_post) | **POST** /databases/{database_id}/users/{user_id}/role | Modify the assigned role for an existing database user.
-[**update_form_records_post**](DefaultApi.md#update_form_records_post) | **POST** /update | Bulk create, update, or delete records across one or more forms.
-[**update_form_schema_post**](DefaultApi.md#update_form_schema_post) | **POST** /form/{form_id}/schema | Push a modified schema back to the server to update a form&#39;s design.
-[**update_form_translations_post**](DefaultApi.md#update_form_translations_post) | **POST** /databases/translations/{database_id}/form/{form_id}/{language_code} | Apply new translations to a specific form and its fields.
-[**user_preflight_post**](DefaultApi.md#user_preflight_post) | **POST** /databases/{database_id}/users/preflight | Check the status of a user&#39;s email before adding them to a database.
+[**add_database**](DefaultApi.md#add_database) | **POST** /databases | Add Database
+[**add_database_user**](DefaultApi.md#add_database_user) | **POST** /databases/{database_id}/users | Add Database User
+[**add_form**](DefaultApi.md#add_form) | **POST** /databases/{database_id}/forms | Add Form
+[**audit_database**](DefaultApi.md#audit_database) | **POST** /databases/{database_id}/audit | Audit Database
+[**delete_database**](DefaultApi.md#delete_database) | **DELETE** /databases/{database_id} | Delete Database
+[**delete_database_user**](DefaultApi.md#delete_database_user) | **DELETE** /databases/{database_id}/users/{user_id} | Delete Database User
+[**get_database_translations**](DefaultApi.md#get_database_translations) | **GET** /databases/{database_id}/dictionary/database/{language_code} | Get Database Translations
+[**get_database_tree**](DefaultApi.md#get_database_tree) | **GET** /databases/{database_id} | Get Database Tree
+[**get_database_users**](DefaultApi.md#get_database_users) | **GET** /databases/{database_id}/users | Get Database Users
+[**get_form_records**](DefaultApi.md#get_form_records) | **GET** /form/{form_id}/query | Get Form Records
+[**get_form_schema**](DefaultApi.md#get_form_schema) | **GET** /form/{form_id}/schema | Get Form Schema
+[**get_form_translations**](DefaultApi.md#get_form_translations) | **GET** /databases/{database_id}/dictionary/form/{form_id}/{language_code} | Get Form Translations
+[**get_form_tree**](DefaultApi.md#get_form_tree) | **GET** /form/{form_id}/tree | Get Form Tree
+[**get_job_status**](DefaultApi.md#get_job_status) | **GET** /jobs/{job_id} | Get Job Status
+[**get_user_databases**](DefaultApi.md#get_user_databases) | **GET** /databases | Get User Databases
+[**preflight_database_user**](DefaultApi.md#preflight_database_user) | **POST** /databases/{database_id}/users/preflight | Preflight Database User
+[**query_rows**](DefaultApi.md#query_rows) | **POST** /query/rows | Query Rows
+[**start_job**](DefaultApi.md#start_job) | **POST** /jobs | Start Job
+[**update_database**](DefaultApi.md#update_database) | **POST** /databases/{database_id} | Update Database
+[**update_database_translations**](DefaultApi.md#update_database_translations) | **POST** /databases/{database_id}/translations/{language_code} | Update Database Translations
+[**update_database_user_role**](DefaultApi.md#update_database_user_role) | **POST** /databases/{database_id}/users/{user_id}/role | Update Database User Role
+[**update_form_records**](DefaultApi.md#update_form_records) | **POST** /update | Update Form Records
+[**update_form_schema**](DefaultApi.md#update_form_schema) | **POST** /form/{form_id}/schema | Update Form Schema
+[**update_form_schema_translations**](DefaultApi.md#update_form_schema_translations) | **POST** /form/{form_id}/schema/translations/{language_code} | Update Form Schema Translations
 
 
-# **add_database_post**
-> object add_database_post(add_database_dto=add_database_dto)
+# **add_database**
+> Database add_database(add_database_request=add_database_request)
 
-Create a new database.
+Add Database
 
 Create a new database.
 
@@ -39,7 +43,8 @@ Create a new database.
 
 ```python
 import client
-from client.models.add_database_dto import AddDatabaseDTO
+from client.models.add_database_request import AddDatabaseRequest
+from client.models.database import Database
 from client.rest import ApiException
 from pprint import pprint
 
@@ -63,15 +68,15 @@ configuration = client.Configuration(
 async with client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = client.DefaultApi(api_client)
-    add_database_dto = client.AddDatabaseDTO() # AddDatabaseDTO |  (optional)
+    add_database_request = client.AddDatabaseRequest() # AddDatabaseRequest |  (optional)
 
     try:
-        # Create a new database.
-        api_response = await api_instance.add_database_post(add_database_dto=add_database_dto)
-        print("The response of DefaultApi->add_database_post:\n")
+        # Add Database
+        api_response = await api_instance.add_database(add_database_request=add_database_request)
+        print("The response of DefaultApi->add_database:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->add_database_post: %s\n" % e)
+        print("Exception when calling DefaultApi->add_database: %s\n" % e)
 ```
 
 
@@ -81,11 +86,11 @@ async with client.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **add_database_dto** | [**AddDatabaseDTO**](AddDatabaseDTO.md)|  | [optional] 
+ **add_database_request** | [**AddDatabaseRequest**](AddDatabaseRequest.md)|  | [optional] 
 
 ### Return type
 
-**object**
+[**Database**](Database.md)
 
 ### Authorization
 
@@ -105,10 +110,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **add_database_user_post**
-> object add_database_user_post(database_id, add_database_user_dto=add_database_user_dto)
+# **add_database_user**
+> User add_database_user(database_id, add_user_request=add_user_request)
 
-Invite or add a new user to a database with a specific role.
+Add Database User
 
 Invite or add a new user to a database with a specific role.
 
@@ -118,7 +123,8 @@ Invite or add a new user to a database with a specific role.
 
 ```python
 import client
-from client.models.add_database_user_dto import AddDatabaseUserDTO
+from client.models.add_user_request import AddUserRequest
+from client.models.user import User
 from client.rest import ApiException
 from pprint import pprint
 
@@ -143,15 +149,15 @@ async with client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = client.DefaultApi(api_client)
     database_id = 'database_id_example' # str | 
-    add_database_user_dto = client.AddDatabaseUserDTO() # AddDatabaseUserDTO |  (optional)
+    add_user_request = client.AddUserRequest() # AddUserRequest |  (optional)
 
     try:
-        # Invite or add a new user to a database with a specific role.
-        api_response = await api_instance.add_database_user_post(database_id, add_database_user_dto=add_database_user_dto)
-        print("The response of DefaultApi->add_database_user_post:\n")
+        # Add Database User
+        api_response = await api_instance.add_database_user(database_id, add_user_request=add_user_request)
+        print("The response of DefaultApi->add_database_user:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->add_database_user_post: %s\n" % e)
+        print("Exception when calling DefaultApi->add_database_user: %s\n" % e)
 ```
 
 
@@ -162,11 +168,11 @@ async with client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **database_id** | **str**|  | 
- **add_database_user_dto** | [**AddDatabaseUserDTO**](AddDatabaseUserDTO.md)|  | [optional] 
+ **add_user_request** | [**AddUserRequest**](AddUserRequest.md)|  | [optional] 
 
 ### Return type
 
-**object**
+[**User**](User.md)
 
 ### Authorization
 
@@ -186,10 +192,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **add_form_post**
-> object add_form_post(database_id, add_form_dto=add_form_dto)
+# **add_form**
+> AddUpdateFormResponse add_form(database_id, add_form_request=add_form_request)
 
-Add a new form to a specific database.
+Add Form
 
 Add a new form to a specific database.
 
@@ -199,7 +205,8 @@ Add a new form to a specific database.
 
 ```python
 import client
-from client.models.add_form_dto import AddFormDTO
+from client.models.add_form_request import AddFormRequest
+from client.models.add_update_form_response import AddUpdateFormResponse
 from client.rest import ApiException
 from pprint import pprint
 
@@ -224,15 +231,15 @@ async with client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = client.DefaultApi(api_client)
     database_id = 'database_id_example' # str | 
-    add_form_dto = client.AddFormDTO() # AddFormDTO |  (optional)
+    add_form_request = client.AddFormRequest() # AddFormRequest |  (optional)
 
     try:
-        # Add a new form to a specific database.
-        api_response = await api_instance.add_form_post(database_id, add_form_dto=add_form_dto)
-        print("The response of DefaultApi->add_form_post:\n")
+        # Add Form
+        api_response = await api_instance.add_form(database_id, add_form_request=add_form_request)
+        print("The response of DefaultApi->add_form:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->add_form_post: %s\n" % e)
+        print("Exception when calling DefaultApi->add_form: %s\n" % e)
 ```
 
 
@@ -243,11 +250,11 @@ async with client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **database_id** | **str**|  | 
- **add_form_dto** | [**AddFormDTO**](AddFormDTO.md)|  | [optional] 
+ **add_form_request** | [**AddFormRequest**](AddFormRequest.md)|  | [optional] 
 
 ### Return type
 
-**object**
+[**AddUpdateFormResponse**](AddUpdateFormResponse.md)
 
 ### Authorization
 
@@ -267,10 +274,170 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **delete_database_user_delete**
-> object delete_database_user_delete(database_id, user_id)
+# **audit_database**
+> DatabaseAudit audit_database(database_id, audit_database_request=audit_database_request)
 
-Remove a user's access to a specific database.
+Audit Database
+
+Gets entries from the database's audit log.
+
+### Example
+
+* Bearer Authentication (bearerAuth):
+
+```python
+import client
+from client.models.audit_database_request import AuditDatabaseRequest
+from client.models.database_audit import DatabaseAudit
+from client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to https://www.activityinfo.org/resources
+# See configuration.py for a list of all supported configuration parameters.
+configuration = client.Configuration(
+    host = "https://www.activityinfo.org/resources"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: bearerAuth
+configuration = client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+async with client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = client.DefaultApi(api_client)
+    database_id = 'database_id_example' # str | 
+    audit_database_request = client.AuditDatabaseRequest() # AuditDatabaseRequest |  (optional)
+
+    try:
+        # Audit Database
+        api_response = await api_instance.audit_database(database_id, audit_database_request=audit_database_request)
+        print("The response of DefaultApi->audit_database:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->audit_database: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **database_id** | **str**|  | 
+ **audit_database_request** | [**AuditDatabaseRequest**](AuditDatabaseRequest.md)|  | [optional] 
+
+### Return type
+
+[**DatabaseAudit**](DatabaseAudit.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful response |  -  |
+**401** | Unauthorized - Invalid or missing API key |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **delete_database**
+> str delete_database(database_id)
+
+Delete Database
+
+Deletes a database and all the forms and records contained therein. Only the owner of a database may delete a database.
+
+### Example
+
+* Bearer Authentication (bearerAuth):
+
+```python
+import client
+from client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to https://www.activityinfo.org/resources
+# See configuration.py for a list of all supported configuration parameters.
+configuration = client.Configuration(
+    host = "https://www.activityinfo.org/resources"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: bearerAuth
+configuration = client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+async with client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = client.DefaultApi(api_client)
+    database_id = 'database_id_example' # str | 
+
+    try:
+        # Delete Database
+        api_response = await api_instance.delete_database(database_id)
+        print("The response of DefaultApi->delete_database:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->delete_database: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **database_id** | **str**|  | 
+
+### Return type
+
+**str**
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: text/plain, application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | DELETED |  -  |
+**401** | Unauthorized - Invalid or missing API key |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **delete_database_user**
+> str delete_database_user(database_id, user_id)
+
+Delete Database User
 
 Remove a user's access to a specific database.
 
@@ -307,12 +474,12 @@ async with client.ApiClient(configuration) as api_client:
     user_id = 'user_id_example' # str | 
 
     try:
-        # Remove a user's access to a specific database.
-        api_response = await api_instance.delete_database_user_delete(database_id, user_id)
-        print("The response of DefaultApi->delete_database_user_delete:\n")
+        # Delete Database User
+        api_response = await api_instance.delete_database_user(database_id, user_id)
+        print("The response of DefaultApi->delete_database_user:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->delete_database_user_delete: %s\n" % e)
+        print("Exception when calling DefaultApi->delete_database_user: %s\n" % e)
 ```
 
 
@@ -327,7 +494,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**object**
+**str**
 
 ### Authorization
 
@@ -336,7 +503,7 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json
+ - **Accept**: text/plain, application/json
 
 ### HTTP response details
 
@@ -347,10 +514,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **get_database_translations_get**
-> DatabaseTranslations get_database_translations_get(database_id, language_code)
+# **get_database_translations**
+> TranslationDictionary get_database_translations(database_id, language_code)
 
-Fetch all database-level translations for a specific language.
+Get Database Translations
 
 Fetch all database-level translations for a specific language.
 
@@ -360,7 +527,7 @@ Fetch all database-level translations for a specific language.
 
 ```python
 import client
-from client.models.database_translations import DatabaseTranslations
+from client.models.translation_dictionary import TranslationDictionary
 from client.rest import ApiException
 from pprint import pprint
 
@@ -388,12 +555,12 @@ async with client.ApiClient(configuration) as api_client:
     language_code = 'language_code_example' # str | 
 
     try:
-        # Fetch all database-level translations for a specific language.
-        api_response = await api_instance.get_database_translations_get(database_id, language_code)
-        print("The response of DefaultApi->get_database_translations_get:\n")
+        # Get Database Translations
+        api_response = await api_instance.get_database_translations(database_id, language_code)
+        print("The response of DefaultApi->get_database_translations:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->get_database_translations_get: %s\n" % e)
+        print("Exception when calling DefaultApi->get_database_translations: %s\n" % e)
 ```
 
 
@@ -408,7 +575,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**DatabaseTranslations**](DatabaseTranslations.md)
+[**TranslationDictionary**](TranslationDictionary.md)
 
 ### Authorization
 
@@ -428,10 +595,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **get_database_tree_get**
-> DatabaseTree get_database_tree_get(database_id)
+# **get_database_tree**
+> Database get_database_tree(database_id)
 
-Fetch the full hierarchical tree structure of a database.
+Get Database Tree
 
 Fetch the full hierarchical tree structure of a database.
 
@@ -441,7 +608,7 @@ Fetch the full hierarchical tree structure of a database.
 
 ```python
 import client
-from client.models.database_tree import DatabaseTree
+from client.models.database import Database
 from client.rest import ApiException
 from pprint import pprint
 
@@ -468,12 +635,12 @@ async with client.ApiClient(configuration) as api_client:
     database_id = 'database_id_example' # str | 
 
     try:
-        # Fetch the full hierarchical tree structure of a database.
-        api_response = await api_instance.get_database_tree_get(database_id)
-        print("The response of DefaultApi->get_database_tree_get:\n")
+        # Get Database Tree
+        api_response = await api_instance.get_database_tree(database_id)
+        print("The response of DefaultApi->get_database_tree:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->get_database_tree_get: %s\n" % e)
+        print("Exception when calling DefaultApi->get_database_tree: %s\n" % e)
 ```
 
 
@@ -487,7 +654,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**DatabaseTree**](DatabaseTree.md)
+[**Database**](Database.md)
 
 ### Authorization
 
@@ -507,10 +674,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **get_database_users_get**
-> object get_database_users_get(database_id)
+# **get_database_users**
+> List[User] get_database_users(database_id)
 
-List all users who have access to the specified database.
+Get Database Users
 
 List all users who have access to the specified database.
 
@@ -520,6 +687,7 @@ List all users who have access to the specified database.
 
 ```python
 import client
+from client.models.user import User
 from client.rest import ApiException
 from pprint import pprint
 
@@ -546,12 +714,12 @@ async with client.ApiClient(configuration) as api_client:
     database_id = 'database_id_example' # str | 
 
     try:
-        # List all users who have access to the specified database.
-        api_response = await api_instance.get_database_users_get(database_id)
-        print("The response of DefaultApi->get_database_users_get:\n")
+        # Get Database Users
+        api_response = await api_instance.get_database_users(database_id)
+        print("The response of DefaultApi->get_database_users:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->get_database_users_get: %s\n" % e)
+        print("Exception when calling DefaultApi->get_database_users: %s\n" % e)
 ```
 
 
@@ -565,7 +733,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**object**
+[**List[User]**](User.md)
 
 ### Authorization
 
@@ -585,10 +753,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **get_form_get**
-> List[object] get_form_get(form_id)
+# **get_form_records**
+> List[Dict[str, object]] get_form_records(form_id)
 
-Query and retrieve all records for a specific form.
+Get Form Records
 
 Query and retrieve all records for a specific form.
 
@@ -624,12 +792,12 @@ async with client.ApiClient(configuration) as api_client:
     form_id = 'form_id_example' # str | 
 
     try:
-        # Query and retrieve all records for a specific form.
-        api_response = await api_instance.get_form_get(form_id)
-        print("The response of DefaultApi->get_form_get:\n")
+        # Get Form Records
+        api_response = await api_instance.get_form_records(form_id)
+        print("The response of DefaultApi->get_form_records:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->get_form_get: %s\n" % e)
+        print("Exception when calling DefaultApi->get_form_records: %s\n" % e)
 ```
 
 
@@ -643,7 +811,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**List[object]**
+**List[Dict[str, object]]**
 
 ### Authorization
 
@@ -663,10 +831,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **get_form_schema_get**
-> FormSchema get_form_schema_get(form_id)
+# **get_form_schema**
+> FormSchema get_form_schema(form_id)
 
-Retrieve the design/schema (fields, types, formulas) for a specific form.
+Get Form Schema
 
 Retrieve the design/schema (fields, types, formulas) for a specific form.
 
@@ -703,12 +871,12 @@ async with client.ApiClient(configuration) as api_client:
     form_id = 'form_id_example' # str | 
 
     try:
-        # Retrieve the design/schema (fields, types, formulas) for a specific form.
-        api_response = await api_instance.get_form_schema_get(form_id)
-        print("The response of DefaultApi->get_form_schema_get:\n")
+        # Get Form Schema
+        api_response = await api_instance.get_form_schema(form_id)
+        print("The response of DefaultApi->get_form_schema:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->get_form_schema_get: %s\n" % e)
+        print("Exception when calling DefaultApi->get_form_schema: %s\n" % e)
 ```
 
 
@@ -742,10 +910,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **get_form_translations_get**
-> object get_form_translations_get(database_id, form_id, language_code)
+# **get_form_translations**
+> TranslationDictionary get_form_translations(database_id, form_id, language_code)
 
-Retrieve all translated labels for a specific form and its fields.
+Get Form Translations
 
 Retrieve all translated labels for a specific form and its fields.
 
@@ -755,6 +923,7 @@ Retrieve all translated labels for a specific form and its fields.
 
 ```python
 import client
+from client.models.translation_dictionary import TranslationDictionary
 from client.rest import ApiException
 from pprint import pprint
 
@@ -783,12 +952,12 @@ async with client.ApiClient(configuration) as api_client:
     language_code = 'language_code_example' # str | 
 
     try:
-        # Retrieve all translated labels for a specific form and its fields.
-        api_response = await api_instance.get_form_translations_get(database_id, form_id, language_code)
-        print("The response of DefaultApi->get_form_translations_get:\n")
+        # Get Form Translations
+        api_response = await api_instance.get_form_translations(database_id, form_id, language_code)
+        print("The response of DefaultApi->get_form_translations:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->get_form_translations_get: %s\n" % e)
+        print("Exception when calling DefaultApi->get_form_translations: %s\n" % e)
 ```
 
 
@@ -804,7 +973,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**object**
+[**TranslationDictionary**](TranslationDictionary.md)
 
 ### Authorization
 
@@ -824,10 +993,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **get_form_tree_get**
-> FormTree get_form_tree_get(form_id)
+# **get_form_tree**
+> FormTree get_form_tree(form_id)
 
-Fetch the form and all its related forms (references).
+Get Form Tree
 
 Fetch the form and all its related forms (references).
 
@@ -864,12 +1033,12 @@ async with client.ApiClient(configuration) as api_client:
     form_id = 'form_id_example' # str | 
 
     try:
-        # Fetch the form and all its related forms (references).
-        api_response = await api_instance.get_form_tree_get(form_id)
-        print("The response of DefaultApi->get_form_tree_get:\n")
+        # Get Form Tree
+        api_response = await api_instance.get_form_tree(form_id)
+        print("The response of DefaultApi->get_form_tree:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->get_form_tree_get: %s\n" % e)
+        print("Exception when calling DefaultApi->get_form_tree: %s\n" % e)
 ```
 
 
@@ -903,12 +1072,12 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **get_user_databases_get**
-> List[Database] get_user_databases_get()
+# **get_job_status**
+> List[JobStatus] get_job_status(job_id)
 
-List all databases the authenticated user has access to.
+Get Job Status
 
-List all databases the authenticated user has access to.
+Retrieves the status of a long-running job
 
 ### Example
 
@@ -916,7 +1085,86 @@ List all databases the authenticated user has access to.
 
 ```python
 import client
-from client.models.database import Database
+from client.models.job_status import JobStatus
+from client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to https://www.activityinfo.org/resources
+# See configuration.py for a list of all supported configuration parameters.
+configuration = client.Configuration(
+    host = "https://www.activityinfo.org/resources"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: bearerAuth
+configuration = client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+async with client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = client.DefaultApi(api_client)
+    job_id = 'job_id_example' # str | 
+
+    try:
+        # Get Job Status
+        api_response = await api_instance.get_job_status(job_id)
+        print("The response of DefaultApi->get_job_status:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_job_status: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **job_id** | **str**|  | 
+
+### Return type
+
+[**List[JobStatus]**](JobStatus.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful response |  -  |
+**401** | Unauthorized - Invalid or missing API key |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_user_databases**
+> List[GetDatabasesResponse] get_user_databases()
+
+Get User Databases
+
+Gets all the databases that the authenticated user owns, or that have been shared with the authenticated user.
+
+### Example
+
+* Bearer Authentication (bearerAuth):
+
+```python
+import client
+from client.models.get_databases_response import GetDatabasesResponse
 from client.rest import ApiException
 from pprint import pprint
 
@@ -942,12 +1190,12 @@ async with client.ApiClient(configuration) as api_client:
     api_instance = client.DefaultApi(api_client)
 
     try:
-        # List all databases the authenticated user has access to.
-        api_response = await api_instance.get_user_databases_get()
-        print("The response of DefaultApi->get_user_databases_get:\n")
+        # Get User Databases
+        api_response = await api_instance.get_user_databases()
+        print("The response of DefaultApi->get_user_databases:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->get_user_databases_get: %s\n" % e)
+        print("Exception when calling DefaultApi->get_user_databases: %s\n" % e)
 ```
 
 
@@ -958,7 +1206,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List[Database]**](Database.md)
+[**List[GetDatabasesResponse]**](GetDatabasesResponse.md)
 
 ### Authorization
 
@@ -978,10 +1226,92 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **query_rows_post**
-> List[Dict[str, object]] query_rows_post(query_rows_request)
+# **preflight_database_user**
+> UserPreflightResponse preflight_database_user(database_id, add_user_request=add_user_request)
 
-Query form rows with formulas, filters, and sorting.
+Preflight Database User
+
+Check the status of a user's email before adding them to a database.
+
+### Example
+
+* Bearer Authentication (bearerAuth):
+
+```python
+import client
+from client.models.add_user_request import AddUserRequest
+from client.models.user_preflight_response import UserPreflightResponse
+from client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to https://www.activityinfo.org/resources
+# See configuration.py for a list of all supported configuration parameters.
+configuration = client.Configuration(
+    host = "https://www.activityinfo.org/resources"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: bearerAuth
+configuration = client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+async with client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = client.DefaultApi(api_client)
+    database_id = 'database_id_example' # str | 
+    add_user_request = client.AddUserRequest() # AddUserRequest |  (optional)
+
+    try:
+        # Preflight Database User
+        api_response = await api_instance.preflight_database_user(database_id, add_user_request=add_user_request)
+        print("The response of DefaultApi->preflight_database_user:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->preflight_database_user: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **database_id** | **str**|  | 
+ **add_user_request** | [**AddUserRequest**](AddUserRequest.md)|  | [optional] 
+
+### Return type
+
+[**UserPreflightResponse**](UserPreflightResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful response |  -  |
+**401** | Unauthorized - Invalid or missing API key |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **query_rows**
+> List[Dict[str, object]] query_rows(query_rows_request)
+
+Query Rows
 
 Queries records as rows using column expressions, optional filter formula, filter sets, and sorting.
 
@@ -1018,12 +1348,12 @@ async with client.ApiClient(configuration) as api_client:
     query_rows_request = client.QueryRowsRequest() # QueryRowsRequest | 
 
     try:
-        # Query form rows with formulas, filters, and sorting.
-        api_response = await api_instance.query_rows_post(query_rows_request)
-        print("The response of DefaultApi->query_rows_post:\n")
+        # Query Rows
+        api_response = await api_instance.query_rows(query_rows_request)
+        print("The response of DefaultApi->query_rows:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->query_rows_post: %s\n" % e)
+        print("Exception when calling DefaultApi->query_rows: %s\n" % e)
 ```
 
 
@@ -1057,10 +1387,90 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **update_database_post**
-> object update_database_post(database_id, update_database_dto=update_database_dto)
+# **start_job**
+> JobStatus start_job(job_request=job_request)
 
-Modify database-level settings (e.g., enabled languages).
+Start Job
+
+Starts a new long-running job
+
+### Example
+
+* Bearer Authentication (bearerAuth):
+
+```python
+import client
+from client.models.job_request import JobRequest
+from client.models.job_status import JobStatus
+from client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to https://www.activityinfo.org/resources
+# See configuration.py for a list of all supported configuration parameters.
+configuration = client.Configuration(
+    host = "https://www.activityinfo.org/resources"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: bearerAuth
+configuration = client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+async with client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = client.DefaultApi(api_client)
+    job_request = client.JobRequest() # JobRequest |  (optional)
+
+    try:
+        # Start Job
+        api_response = await api_instance.start_job(job_request=job_request)
+        print("The response of DefaultApi->start_job:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->start_job: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **job_request** | [**JobRequest**](JobRequest.md)|  | [optional] 
+
+### Return type
+
+[**JobStatus**](JobStatus.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful response |  -  |
+**401** | Unauthorized - Invalid or missing API key |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **update_database**
+> Database update_database(database_id, update_database_request=update_database_request)
+
+Update Database
 
 Modify database-level settings (e.g., enabled languages).
 
@@ -1070,7 +1480,8 @@ Modify database-level settings (e.g., enabled languages).
 
 ```python
 import client
-from client.models.update_database_dto import UpdateDatabaseDTO
+from client.models.database import Database
+from client.models.update_database_request import UpdateDatabaseRequest
 from client.rest import ApiException
 from pprint import pprint
 
@@ -1095,15 +1506,15 @@ async with client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = client.DefaultApi(api_client)
     database_id = 'database_id_example' # str | 
-    update_database_dto = client.UpdateDatabaseDTO() # UpdateDatabaseDTO |  (optional)
+    update_database_request = client.UpdateDatabaseRequest() # UpdateDatabaseRequest |  (optional)
 
     try:
-        # Modify database-level settings (e.g., enabled languages).
-        api_response = await api_instance.update_database_post(database_id, update_database_dto=update_database_dto)
-        print("The response of DefaultApi->update_database_post:\n")
+        # Update Database
+        api_response = await api_instance.update_database(database_id, update_database_request=update_database_request)
+        print("The response of DefaultApi->update_database:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->update_database_post: %s\n" % e)
+        print("Exception when calling DefaultApi->update_database: %s\n" % e)
 ```
 
 
@@ -1114,11 +1525,11 @@ async with client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **database_id** | **str**|  | 
- **update_database_dto** | [**UpdateDatabaseDTO**](UpdateDatabaseDTO.md)|  | [optional] 
+ **update_database_request** | [**UpdateDatabaseRequest**](UpdateDatabaseRequest.md)|  | [optional] 
 
 ### Return type
 
-**object**
+[**Database**](Database.md)
 
 ### Authorization
 
@@ -1138,10 +1549,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **update_database_translations_post**
-> object update_database_translations_post(database_id, language_code, update_database_translations_dto=update_database_translations_dto)
+# **update_database_translations**
+> MessageResponse update_database_translations(database_id, language_code, update_translations_request=update_translations_request)
 
-Update global translations for a specific database.
+Update Database Translations
 
 Update global translations for a specific database.
 
@@ -1151,7 +1562,8 @@ Update global translations for a specific database.
 
 ```python
 import client
-from client.models.update_database_translations_dto import UpdateDatabaseTranslationsDTO
+from client.models.message_response import MessageResponse
+from client.models.update_translations_request import UpdateTranslationsRequest
 from client.rest import ApiException
 from pprint import pprint
 
@@ -1177,15 +1589,15 @@ async with client.ApiClient(configuration) as api_client:
     api_instance = client.DefaultApi(api_client)
     database_id = 'database_id_example' # str | 
     language_code = 'language_code_example' # str | 
-    update_database_translations_dto = client.UpdateDatabaseTranslationsDTO() # UpdateDatabaseTranslationsDTO |  (optional)
+    update_translations_request = client.UpdateTranslationsRequest() # UpdateTranslationsRequest |  (optional)
 
     try:
-        # Update global translations for a specific database.
-        api_response = await api_instance.update_database_translations_post(database_id, language_code, update_database_translations_dto=update_database_translations_dto)
-        print("The response of DefaultApi->update_database_translations_post:\n")
+        # Update Database Translations
+        api_response = await api_instance.update_database_translations(database_id, language_code, update_translations_request=update_translations_request)
+        print("The response of DefaultApi->update_database_translations:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->update_database_translations_post: %s\n" % e)
+        print("Exception when calling DefaultApi->update_database_translations: %s\n" % e)
 ```
 
 
@@ -1197,11 +1609,11 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **database_id** | **str**|  | 
  **language_code** | **str**|  | 
- **update_database_translations_dto** | [**UpdateDatabaseTranslationsDTO**](UpdateDatabaseTranslationsDTO.md)|  | [optional] 
+ **update_translations_request** | [**UpdateTranslationsRequest**](UpdateTranslationsRequest.md)|  | [optional] 
 
 ### Return type
 
-**object**
+[**MessageResponse**](MessageResponse.md)
 
 ### Authorization
 
@@ -1221,10 +1633,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **update_database_user_role_post**
-> object update_database_user_role_post(database_id, user_id, update_database_user_role_dto=update_database_user_role_dto)
+# **update_database_user_role**
+> User update_database_user_role(database_id, user_id, update_user_request=update_user_request)
 
-Modify the assigned role for an existing database user.
+Update Database User Role
 
 Modify the assigned role for an existing database user.
 
@@ -1234,7 +1646,8 @@ Modify the assigned role for an existing database user.
 
 ```python
 import client
-from client.models.update_database_user_role_dto import UpdateDatabaseUserRoleDTO
+from client.models.update_user_request import UpdateUserRequest
+from client.models.user import User
 from client.rest import ApiException
 from pprint import pprint
 
@@ -1260,15 +1673,15 @@ async with client.ApiClient(configuration) as api_client:
     api_instance = client.DefaultApi(api_client)
     database_id = 'database_id_example' # str | 
     user_id = 'user_id_example' # str | 
-    update_database_user_role_dto = client.UpdateDatabaseUserRoleDTO() # UpdateDatabaseUserRoleDTO |  (optional)
+    update_user_request = client.UpdateUserRequest() # UpdateUserRequest |  (optional)
 
     try:
-        # Modify the assigned role for an existing database user.
-        api_response = await api_instance.update_database_user_role_post(database_id, user_id, update_database_user_role_dto=update_database_user_role_dto)
-        print("The response of DefaultApi->update_database_user_role_post:\n")
+        # Update Database User Role
+        api_response = await api_instance.update_database_user_role(database_id, user_id, update_user_request=update_user_request)
+        print("The response of DefaultApi->update_database_user_role:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->update_database_user_role_post: %s\n" % e)
+        print("Exception when calling DefaultApi->update_database_user_role: %s\n" % e)
 ```
 
 
@@ -1280,11 +1693,11 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **database_id** | **str**|  | 
  **user_id** | **str**|  | 
- **update_database_user_role_dto** | [**UpdateDatabaseUserRoleDTO**](UpdateDatabaseUserRoleDTO.md)|  | [optional] 
+ **update_user_request** | [**UpdateUserRequest**](UpdateUserRequest.md)|  | [optional] 
 
 ### Return type
 
-**object**
+[**User**](User.md)
 
 ### Authorization
 
@@ -1304,10 +1717,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **update_form_records_post**
-> update_form_records_post(update_form_records_dto=update_form_records_dto)
+# **update_form_records**
+> update_form_records(record_update_request=record_update_request)
 
-Bulk create, update, or delete records across one or more forms.
+Update Form Records
 
 Bulk create, update, or delete records across one or more forms.
 
@@ -1317,7 +1730,7 @@ Bulk create, update, or delete records across one or more forms.
 
 ```python
 import client
-from client.models.update_form_records_dto import UpdateFormRecordsDTO
+from client.models.record_update_request import RecordUpdateRequest
 from client.rest import ApiException
 from pprint import pprint
 
@@ -1341,13 +1754,13 @@ configuration = client.Configuration(
 async with client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = client.DefaultApi(api_client)
-    update_form_records_dto = client.UpdateFormRecordsDTO() # UpdateFormRecordsDTO |  (optional)
+    record_update_request = client.RecordUpdateRequest() # RecordUpdateRequest |  (optional)
 
     try:
-        # Bulk create, update, or delete records across one or more forms.
-        await api_instance.update_form_records_post(update_form_records_dto=update_form_records_dto)
+        # Update Form Records
+        await api_instance.update_form_records(record_update_request=record_update_request)
     except Exception as e:
-        print("Exception when calling DefaultApi->update_form_records_post: %s\n" % e)
+        print("Exception when calling DefaultApi->update_form_records: %s\n" % e)
 ```
 
 
@@ -1357,7 +1770,7 @@ async with client.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **update_form_records_dto** | [**UpdateFormRecordsDTO**](UpdateFormRecordsDTO.md)|  | [optional] 
+ **record_update_request** | [**RecordUpdateRequest**](RecordUpdateRequest.md)|  | [optional] 
 
 ### Return type
 
@@ -1381,10 +1794,10 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **update_form_schema_post**
-> object update_form_schema_post(form_id, form_schema=form_schema)
+# **update_form_schema**
+> AddUpdateFormResponse update_form_schema(form_id, form_schema=form_schema)
 
-Push a modified schema back to the server to update a form's design.
+Update Form Schema
 
 Push a modified schema back to the server to update a form's design.
 
@@ -1394,6 +1807,7 @@ Push a modified schema back to the server to update a form's design.
 
 ```python
 import client
+from client.models.add_update_form_response import AddUpdateFormResponse
 from client.models.form_schema import FormSchema
 from client.rest import ApiException
 from pprint import pprint
@@ -1422,12 +1836,12 @@ async with client.ApiClient(configuration) as api_client:
     form_schema = client.FormSchema() # FormSchema |  (optional)
 
     try:
-        # Push a modified schema back to the server to update a form's design.
-        api_response = await api_instance.update_form_schema_post(form_id, form_schema=form_schema)
-        print("The response of DefaultApi->update_form_schema_post:\n")
+        # Update Form Schema
+        api_response = await api_instance.update_form_schema(form_id, form_schema=form_schema)
+        print("The response of DefaultApi->update_form_schema:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->update_form_schema_post: %s\n" % e)
+        print("Exception when calling DefaultApi->update_form_schema: %s\n" % e)
 ```
 
 
@@ -1442,7 +1856,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**object**
+[**AddUpdateFormResponse**](AddUpdateFormResponse.md)
 
 ### Authorization
 
@@ -1462,10 +1876,10 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **update_form_translations_post**
-> object update_form_translations_post(database_id, form_id, language_code, update_database_translations_dto=update_database_translations_dto)
+# **update_form_schema_translations**
+> MessageResponse update_form_schema_translations(form_id, language_code, update_translations_request=update_translations_request)
 
-Apply new translations to a specific form and its fields.
+Update Form Schema Translations
 
 Apply new translations to a specific form and its fields.
 
@@ -1475,7 +1889,8 @@ Apply new translations to a specific form and its fields.
 
 ```python
 import client
-from client.models.update_database_translations_dto import UpdateDatabaseTranslationsDTO
+from client.models.message_response import MessageResponse
+from client.models.update_translations_request import UpdateTranslationsRequest
 from client.rest import ApiException
 from pprint import pprint
 
@@ -1499,18 +1914,17 @@ configuration = client.Configuration(
 async with client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = client.DefaultApi(api_client)
-    database_id = 'database_id_example' # str | 
     form_id = 'form_id_example' # str | 
     language_code = 'language_code_example' # str | 
-    update_database_translations_dto = client.UpdateDatabaseTranslationsDTO() # UpdateDatabaseTranslationsDTO |  (optional)
+    update_translations_request = client.UpdateTranslationsRequest() # UpdateTranslationsRequest |  (optional)
 
     try:
-        # Apply new translations to a specific form and its fields.
-        api_response = await api_instance.update_form_translations_post(database_id, form_id, language_code, update_database_translations_dto=update_database_translations_dto)
-        print("The response of DefaultApi->update_form_translations_post:\n")
+        # Update Form Schema Translations
+        api_response = await api_instance.update_form_schema_translations(form_id, language_code, update_translations_request=update_translations_request)
+        print("The response of DefaultApi->update_form_schema_translations:\n")
         pprint(api_response)
     except Exception as e:
-        print("Exception when calling DefaultApi->update_form_translations_post: %s\n" % e)
+        print("Exception when calling DefaultApi->update_form_schema_translations: %s\n" % e)
 ```
 
 
@@ -1520,96 +1934,13 @@ async with client.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **database_id** | **str**|  | 
  **form_id** | **str**|  | 
  **language_code** | **str**|  | 
- **update_database_translations_dto** | [**UpdateDatabaseTranslationsDTO**](UpdateDatabaseTranslationsDTO.md)|  | [optional] 
+ **update_translations_request** | [**UpdateTranslationsRequest**](UpdateTranslationsRequest.md)|  | [optional] 
 
 ### Return type
 
-**object**
-
-### Authorization
-
-[bearerAuth](../README.md#bearerAuth)
-
-### HTTP request headers
-
- - **Content-Type**: application/json
- - **Accept**: application/json
-
-### HTTP response details
-
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** | Successful response |  -  |
-**401** | Unauthorized - Invalid or missing API key |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **user_preflight_post**
-> UserPreflightResponse user_preflight_post(database_id, user_preflight_dto=user_preflight_dto)
-
-Check the status of a user's email before adding them to a database.
-
-Check the status of a user's email before adding them to a database.
-
-### Example
-
-* Bearer Authentication (bearerAuth):
-
-```python
-import client
-from client.models.user_preflight_dto import UserPreflightDTO
-from client.models.user_preflight_response import UserPreflightResponse
-from client.rest import ApiException
-from pprint import pprint
-
-# Defining the host is optional and defaults to https://www.activityinfo.org/resources
-# See configuration.py for a list of all supported configuration parameters.
-configuration = client.Configuration(
-    host = "https://www.activityinfo.org/resources"
-)
-
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure Bearer authorization: bearerAuth
-configuration = client.Configuration(
-    access_token = os.environ["BEARER_TOKEN"]
-)
-
-# Enter a context with an instance of the API client
-async with client.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = client.DefaultApi(api_client)
-    database_id = 'database_id_example' # str | 
-    user_preflight_dto = client.UserPreflightDTO() # UserPreflightDTO |  (optional)
-
-    try:
-        # Check the status of a user's email before adding them to a database.
-        api_response = await api_instance.user_preflight_post(database_id, user_preflight_dto=user_preflight_dto)
-        print("The response of DefaultApi->user_preflight_post:\n")
-        pprint(api_response)
-    except Exception as e:
-        print("Exception when calling DefaultApi->user_preflight_post: %s\n" % e)
-```
-
-
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **database_id** | **str**|  | 
- **user_preflight_dto** | [**UserPreflightDTO**](UserPreflightDTO.md)|  | [optional] 
-
-### Return type
-
-[**UserPreflightResponse**](UserPreflightResponse.md)
+[**MessageResponse**](MessageResponse.md)
 
 ### Authorization
 

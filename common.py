@@ -1,12 +1,13 @@
 from typing import List, Optional, Dict, Any, cast
 
-from activityinfo.client import DatabaseTree, Resource, DefaultApi, FormSchema
+from activityinfo.client import DatabaseResource, FormSchema, DefaultApi
+from activityinfo.client.models.database_tree import DatabaseTree
 
 # Folders prefixed with these numbers are considered 'Data' folders in our standard structure
 DATA_FOLDER_PREFIXES = ["3", "4", "5", "6"]
 
 
-def filter_data_forms(tree: DatabaseTree, folder_id: str) -> List[Resource]:
+def filter_data_forms(tree: DatabaseTree, folder_id: str) -> List[DatabaseResource]:
     """
     Filter the database tree to find only 'Data Forms'.
     
@@ -36,7 +37,7 @@ def filter_data_forms(tree: DatabaseTree, folder_id: str) -> List[Resource]:
     ]
 
 
-def find_resource_by_prefix(items: List[Resource], prefix: str) -> Optional[Resource]:
+def find_resource_by_prefix(items: List[DatabaseResource], prefix: str) -> Optional[DatabaseResource]:
     """
     Find an item by its 'label' attribute prefix, preferring matches followed by standard delimiters.
     
@@ -70,7 +71,7 @@ def find_resource_by_prefix(items: List[Resource], prefix: str) -> Optional[Reso
     return matches[0]
 
 
-def find_all_resources_by_prefix(items: List[Resource], prefix: str) -> List[Resource]:
+def find_all_resources_by_prefix(items: List[DatabaseResource], prefix: str) -> List[DatabaseResource]:
     """
     Find all items whose 'label' attribute starts with the given prefix.
     
@@ -99,8 +100,8 @@ async def get_records_with_multiref(client: DefaultApi, form_id: str) -> List[Di
     Returns:
         A list of record dictionaries with resolved multi-select references.
     """
-    base_records = cast(List[Dict[str, Any]], await client.get_form_get(form_id))
-    schema = await client.get_form_schema_get(form_id)
+    base_records = cast(List[Dict[str, Any]], await client.get_form_records(form_id=form_id))
+    schema = await client.get_form_schema(form_id=form_id)
 
     # Identify fields that use multi-select references
     multiref_fields = [
@@ -117,7 +118,7 @@ async def get_records_with_multiref(client: DefaultApi, form_id: str) -> List[Di
 
         # Fetch the records of the referenced form to build a lookup map
         ref_form_id = field.type_parameters.range[0]["formId"]
-        ref_records = cast(List[Dict[str, Any]], await client.get_form_get(ref_form_id))
+        ref_records = cast(List[Dict[str, Any]], await client.get_form_records(form_id=ref_form_id))
         ref_records_map = {rec["@id"]: rec for rec in ref_records}
 
         # The ID key is usually 'CODE.@id' in the API response

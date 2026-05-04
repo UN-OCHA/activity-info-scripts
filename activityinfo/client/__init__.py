@@ -28,93 +28,127 @@ __all__ = [
     "ApiKeyError",
     "ApiAttributeError",
     "ApiException",
-    "AddDatabaseDTO",
-    "AddDatabaseUserDTO",
-    "AddFormDTO",
+    "AddDatabaseRequest",
+    "AddFormRequest",
+    "AddUpdateFormResponse",
+    "AddUserRequest",
+    "AuditDatabaseRequest",
     "Database",
+    "DatabaseAudit",
+    "DatabaseAuditEvents",
+    "DatabaseAutomation",
+    "DatabaseAutomationAction",
+    "DatabaseLock",
+    "DatabaseLockDateRange",
+    "DatabaseResource",
     "DatabaseRole",
-    "DatabaseTranslation",
-    "DatabaseTranslations",
-    "DatabaseTranslationsID",
-    "DatabaseTree",
-    "ErrorResponse",
-    "FieldTypeParametersItemsUpdateDTO",
-    "FieldTypeParametersUpdateDTO",
-    "FilteredPermission",
-    "FormClass",
-    "FormResource",
+    "DatabaseRoleFilter",
+    "DatabaseRoleParameter",
+    "FieldCondition",
+    "FieldConditionRule",
+    "Form",
+    "FormPermissions",
     "FormSchema",
+    "FormSchemaElement",
+    "FormSchemaElementParameter",
+    "FormSchemaElementParameterLookup",
+    "FormSchemaElementParameterTranslation",
+    "FormSchemaElementParameterValue",
     "FormTree",
-    "FormTreeEntry",
+    "GetDatabasesResponse",
     "Grant",
-    "OwnerRef",
-    "QueryRowsColumn",
-    "QueryRowsFilterSet",
+    "JobRequest",
+    "JobStatus",
+    "MessageResponse",
+    "Permission",
+    "QueryColumn",
+    "QueryFilterSet",
     "QueryRowsRequest",
-    "QueryRowsRowSource",
-    "QueryRowsSort",
-    "RecordUpdateDTO",
-    "Resource",
-    "Role",
-    "SchemaFieldDTO",
-    "TypeParameterLookupConfig",
-    "UpdateDatabaseDTO",
-    "UpdateDatabaseTranslationsDTO",
-    "UpdateDatabaseUserRoleDTO",
-    "UpdateFormRecordsDTO",
-    "UserPreflightDTO",
+    "QuerySort",
+    "QuerySource",
+    "RangeInner",
+    "RecordRef",
+    "RecordUpdateChange",
+    "RecordUpdateRequest",
+    "SecurityCategory",
+    "TranslationDictionary",
+    "TranslationDictionaryId",
+    "TranslationString",
+    "UpdateDatabaseRequest",
+    "UpdateTranslationsRequest",
+    "UpdateUserRequest",
+    "User",
     "UserPreflightResponse",
+    "UserRef",
+    "UserRole",
 ]
 
 # import apis into sdk package
-from client.api.default_api import DefaultApi as DefaultApi
+from activityinfo.client.api.default_api import DefaultApi as DefaultApi
 
 # import ApiClient
-from client.api_response import ApiResponse as ApiResponse
-from client.api_client import ApiClient as ApiClient
-from client.configuration import Configuration as Configuration
-from client.exceptions import OpenApiException as OpenApiException
-from client.exceptions import ApiTypeError as ApiTypeError
-from client.exceptions import ApiValueError as ApiValueError
-from client.exceptions import ApiKeyError as ApiKeyError
-from client.exceptions import ApiAttributeError as ApiAttributeError
-from client.exceptions import ApiException as ApiException
+from activityinfo.client.api_response import ApiResponse as ApiResponse
+from activityinfo.client.api_client import ApiClient as ApiClient
+from activityinfo.client.configuration import Configuration as Configuration
+from activityinfo.client.exceptions import OpenApiException as OpenApiException
+from activityinfo.client.exceptions import ApiTypeError as ApiTypeError
+from activityinfo.client.exceptions import ApiValueError as ApiValueError
+from activityinfo.client.exceptions import ApiKeyError as ApiKeyError
+from activityinfo.client.exceptions import ApiAttributeError as ApiAttributeError
+from activityinfo.client.exceptions import ApiException as ApiException
 
 # import models into sdk package
-from client.models.add_database_dto import AddDatabaseDTO as AddDatabaseDTO
-from client.models.add_database_user_dto import AddDatabaseUserDTO as AddDatabaseUserDTO
-from client.models.add_form_dto import AddFormDTO as AddFormDTO
-from client.models.database import Database as Database
-from client.models.database_role import DatabaseRole as DatabaseRole
-from client.models.database_translation import DatabaseTranslation as DatabaseTranslation
-from client.models.database_translations import DatabaseTranslations as DatabaseTranslations
-from client.models.database_translations_id import DatabaseTranslationsID as DatabaseTranslationsID
-from client.models.database_tree import DatabaseTree as DatabaseTree
-from client.models.error_response import ErrorResponse as ErrorResponse
-from client.models.field_type_parameters_items_update_dto import FieldTypeParametersItemsUpdateDTO as FieldTypeParametersItemsUpdateDTO
-from client.models.field_type_parameters_update_dto import FieldTypeParametersUpdateDTO as FieldTypeParametersUpdateDTO
-from client.models.filtered_permission import FilteredPermission as FilteredPermission
-from client.models.form_class import FormClass as FormClass
-from client.models.form_resource import FormResource as FormResource
-from client.models.form_schema import FormSchema as FormSchema
-from client.models.form_tree import FormTree as FormTree
-from client.models.form_tree_entry import FormTreeEntry as FormTreeEntry
-from client.models.grant import Grant as Grant
-from client.models.owner_ref import OwnerRef as OwnerRef
-from client.models.query_rows_column import QueryRowsColumn as QueryRowsColumn
-from client.models.query_rows_filter_set import QueryRowsFilterSet as QueryRowsFilterSet
-from client.models.query_rows_request import QueryRowsRequest as QueryRowsRequest
-from client.models.query_rows_row_source import QueryRowsRowSource as QueryRowsRowSource
-from client.models.query_rows_sort import QueryRowsSort as QueryRowsSort
-from client.models.record_update_dto import RecordUpdateDTO as RecordUpdateDTO
-from client.models.resource import Resource as Resource
-from client.models.role import Role as Role
-from client.models.schema_field_dto import SchemaFieldDTO as SchemaFieldDTO
-from client.models.type_parameter_lookup_config import TypeParameterLookupConfig as TypeParameterLookupConfig
-from client.models.update_database_dto import UpdateDatabaseDTO as UpdateDatabaseDTO
-from client.models.update_database_translations_dto import UpdateDatabaseTranslationsDTO as UpdateDatabaseTranslationsDTO
-from client.models.update_database_user_role_dto import UpdateDatabaseUserRoleDTO as UpdateDatabaseUserRoleDTO
-from client.models.update_form_records_dto import UpdateFormRecordsDTO as UpdateFormRecordsDTO
-from client.models.user_preflight_dto import UserPreflightDTO as UserPreflightDTO
-from client.models.user_preflight_response import UserPreflightResponse as UserPreflightResponse
+from activityinfo.client.models.add_database_request import AddDatabaseRequest as AddDatabaseRequest
+from activityinfo.client.models.add_form_request import AddFormRequest as AddFormRequest
+from activityinfo.client.models.add_update_form_response import AddUpdateFormResponse as AddUpdateFormResponse
+from activityinfo.client.models.add_user_request import AddUserRequest as AddUserRequest
+from activityinfo.client.models.audit_database_request import AuditDatabaseRequest as AuditDatabaseRequest
+from activityinfo.client.models.database import Database as Database
+from activityinfo.client.models.database_audit import DatabaseAudit as DatabaseAudit
+from activityinfo.client.models.database_audit_events import DatabaseAuditEvents as DatabaseAuditEvents
+from activityinfo.client.models.database_automation import DatabaseAutomation as DatabaseAutomation
+from activityinfo.client.models.database_automation_action import DatabaseAutomationAction as DatabaseAutomationAction
+from activityinfo.client.models.database_lock import DatabaseLock as DatabaseLock
+from activityinfo.client.models.database_lock_date_range import DatabaseLockDateRange as DatabaseLockDateRange
+from activityinfo.client.models.database_resource import DatabaseResource as DatabaseResource
+from activityinfo.client.models.database_role import DatabaseRole as DatabaseRole
+from activityinfo.client.models.database_role_filter import DatabaseRoleFilter as DatabaseRoleFilter
+from activityinfo.client.models.database_role_parameter import DatabaseRoleParameter as DatabaseRoleParameter
+from activityinfo.client.models.field_condition import FieldCondition as FieldCondition
+from activityinfo.client.models.field_condition_rule import FieldConditionRule as FieldConditionRule
+from activityinfo.client.models.form import Form as Form
+from activityinfo.client.models.form_permissions import FormPermissions as FormPermissions
+from activityinfo.client.models.form_schema import FormSchema as FormSchema
+from activityinfo.client.models.form_schema_element import FormSchemaElement as FormSchemaElement
+from activityinfo.client.models.form_schema_element_parameter import FormSchemaElementParameter as FormSchemaElementParameter
+from activityinfo.client.models.form_schema_element_parameter_lookup import FormSchemaElementParameterLookup as FormSchemaElementParameterLookup
+from activityinfo.client.models.form_schema_element_parameter_translation import FormSchemaElementParameterTranslation as FormSchemaElementParameterTranslation
+from activityinfo.client.models.form_schema_element_parameter_value import FormSchemaElementParameterValue as FormSchemaElementParameterValue
+from activityinfo.client.models.form_tree import FormTree as FormTree
+from activityinfo.client.models.get_databases_response import GetDatabasesResponse as GetDatabasesResponse
+from activityinfo.client.models.grant import Grant as Grant
+from activityinfo.client.models.job_request import JobRequest as JobRequest
+from activityinfo.client.models.job_status import JobStatus as JobStatus
+from activityinfo.client.models.message_response import MessageResponse as MessageResponse
+from activityinfo.client.models.permission import Permission as Permission
+from activityinfo.client.models.query_column import QueryColumn as QueryColumn
+from activityinfo.client.models.query_filter_set import QueryFilterSet as QueryFilterSet
+from activityinfo.client.models.query_rows_request import QueryRowsRequest as QueryRowsRequest
+from activityinfo.client.models.query_sort import QuerySort as QuerySort
+from activityinfo.client.models.query_source import QuerySource as QuerySource
+from activityinfo.client.models.range_inner import RangeInner as RangeInner
+from activityinfo.client.models.record_ref import RecordRef as RecordRef
+from activityinfo.client.models.record_update_change import RecordUpdateChange as RecordUpdateChange
+from activityinfo.client.models.record_update_request import RecordUpdateRequest as RecordUpdateRequest
+from activityinfo.client.models.security_category import SecurityCategory as SecurityCategory
+from activityinfo.client.models.translation_dictionary import TranslationDictionary as TranslationDictionary
+from activityinfo.client.models.translation_dictionary_id import TranslationDictionaryId as TranslationDictionaryId
+from activityinfo.client.models.translation_string import TranslationString as TranslationString
+from activityinfo.client.models.update_database_request import UpdateDatabaseRequest as UpdateDatabaseRequest
+from activityinfo.client.models.update_translations_request import UpdateTranslationsRequest as UpdateTranslationsRequest
+from activityinfo.client.models.update_user_request import UpdateUserRequest as UpdateUserRequest
+from activityinfo.client.models.user import User as User
+from activityinfo.client.models.user_preflight_response import UserPreflightResponse as UserPreflightResponse
+from activityinfo.client.models.user_ref import UserRef as UserRef
+from activityinfo.client.models.user_role import UserRole as UserRole
 

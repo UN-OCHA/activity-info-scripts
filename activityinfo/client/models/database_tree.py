@@ -19,11 +19,11 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from client.models.database_role import DatabaseRole
-from client.models.grant import Grant
-from client.models.owner_ref import OwnerRef
-from client.models.resource import Resource
-from client.models.role import Role
+from activityinfo.client.models.database_role import DatabaseRole
+from activityinfo.client.models.grant import Grant
+from activityinfo.client.models.owner_ref import OwnerRef
+from activityinfo.client.models.resource import Resource
+from activityinfo.client.models.role import Role
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python

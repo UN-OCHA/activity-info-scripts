@@ -6,12 +6,9 @@ import typer
 from cuid2 import Cuid
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
+from activityinfo.client import FormSchemaElement, FormSchemaElementParameter, FormSchemaElementParameterLookup, \
+    RecordUpdateRequest, RecordUpdateChange
 from activityinfo.client.models import (
-    SchemaFieldDTO,
-    FieldTypeParametersUpdateDTO,
-    TypeParameterLookupConfig,
-    RecordUpdateDTO,
-    UpdateFormRecordsDTO,
     FormSchema
 )
 from common import filter_data_forms, get_records_with_multiref
@@ -96,7 +93,7 @@ async def _metric_async(target_database_id: str,
         task = progress.add_task("Fetching database configuration...", total=None)
 
         # --- 2. Retrieve State ---
-        target_tree = await client.get_database_tree_get(target_database_id)
+        target_tree = await client.get_database_tree(database_id=target_database_id)
 
         # --- 3. Identify Target Data Forms ---
         # First, find forms in folders starting with 3, 4, 5, 6
@@ -107,7 +104,7 @@ async def _metric_async(target_database_id: str,
         config_form_names = set()
         if config_form_012:
             with handle_api_errors("Could not obtain 0.1.2 config form records"):
-                config_records = cast(List[Dict[str, Any]], await client.get_form_get(config_form_012.id))
+                config_records = cast(List[Dict[str, Any]], await client.get_form_records(form_id=config_form_012.id))
                 for rec in config_records:
                     name = rec.get("SYSNAME") or rec.get("SYS_NAME")
                     if name:
@@ -133,7 +130,7 @@ async def _metric_async(target_database_id: str,
 
         progress.update(task, description=f"Fetching records from {metric_config_form.label}...")
         with handle_api_errors(f"Could not get records for {metric_config_form.id}"):
-            records = cast(List[Dict[str, Any]], await client.get_form_get(metric_config_form.id))
+            records = cast(List[Dict[str, Any]], await client.get_form_records(form_id=metric_config_form.id))
 
         # Sort and group records by target form name
         records.sort(key=lambda r: (r.get("DFORM.SYSNAME") or r.get("DFORM_SYSNAME") or r.get("SYSNAME") or "",
@@ -159,7 +156,7 @@ async def _metric_async(target_database_id: str,
                 continue
 
             with handle_api_errors(f"Could not process schema for {sysname}"):
-                schema = await client.get_form_schema_get(target_form_res.id)
+                schema = await client.get_form_schema(form_id=target_form_res.id)
 
                 # --- Find Insertion Point ---
                 # Metrics should appear after ID and Segmentation fields but before other custom fields
@@ -177,7 +174,7 @@ async def _metric_async(target_database_id: str,
                 existing_metric_elements = [e for e in rest_elements if is_metric_field(e.code)]
 
                 # Group existing metrics by their base code
-                metric_schemas: Dict[str, List[SchemaFieldDTO]] = {}
+                metric_schemas: Dict[str, List[FormSchemaElement]] = {}
                 for e in existing_metric_elements:
                     if e.code:
                         base_code = get_metric_base_code(e.code)
@@ -234,18 +231,18 @@ async def _metric_async(target_database_id: str,
 
                     # 1. Manual Entry Field
                     if display_refcode == "MAN":
-                        new_elements.append(SchemaFieldDTO(
+                        new_elements.append(FormSchemaElement(
                             id=ids[0],
                             code=f"AMOUNT_{base_code}_MAN",
                             label=f"{name} (Manual)",
                             required=False,
                             type="quantity",
                             relevanceCondition=relevance_man,
-                            typeParameters=FieldTypeParametersUpdateDTO(units="", aggregation="SUM")
+                            typeParameters=FormSchemaElementParameter(units="", aggregation="SUM")
                         ))
 
                     # 2. External Calculation (imported/pushed from external tools)
-                    new_elements.append(SchemaFieldDTO(
+                    new_elements.append(FormSchemaElement(
                         id=ids[1],
                         code=f"AMOUNT_{base_code}_ECALC",
                         label=f"{name} (External Calc)",
@@ -254,11 +251,11 @@ async def _metric_async(target_database_id: str,
                         tableVisible=False,
                         type="quantity",
                         relevanceCondition=relevance_others,
-                        typeParameters=FieldTypeParametersUpdateDTO(units="", aggregation="SUM")
+                        typeParameters=FormSchemaElementParameter(units="", aggregation="SUM")
                     ))
 
                     # 3. Internal Calculation (calculated via formulas within ActivityInfo)
-                    new_elements.append(SchemaFieldDTO(
+                    new_elements.append(FormSchemaElement(
                         id=ids[2],
                         code=f"AMOUNT_{base_code}_ICALC",
                         label=f"{name} (Internal Calc)",
@@ -267,7 +264,7 @@ async def _metric_async(target_database_id: str,
                         tableVisible=False,
                         type="calculated",
                         relevanceCondition=relevance_others,
-                        typeParameters=FieldTypeParametersUpdateDTO(formula="VALUE(\"#\")")
+                        typeParameters=FormSchemaElementParameter(formula="VALUE(\"#\")")
                     ))
 
                     # 4. Final Display Field (Coalesce logic to pick the best available value)
@@ -275,14 +272,14 @@ async def _metric_async(target_database_id: str,
                     if display_refcode == "MAN":
                         formula = f"COALESCE({ids[0]}, {ids[1]}, {ids[2]})"
 
-                    new_elements.append(SchemaFieldDTO(
+                    new_elements.append(FormSchemaElement(
                         id=ids[3],
                         code=f"AMOUNT_{base_code}",
                         label=name,
                         required=False,
                         type="calculated",
                         relevanceCondition=relevance_others,
-                        typeParameters=FieldTypeParametersUpdateDTO(formula=formula)
+                        typeParameters=FormSchemaElementParameter(formula=formula)
                     ))
 
                     metric_schemas[base_code] = new_elements
@@ -304,7 +301,7 @@ async def _metric_async(target_database_id: str,
                         final_metric_elements.extend(metric_schemas[bc])
 
                 schema.elements = non_metric_before + final_metric_elements + other_elements
-                await client.update_form_schema_post(target_form_res.id, schema)
+                await client.update_form_schema(form_id=target_form_res.id, form_schema=schema)
 
             progress.advance(task)
 
@@ -341,7 +338,7 @@ async def _disagg_async(target_database_id: str,
         # --- Initialization & State ---
         task = progress.add_task("Fetching database configuration...", total=None)
         with handle_api_errors(f"Could not get tree for {target_database_id}"):
-            target_tree = await client.get_database_tree_get(target_database_id)
+            target_tree = await client.get_database_tree(database_id=target_database_id)
 
         # Retrieve exhaustive list of target forms
         folder_forms = filter_data_forms(target_tree, root_folder_id or target_database_id)
@@ -349,7 +346,7 @@ async def _disagg_async(target_database_id: str,
         config_form_names = set()
         if config_form_012:
             with handle_api_errors("Could not obtain 0.1.2 config form records"):
-                config_records = cast(List[Dict[str, Any]], await client.get_form_get(config_form_012.id))
+                config_records = cast(List[Dict[str, Any]], await client.get_form_records(form_id=config_form_012.id))
                 for rec in config_records:
                     name = rec.get("SYSNAME") or rec.get("SYS_NAME")
                     if name: config_form_names.add(name)
@@ -372,7 +369,7 @@ async def _disagg_async(target_database_id: str,
 
         progress.update(task, description=f"Fetching records from {disagg_config_form.label}...")
         with handle_api_errors(f"Could not get records for {disagg_config_form.id}"):
-            records = cast(List[Dict[str, Any]], await client.get_form_get(disagg_config_form.id))
+            records = cast(List[Dict[str, Any]], await client.get_form_records(form_id=disagg_config_form.id))
 
         records.sort(key=lambda r: (r.get("DFORM.SYSNAME") or r.get("DFORM_SYSNAME") or r.get("SYSNAME") or "",
                                     r.get("REFORDER") or ""))
@@ -395,7 +392,7 @@ async def _disagg_async(target_database_id: str,
                 continue
 
             with handle_api_errors(f"Could not process schema for {sysname}"):
-                schema = await client.get_form_schema_get(target_form_res.id)
+                schema = await client.get_form_schema(form_id=target_form_res.id)
 
                 # Find injection point (after segments, before metrics)
                 insertion_index = 0
@@ -438,7 +435,7 @@ async def _disagg_async(target_database_id: str,
                     # Construct dynamic relevance condition
                     relevance = f'!ISBLANK(SEARCH("|{ref_code}|", CONCAT("|", TEXTJOIN("|", TRUE, {eform_refcode}.DM.RFORMS_OPT.REFCODE), "|"))) || !ISBLANK(SEARCH("|{ccode}|", CONCAT("|", TEXTJOIN("|", TRUE, {eform_refcode}.DM.DISAGCONFIGS_OPT.CCODE), "|")))'
 
-                    new_element = SchemaFieldDTO(
+                    new_element = FormSchemaElement(
                         id=existing_element.id if existing_element else cuid.generate(),
                         code=ref_code,
                         label=name,
@@ -446,11 +443,11 @@ async def _disagg_async(target_database_id: str,
                         type="reference",
                         key=True,
                         relevanceCondition=relevance,
-                        typeParameters=FieldTypeParametersUpdateDTO(
+                        typeParameters=FormSchemaElementParameter(
                             cardinality="single",
                             range=[{"formId": ref_form.id}],
-                            lookupConfigs=[TypeParameterLookupConfig(id=cuid.generate(), formula="REFLABEL",
-                                                                     lookupLabel="Reference Label")]
+                            lookupConfigs=[FormSchemaElementParameterLookup(id=cuid.generate(), formula="REFLABEL",
+                                                                            lookupLabel="Reference Label")]
                         )
                     )
                     existing_disags_by_code[ref_code] = new_element
@@ -461,7 +458,8 @@ async def _disagg_async(target_database_id: str,
                 remaining_codes = [c for c in existing_disags_by_code.keys() if c not in processed_codes]
                 if remove_fields and remaining_codes:
                     with handle_api_errors(f"Checking for data in fields being removed from {sysname}"):
-                        records_to_check = cast(List[Dict[str, Any]], await client.get_form_get(target_form_res.id))
+                        records_to_check = cast(List[Dict[str, Any]],
+                                                await client.get_form_records(form_id=target_form_res.id))
 
                     records_to_delete = []
                     for rec in records_to_check:
@@ -476,10 +474,11 @@ async def _disagg_async(target_database_id: str,
                         if should_delete: records_to_delete.append(cast(str, rec["@id"]))
 
                     if records_to_delete:
-                        await client.update_form_records_post(UpdateFormRecordsDTO(
-                            changes=[RecordUpdateDTO(formId=target_form_res.id, recordId=rid, deleted=True, fields={})
-                                     for rid
-                                     in records_to_delete]
+                        await client.update_form_records(record_update_request=RecordUpdateRequest(
+                            changes=[
+                                RecordUpdateChange(formId=target_form_res.id, recordId=rid, deleted=True, fields={})
+                                for rid
+                                in records_to_delete]
                         ))
 
                     for c in remaining_codes:
@@ -491,7 +490,7 @@ async def _disagg_async(target_database_id: str,
                 final_ordered_disags = [existing_disags_by_code[c] for c in final_disag_codes if
                                         c in existing_disags_by_code]
                 schema.elements = elements_before + final_ordered_disags + other_elements
-                await client.update_form_schema_post(target_form_res.id, schema)
+                await client.update_form_schema(form_id=target_form_res.id, form_schema=schema)
 
             progress.advance(task)
 
@@ -526,7 +525,7 @@ async def _segment_async(target_database_id: str,
 
         # --- 1. Map Hierarchy Levels ---
         with handle_api_errors(f"Could not get tree for {target_database_id}"):
-            target_tree = await client.get_database_tree_get(target_database_id)
+            target_tree = await client.get_database_tree(database_id=target_database_id)
 
         cde_form = next((res for res in target_tree.resources if res.label.startswith("1.1")), None)
         lfe_form = next((res for res in target_tree.resources if res.label.startswith("1.2")), None)
@@ -537,7 +536,7 @@ async def _segment_async(target_database_id: str,
         level3_forms = []
         if entity_config_res:
             with handle_api_errors(f"Could not fetch {ENTITY_CONFIG_FORM_011}"):
-                config_recs = cast(List[Dict[str, Any]], await client.get_form_get(entity_config_res.id))
+                config_recs = cast(List[Dict[str, Any]], await client.get_form_records(form_id=entity_config_res.id))
                 for rec in config_recs:
                     prefix = rec.get("SYSPREFIX")
                     if prefix:
@@ -550,7 +549,7 @@ async def _segment_async(target_database_id: str,
         level4_forms = []
         if data_config_res:
             with handle_api_errors(f"Could not fetch {DATA_CONFIG_FORM_012}"):
-                config_recs = cast(List[Dict[str, Any]], await client.get_form_get(data_config_res.id))
+                config_recs = cast(List[Dict[str, Any]], await client.get_form_records(form_id=data_config_res.id))
                 for rec in config_recs:
                     sysname = rec.get("SYSNAME")
                     if sysname:
@@ -580,7 +579,7 @@ async def _segment_async(target_database_id: str,
         schema_cache: Dict[str, FormSchema] = {}
 
         async def get_cached_schema(f_id: str) -> FormSchema:
-            if f_id not in schema_cache: schema_cache[f_id] = await client.get_form_schema_get(f_id)
+            if f_id not in schema_cache: schema_cache[f_id] = await client.get_form_schema(form_id=f_id)
             return schema_cache[f_id]
 
         for seg_dim_code, records in grouped_seg_records.items():
@@ -735,17 +734,19 @@ async def _segment_async(target_database_id: str,
                             else:
                                 rel = f'ISBLANK({parent_ref}{seg_dim_code}) && {get_relevance(current_level, ref_rec, meta)}'
 
-                        ref_field = SchemaFieldDTO(id=cuid.generate(), code=field_code, label=str(seg_dim_name or ""),
-                                                   required=True if seg_dim_type == "Partner" else (
-                                                       required if is_initial else True), relevanceCondition=rel,
-                                                   type="reference",
-                                                   typeParameters=FieldTypeParametersUpdateDTO(cardinality="single",
-                                                                                               range=[{"formId": f_id}],
-                                                                                               lookupConfigs=[
-                                                                                                   TypeParameterLookupConfig(
-                                                                                                       id=cuid.generate(),
-                                                                                                       formula="REFLABEL",
-                                                                                                       lookupLabel="Reference Label")]))
+                        ref_field = FormSchemaElement(id=cuid.generate(), code=field_code,
+                                                      label=str(seg_dim_name or ""),
+                                                      required=True if seg_dim_type == "Partner" else (
+                                                          required if is_initial else True), relevanceCondition=rel,
+                                                      type="reference",
+                                                      typeParameters=FormSchemaElementParameter(cardinality="single",
+                                                                                                range=[
+                                                                                                    {"formId": f_id}],
+                                                                                                lookupConfigs=[
+                                                                                                    FormSchemaElementParameterLookup(
+                                                                                                        id=cuid.generate(),
+                                                                                                        formula="REFLABEL",
+                                                                                                        lookupLabel="Reference Label")]))
                         if seg_dim_type == "Partner": ref_field.key = True
                         new_fields.append(ref_field)
 
@@ -755,9 +756,9 @@ async def _segment_async(target_database_id: str,
                             inh_form = f"CDE.{seg_dim_code}" if current_level == 2 else (
                                 f'IF(ETYPE.REFCODE == "CDE", CDE.{seg_dim_code}, LFE.{seg_dim_code})' if current_level == 3 else f'{eform_ref + "." if eform_ref else ""}{seg_dim_code}')
                             new_fields.append(
-                                SchemaFieldDTO(id=cuid.generate(), code=seg_dim_code, label=str(seg_dim_name or ""),
-                                               required=False, type="calculated", dataEntryVisible=False,
-                                               tableVisible=False, typeParameters=FieldTypeParametersUpdateDTO(
+                                FormSchemaElement(id=cuid.generate(), code=seg_dim_code, label=str(seg_dim_name or ""),
+                                                  required=False, type="calculated", dataEntryVisible=False,
+                                                  tableVisible=False, typeParameters=FormSchemaElementParameter(
                                         formula=f"COALESCE({ref_field.id}, {inh_form})")))
                     else:
                         # Pure inheritance: this level just mirrors the value from the parent level
@@ -765,10 +766,10 @@ async def _segment_async(target_database_id: str,
                         inh_form = f"CDE.{seg_dim_code}" if current_level == 2 else (
                             f'IF(ETYPE.REFCODE == "CDE", CDE.{seg_dim_code}, LFE.{seg_dim_code})' if current_level == 3 else f'{eform_ref + "." if eform_ref else ""}{seg_dim_code}')
                         new_fields.append(
-                            SchemaFieldDTO(id=cuid.generate(), code=seg_dim_code, label=str(seg_dim_name or ""),
-                                           required=False, type="calculated", dataEntryVisible=False,
-                                           tableVisible=False,
-                                           typeParameters=FieldTypeParametersUpdateDTO(formula=inh_form)))
+                            FormSchemaElement(id=cuid.generate(), code=seg_dim_code, label=str(seg_dim_name or ""),
+                                              required=False, type="calculated", dataEntryVisible=False,
+                                              tableVisible=False,
+                                              typeParameters=FormSchemaElementParameter(formula=inh_form)))
 
                     # Update the schema elements list
                     existing_indices = [i for i, el in enumerate(schema.elements) if
@@ -785,7 +786,8 @@ async def _segment_async(target_database_id: str,
         # Final Batch Commit of all modified schemas
         progress.update(task, description="Saving form schemas...")
         for form_id, schema in schema_cache.items():
-            with handle_api_errors(f"Updating {form_id}"): await client.update_form_schema_post(form_id, schema)
+            with handle_api_errors(f"Updating {form_id}"): await client.update_form_schema(form_id=form_id,
+                                                                                           form_schema=schema)
 
     console.print("[bold green]Success:[/bold green] Segmentation fields adjusted.")
 

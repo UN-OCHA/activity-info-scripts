@@ -19,7 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from client.models.field_type_parameters_update_dto import FieldTypeParametersUpdateDTO
+from activityinfo.client.models.field_type_parameters_update_dto import FieldTypeParametersUpdateDTO
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python

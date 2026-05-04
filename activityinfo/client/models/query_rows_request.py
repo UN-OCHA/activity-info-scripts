@@ -19,10 +19,10 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from client.models.query_rows_column import QueryRowsColumn
-from client.models.query_rows_filter_set import QueryRowsFilterSet
-from client.models.query_rows_row_source import QueryRowsRowSource
-from client.models.query_rows_sort import QueryRowsSort
+from activityinfo.client.models.query_column import QueryColumn
+from activityinfo.client.models.query_filter_set import QueryFilterSet
+from activityinfo.client.models.query_sort import QuerySort
+from activityinfo.client.models.query_source import QuerySource
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -31,17 +31,18 @@ class QueryRowsRequest(BaseModel):
     """
     QueryRowsRequest
     """ # noqa: E501
-    row_sources: Optional[List[QueryRowsRowSource]] = Field(default=None, alias="rowSources")
-    form_id: Optional[StrictStr] = Field(default=None, alias="formId")
-    columns: List[QueryRowsColumn]
-    filter: Optional[StrictStr] = None
-    filter_sets: Optional[List[QueryRowsFilterSet]] = Field(default=None, alias="filterSets")
-    sort: Optional[List[QueryRowsSort]] = None
+    row_sources: List[QuerySource] = Field(description="Exactly one RowSource is required.", alias="rowSources")
+    form_id: Optional[StrictStr] = Field(default=None, description="CUID of the root form to query. This is deprecated in favour of rowSources", alias="formId")
+    columns: List[QueryColumn] = Field(description="The list of columns to retrieve")
+    filter: Optional[StrictStr] = Field(default=None, description="A boolean-valued ActivityInfo formula to filter the records included in this query. Resulting rows must match both the filter formula, if provided, and all the provided filterSets. Filter sets are more efficient than formulas when you have a large number of values.")
+    filter_sets: Optional[List[QueryFilterSet]] = Field(default=None, description="Set-based filters to apply to records returned by the query, each of which is a pair of a formula and a set of values to include. Resulting rows must match both the filter formula, if provided, and all the provided filterSets. Filter sets are more efficient than formulas when you have a large number of values.", alias="filterSets")
+    sort: Optional[List[QuerySort]] = Field(default=None, description="Sort instructions specified with a formula and a direction. Only one sort instruction can be specified, so sorting on multiple columns must be done with a single formula expression.")
     truncate_strings: Optional[StrictBool] = Field(default=None, alias="truncateStrings")
     validation: Optional[Dict[str, Any]] = None
     drafts: Optional[StrictStr] = None
+    tags: Optional[List[StrictStr]] = None
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["rowSources", "formId", "columns", "filter", "filterSets", "sort", "truncateStrings", "validation", "drafts"]
+    __properties: ClassVar[List[str]] = ["rowSources", "formId", "columns", "filter", "filterSets", "sort", "truncateStrings", "validation", "drafts", "tags"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -117,31 +118,6 @@ class QueryRowsRequest(BaseModel):
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
 
-        # set to None if form_id (nullable) is None
-        # and model_fields_set contains the field
-        if self.form_id is None and "form_id" in self.model_fields_set:
-            _dict['formId'] = None
-
-        # set to None if filter (nullable) is None
-        # and model_fields_set contains the field
-        if self.filter is None and "filter" in self.model_fields_set:
-            _dict['filter'] = None
-
-        # set to None if truncate_strings (nullable) is None
-        # and model_fields_set contains the field
-        if self.truncate_strings is None and "truncate_strings" in self.model_fields_set:
-            _dict['truncateStrings'] = None
-
-        # set to None if validation (nullable) is None
-        # and model_fields_set contains the field
-        if self.validation is None and "validation" in self.model_fields_set:
-            _dict['validation'] = None
-
-        # set to None if drafts (nullable) is None
-        # and model_fields_set contains the field
-        if self.drafts is None and "drafts" in self.model_fields_set:
-            _dict['drafts'] = None
-
         return _dict
 
     @classmethod
@@ -154,15 +130,16 @@ class QueryRowsRequest(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "rowSources": [QueryRowsRowSource.from_dict(_item) for _item in obj["rowSources"]] if obj.get("rowSources") is not None else None,
+            "rowSources": [QuerySource.from_dict(_item) for _item in obj["rowSources"]] if obj.get("rowSources") is not None else None,
             "formId": obj.get("formId"),
-            "columns": [QueryRowsColumn.from_dict(_item) for _item in obj["columns"]] if obj.get("columns") is not None else None,
+            "columns": [QueryColumn.from_dict(_item) for _item in obj["columns"]] if obj.get("columns") is not None else None,
             "filter": obj.get("filter"),
-            "filterSets": [QueryRowsFilterSet.from_dict(_item) for _item in obj["filterSets"]] if obj.get("filterSets") is not None else None,
-            "sort": [QueryRowsSort.from_dict(_item) for _item in obj["sort"]] if obj.get("sort") is not None else None,
+            "filterSets": [QueryFilterSet.from_dict(_item) for _item in obj["filterSets"]] if obj.get("filterSets") is not None else None,
+            "sort": [QuerySort.from_dict(_item) for _item in obj["sort"]] if obj.get("sort") is not None else None,
             "truncateStrings": obj.get("truncateStrings"),
             "validation": obj.get("validation"),
-            "drafts": obj.get("drafts")
+            "drafts": obj.get("drafts"),
+            "tags": obj.get("tags")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():

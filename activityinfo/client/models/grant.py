@@ -19,19 +19,20 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from client.models.filtered_permission import FilteredPermission
+from activityinfo.client.models.field_condition import FieldCondition
+from activityinfo.client.models.permission import Permission
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
 class Grant(BaseModel):
     """
-    Grant
+    A set of permissions for a single database resource (database, folder, form, subform) that is either associated with a role or given directly to a user.
     """ # noqa: E501
-    resource_id: StrictStr = Field(alias="resourceId")
-    optional: Optional[StrictBool] = False
-    operations: Optional[List[FilteredPermission]] = None
-    conditions: Optional[List[Any]] = None
+    resource_id: StrictStr = Field(description="the database, folder, form or subform being granted access to.", alias="resourceId")
+    optional: StrictBool = Field(description="An optional resource is granted selectively to individual users assigned to a role.")
+    operations: List[Permission] = Field(description="The set of operations (add/edit/delete etc.) and their record-level conditions permitted on this resource")
+    conditions: Optional[List[FieldCondition]] = Field(default=None, description="The set of field-level conditions applied to this resource")
     __properties: ClassVar[List[str]] = ["resourceId", "optional", "operations", "conditions"]
 
     model_config = ConfigDict(
@@ -80,6 +81,13 @@ class Grant(BaseModel):
                 if _item_operations:
                     _items.append(_item_operations.to_dict())
             _dict['operations'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in conditions (list)
+        _items = []
+        if self.conditions:
+            for _item_conditions in self.conditions:
+                if _item_conditions:
+                    _items.append(_item_conditions.to_dict())
+            _dict['conditions'] = _items
         return _dict
 
     @classmethod
@@ -94,8 +102,8 @@ class Grant(BaseModel):
         _obj = cls.model_validate({
             "resourceId": obj.get("resourceId"),
             "optional": obj.get("optional") if obj.get("optional") is not None else False,
-            "operations": [FilteredPermission.from_dict(_item) for _item in obj["operations"]] if obj.get("operations") is not None else None,
-            "conditions": obj.get("conditions")
+            "operations": [Permission.from_dict(_item) for _item in obj["operations"]] if obj.get("operations") is not None else None,
+            "conditions": [FieldCondition.from_dict(_item) for _item in obj["conditions"]] if obj.get("conditions") is not None else None
         })
         return _obj
 

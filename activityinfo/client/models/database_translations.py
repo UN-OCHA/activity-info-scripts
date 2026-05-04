@@ -19,8 +19,8 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List
-from client.models.database_translation import DatabaseTranslation
-from client.models.database_translations_id import DatabaseTranslationsID
+from activityinfo.client.models.database_translation import DatabaseTranslation
+from activityinfo.client.models.database_translations_id import DatabaseTranslationsID
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python

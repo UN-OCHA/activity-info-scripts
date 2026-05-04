@@ -5,13 +5,13 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**id** | **str** |  | 
-**schema_version** | **int** |  | 
-**database_id** | **str** |  | 
-**parent_form_id** | **str** |  | [optional] 
-**label** | **str** |  | 
+**id** | **str** | The immutable CUID for this form. Must be globally unique within an ActivityInfo server | 
+**label** | **str** | A human-readable label for this form | 
+**schema_version** | **int** | A monotonically increasing version number of this schema assigned by the server upon updates | 
+**database_id** | **str** | The id of the database to which this form belongs | 
+**parent_form_id** | **str** | The id of this form&#39;s parent, if this form is a subform. Note that subforms can only be created by adding a subform field to the parent form. | [optional] 
 **record_label_field_id** | **str** |  | [optional] 
-**elements** | [**List[SchemaFieldDTO]**](SchemaFieldDTO.md) |  | 
+**elements** | [**List[FormSchemaElement]**](FormSchemaElement.md) | This form&#39;s fields, section headers, and other elements. | 
 
 ## Example
 

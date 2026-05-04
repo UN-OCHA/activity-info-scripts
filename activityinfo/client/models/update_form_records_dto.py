@@ -19,7 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict
 from typing import Any, ClassVar, Dict, List
-from client.models.record_update_dto import RecordUpdateDTO
+from activityinfo.client.models.record_update_dto import RecordUpdateDTO
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python

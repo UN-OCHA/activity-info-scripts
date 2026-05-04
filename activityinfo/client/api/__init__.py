@@ -1,5 +1,5 @@
 # flake8: noqa
 
 # import apis into api package
-from client.api.default_api import DefaultApi
+from activityinfo.client.api.default_api import DefaultApi
 

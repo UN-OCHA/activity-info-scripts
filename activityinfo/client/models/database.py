@@ -17,8 +17,15 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from activityinfo.client.models.database_lock import DatabaseLock
+from activityinfo.client.models.database_resource import DatabaseResource
+from activityinfo.client.models.database_role import DatabaseRole
+from activityinfo.client.models.grant import Grant
+from activityinfo.client.models.security_category import SecurityCategory
+from activityinfo.client.models.user_ref import UserRef
+from activityinfo.client.models.user_role import UserRole
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -27,10 +34,27 @@ class Database(BaseModel):
     """
     Database
     """ # noqa: E501
-    database_id: StrictStr = Field(alias="databaseId")
-    label: StrictStr
+    database_id: StrictStr = Field(description="This database's id", alias="databaseId")
+    user_id: StrictStr = Field(description="The id of the requesting user. The contents of the tree depends on the permissions of the requesting user.", alias="userId")
+    version: StrictStr = Field(description="The monotonically-increasing version of the database tree. The version number is incremented whenever a change is made that affects the database tree.")
+    label: StrictStr = Field(description="This database's human-readable label.")
     description: Optional[StrictStr] = None
-    __properties: ClassVar[List[str]] = ["databaseId", "label", "description"]
+    owner_ref: UserRef = Field(alias="ownerRef")
+    language: Optional[StrictStr] = Field(default=None, description="Current database language")
+    original_language: Optional[StrictStr] = Field(default=None, description="Original database language", alias="originalLanguage")
+    languages: Optional[List[StrictStr]] = Field(default=None, description="The list of languages that have been defined for this database, including the original language, if set, and any translations.")
+    suspended: StrictBool = Field(description="True if this database is suspended for billing reasons")
+    role: UserRole = Field(description="The requesting user's assigned role in this database.")
+    roles: List[DatabaseRole] = Field(description="The roles that have been defined for this database.")
+    storage: StrictStr
+    published_template: StrictBool = Field(description="True if this database has been published as a template.", alias="publishedTemplate")
+    security_categories: List[SecurityCategory] = Field(description="The security categories that have been defined for this database.", alias="securityCategories")
+    resources: List[DatabaseResource] = Field(description="The set of resources (folders, forms, and subforms) that belong to this database.")
+    locks: Optional[List[DatabaseLock]] = Field(default=None, description="The record locks that have been defined on this database.")
+    grants: Optional[List[Grant]] = Field(default=None, description="The direct (non-role) permission grants that have been made to the requesting user for this database.")
+    billing_account_id: StrictStr = Field(alias="billingAccountId")
+    billing_plan: StrictStr = Field(description="The billing plan name under which this database falls. The billing plan can have an affect on which features are avialable within this database.", alias="billingPlan")
+    __properties: ClassVar[List[str]] = ["databaseId", "userId", "version", "label", "description", "ownerRef", "language", "originalLanguage", "languages", "suspended", "role", "roles", "storage", "publishedTemplate", "securityCategories", "resources", "locks", "grants", "billingAccountId", "billingPlan"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -71,11 +95,47 @@ class Database(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # set to None if description (nullable) is None
-        # and model_fields_set contains the field
-        if self.description is None and "description" in self.model_fields_set:
-            _dict['description'] = None
-
+        # override the default output from pydantic by calling `to_dict()` of owner_ref
+        if self.owner_ref:
+            _dict['ownerRef'] = self.owner_ref.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of role
+        if self.role:
+            _dict['role'] = self.role.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of each item in roles (list)
+        _items = []
+        if self.roles:
+            for _item_roles in self.roles:
+                if _item_roles:
+                    _items.append(_item_roles.to_dict())
+            _dict['roles'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in security_categories (list)
+        _items = []
+        if self.security_categories:
+            for _item_security_categories in self.security_categories:
+                if _item_security_categories:
+                    _items.append(_item_security_categories.to_dict())
+            _dict['securityCategories'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in resources (list)
+        _items = []
+        if self.resources:
+            for _item_resources in self.resources:
+                if _item_resources:
+                    _items.append(_item_resources.to_dict())
+            _dict['resources'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in locks (list)
+        _items = []
+        if self.locks:
+            for _item_locks in self.locks:
+                if _item_locks:
+                    _items.append(_item_locks.to_dict())
+            _dict['locks'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in grants (list)
+        _items = []
+        if self.grants:
+            for _item_grants in self.grants:
+                if _item_grants:
+                    _items.append(_item_grants.to_dict())
+            _dict['grants'] = _items
         return _dict
 
     @classmethod
@@ -89,8 +149,25 @@ class Database(BaseModel):
 
         _obj = cls.model_validate({
             "databaseId": obj.get("databaseId"),
+            "userId": obj.get("userId"),
+            "version": obj.get("version"),
             "label": obj.get("label"),
-            "description": obj.get("description")
+            "description": obj.get("description"),
+            "ownerRef": UserRef.from_dict(obj["ownerRef"]) if obj.get("ownerRef") is not None else None,
+            "language": obj.get("language"),
+            "originalLanguage": obj.get("originalLanguage"),
+            "languages": obj.get("languages"),
+            "suspended": obj.get("suspended"),
+            "role": UserRole.from_dict(obj["role"]) if obj.get("role") is not None else None,
+            "roles": [DatabaseRole.from_dict(_item) for _item in obj["roles"]] if obj.get("roles") is not None else None,
+            "storage": obj.get("storage"),
+            "publishedTemplate": obj.get("publishedTemplate"),
+            "securityCategories": [SecurityCategory.from_dict(_item) for _item in obj["securityCategories"]] if obj.get("securityCategories") is not None else None,
+            "resources": [DatabaseResource.from_dict(_item) for _item in obj["resources"]] if obj.get("resources") is not None else None,
+            "locks": [DatabaseLock.from_dict(_item) for _item in obj["locks"]] if obj.get("locks") is not None else None,
+            "grants": [Grant.from_dict(_item) for _item in obj["grants"]] if obj.get("grants") is not None else None,
+            "billingAccountId": obj.get("billingAccountId"),
+            "billingPlan": obj.get("billingPlan")
         })
         return _obj
 

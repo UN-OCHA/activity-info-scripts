@@ -17,8 +17,12 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from activityinfo.client.models.database_role_filter import DatabaseRoleFilter
+from activityinfo.client.models.database_role_parameter import DatabaseRoleParameter
+from activityinfo.client.models.grant import Grant
+from activityinfo.client.models.permission import Permission
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -27,10 +31,15 @@ class DatabaseRole(BaseModel):
     """
     DatabaseRole
     """ # noqa: E501
-    id: StrictStr
-    parameters: Optional[Dict[str, Any]] = None
-    resources: Optional[List[Any]] = None
-    __properties: ClassVar[List[str]] = ["id", "parameters", "resources"]
+    id: StrictStr = Field(description="This role's id")
+    label: StrictStr = Field(description="This role's human-readable label")
+    permissions: Optional[List[Permission]] = Field(default=None, description="Permissions granted this role. Applicable for legacy roles, for grant based roles it will be limited to permissions that are NOT related to resources, like MANAGE_USERS, MANAGE_ROLES")
+    parameters: Optional[List[DatabaseRoleParameter]] = Field(default=None, description="Parameters defined for this role. Parameters can be referenced in filtering formulas.")
+    filters: Optional[List[DatabaseRoleFilter]] = Field(default=None, description="Pre-defined filters. Role filters allow other users to choose filters for permissions without having to write formulas themselves. -- NOTEWORTHY - only used by legacy roles")
+    grants: Optional[List[Grant]] = None
+    version: Optional[StrictInt] = 0
+    grant_based: Optional[StrictBool] = Field(default=True, alias="grantBased")
+    __properties: ClassVar[List[str]] = ["id", "label", "permissions", "parameters", "filters", "grants", "version", "grantBased"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -71,6 +80,34 @@ class DatabaseRole(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of each item in permissions (list)
+        _items = []
+        if self.permissions:
+            for _item_permissions in self.permissions:
+                if _item_permissions:
+                    _items.append(_item_permissions.to_dict())
+            _dict['permissions'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in parameters (list)
+        _items = []
+        if self.parameters:
+            for _item_parameters in self.parameters:
+                if _item_parameters:
+                    _items.append(_item_parameters.to_dict())
+            _dict['parameters'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in filters (list)
+        _items = []
+        if self.filters:
+            for _item_filters in self.filters:
+                if _item_filters:
+                    _items.append(_item_filters.to_dict())
+            _dict['filters'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in grants (list)
+        _items = []
+        if self.grants:
+            for _item_grants in self.grants:
+                if _item_grants:
+                    _items.append(_item_grants.to_dict())
+            _dict['grants'] = _items
         return _dict
 
     @classmethod
@@ -84,8 +121,13 @@ class DatabaseRole(BaseModel):
 
         _obj = cls.model_validate({
             "id": obj.get("id"),
-            "parameters": obj.get("parameters"),
-            "resources": obj.get("resources")
+            "label": obj.get("label"),
+            "permissions": [Permission.from_dict(_item) for _item in obj["permissions"]] if obj.get("permissions") is not None else None,
+            "parameters": [DatabaseRoleParameter.from_dict(_item) for _item in obj["parameters"]] if obj.get("parameters") is not None else None,
+            "filters": [DatabaseRoleFilter.from_dict(_item) for _item in obj["filters"]] if obj.get("filters") is not None else None,
+            "grants": [Grant.from_dict(_item) for _item in obj["grants"]] if obj.get("grants") is not None else None,
+            "version": obj.get("version") if obj.get("version") is not None else 0,
+            "grantBased": obj.get("grantBased") if obj.get("grantBased") is not None else True
         })
         return _obj
 

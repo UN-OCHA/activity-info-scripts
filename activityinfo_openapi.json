@@ -8,21 +8,36 @@
   "servers": [
     {
       "url": "https://www.activityinfo.org/resources/"
+    },
+    {
+      "url": "https://3w.humanitarianaction.info/resources/"
+    },
+    {
+      "url": "https://tools.humanitarianaction.info/resources/"
     }
   ],
   "paths": {
     "/databases": {
       "post": {
-        "operationId": "add_database_post",
-        "summary": "Create a new database.",
+        "operationId": "add_database",
+        "summary": "Add Database",
         "description": "Create a new database.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDatabaseRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/Database"
                 }
               }
             }
@@ -32,26 +47,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddDatabaseDTO"
               }
             }
           }
         }
       },
       "get": {
-        "operationId": "get_user_databases_get",
-        "summary": "List all databases the authenticated user has access to.",
-        "description": "List all databases the authenticated user has access to.",
+        "operationId": "get_user_databases",
+        "summary": "Get User Databases",
+        "description": "Gets all the databases that the authenticated user owns, or that have been shared with the authenticated user.",
         "responses": {
           "200": {
             "description": "Successful response",
@@ -60,7 +66,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Database"
+                    "$ref": "#/components/schemas/GetDatabasesResponse"
                   }
                 }
               }
@@ -71,72 +77,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/databases/translations/{database_id}/form/{form_id}/{language_code}": {
-      "post": {
-        "operationId": "update_form_translations_post",
-        "summary": "Apply new translations to a specific form and its fields.",
-        "description": "Apply new translations to a specific form and its fields.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "database_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "form_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "language_code",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateDatabaseTranslationsDTO"
               }
             }
           }
@@ -145,31 +87,9 @@
     },
     "/databases/{database_id}": {
       "get": {
-        "operationId": "get_database_tree_get",
-        "summary": "Fetch the full hierarchical tree structure of a database.",
+        "operationId": "get_database_tree",
+        "summary": "Get Database Tree",
         "description": "Fetch the full hierarchical tree structure of a database.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DatabaseTree"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
         "parameters": [
           {
             "name": "database_id",
@@ -179,19 +99,14 @@
               "type": "string"
             }
           }
-        ]
-      },
-      "post": {
-        "operationId": "update_database_post",
-        "summary": "Modify database-level settings (e.g., enabled languages).",
-        "description": "Modify database-level settings (e.g., enabled languages).",
+        ],
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/Database"
                 }
               }
             }
@@ -201,12 +116,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
           }
-        },
+        }
+      },
+      "post": {
+        "operationId": "update_database",
+        "summary": "Update Database",
+        "description": "Modify database-level settings (e.g., enabled languages).",
         "parameters": [
           {
             "name": "database_id",
@@ -221,7 +141,114 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateDatabaseDTO"
+                "$ref": "#/components/schemas/UpdateDatabaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Database"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_database",
+        "summary": "Delete Database",
+        "description": "Deletes a database and all the forms and records contained therein. Only the owner of a database may delete a database.",
+        "parameters": [
+          {
+            "name": "database_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "DELETED",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/databases/{database_id}/audit": {
+      "post": {
+        "operationId": "audit_database",
+        "summary": "Audit Database",
+        "description": "Gets entries from the database's audit log.",
+        "parameters": [
+          {
+            "name": "database_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditDatabaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseAudit"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
               }
             }
           }
@@ -230,31 +257,9 @@
     },
     "/databases/{database_id}/dictionary/database/{language_code}": {
       "get": {
-        "operationId": "get_database_translations_get",
-        "summary": "Fetch all database-level translations for a specific language.",
+        "operationId": "get_database_translations",
+        "summary": "Get Database Translations",
         "description": "Fetch all database-level translations for a specific language.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DatabaseTranslations"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
         "parameters": [
           {
             "name": "database_id",
@@ -272,21 +277,14 @@
               "type": "string"
             }
           }
-        ]
-      }
-    },
-    "/databases/{database_id}/dictionary/form/{form_id}/{language_code}": {
-      "get": {
-        "operationId": "get_form_translations_get",
-        "summary": "Retrieve all translated labels for a specific form and its fields.",
-        "description": "Retrieve all translated labels for a specific form and its fields.",
+        ],
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/TranslationDictionary"
                 }
               }
             }
@@ -296,12 +294,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/databases/{database_id}/dictionary/form/{form_id}/{language_code}": {
+      "get": {
+        "operationId": "get_form_translations",
+        "summary": "Get Form Translations",
+        "description": "Retrieve all translated labels for a specific form and its fields.",
         "parameters": [
           {
             "name": "database_id",
@@ -327,21 +332,14 @@
               "type": "string"
             }
           }
-        ]
-      }
-    },
-    "/databases/{database_id}/forms": {
-      "post": {
-        "operationId": "add_form_post",
-        "summary": "Add a new form to a specific database.",
-        "description": "Add a new form to a specific database.",
+        ],
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/TranslationDictionary"
                 }
               }
             }
@@ -351,27 +349,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "database_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddFormDTO"
               }
             }
           }
@@ -380,31 +359,9 @@
     },
     "/databases/{database_id}/translations/{language_code}": {
       "post": {
-        "operationId": "update_database_translations_post",
-        "summary": "Update global translations for a specific database.",
+        "operationId": "update_database_translations",
+        "summary": "Update Database Translations",
         "description": "Update global translations for a specific database.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
         "parameters": [
           {
             "name": "database_id",
@@ -427,25 +384,18 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateDatabaseTranslationsDTO"
+                "$ref": "#/components/schemas/UpdateTranslationsRequest"
               }
             }
           }
-        }
-      }
-    },
-    "/databases/{database_id}/users": {
-      "post": {
-        "operationId": "add_database_user_post",
-        "summary": "Invite or add a new user to a database with a specific role.",
-        "description": "Invite or add a new user to a database with a specific role.",
+        },
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -455,12 +405,75 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
           }
+        }
+      }
+    },
+    "/form/{form_id}/schema/translations/{language_code}": {
+      "post": {
+        "operationId": "update_form_schema_translations",
+        "summary": "Update Form Schema Translations",
+        "description": "Apply new translations to a specific form and its fields.",
+        "parameters": [
+          {
+            "name": "form_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "language_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTranslationsRequest"
+              }
+            }
+          }
         },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/databases/{database_id}/forms": {
+      "post": {
+        "operationId": "add_form",
+        "summary": "Add Form",
+        "description": "Add a new form to a specific database.",
         "parameters": [
           {
             "name": "database_id",
@@ -475,231 +488,40 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AddDatabaseUserDTO"
+                "$ref": "#/components/schemas/AddFormRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddUpdateFormResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
               }
             }
           }
         }
-      },
+      }
+    },
+    "/form/{form_id}/schema": {
       "get": {
-        "operationId": "get_database_users_get",
-        "summary": "List all users who have access to the specified database.",
-        "description": "List all users who have access to the specified database.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "database_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      }
-    },
-    "/databases/{database_id}/users/preflight": {
-      "post": {
-        "operationId": "user_preflight_post",
-        "summary": "Check the status of a user's email before adding them to a database.",
-        "description": "Check the status of a user's email before adding them to a database.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserPreflightResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "database_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserPreflightDTO"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/databases/{database_id}/users/{user_id}": {
-      "delete": {
-        "operationId": "delete_database_user_delete",
-        "summary": "Remove a user's access to a specific database.",
-        "description": "Remove a user's access to a specific database.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "database_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      }
-    },
-    "/databases/{database_id}/users/{user_id}/role": {
-      "post": {
-        "operationId": "update_database_user_role_post",
-        "summary": "Modify the assigned role for an existing database user.",
-        "description": "Modify the assigned role for an existing database user.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "database_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateDatabaseUserRoleDTO"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/form/{form_id}/query": {
-      "get": {
-        "operationId": "get_form_get",
-        "summary": "Query and retrieve all records for a specific form.",
-        "description": "Query and retrieve all records for a specific form.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
+        "operationId": "get_form_schema",
+        "summary": "Get Form Schema",
+        "description": "Retrieve the design/schema (fields, types, formulas) for a specific form.",
         "parameters": [
           {
             "name": "form_id",
@@ -709,14 +531,7 @@
               "type": "string"
             }
           }
-        ]
-      }
-    },
-    "/form/{form_id}/schema": {
-      "get": {
-        "operationId": "get_form_schema_get",
-        "summary": "Retrieve the design/schema (fields, types, formulas) for a specific form.",
-        "description": "Retrieve the design/schema (fields, types, formulas) for a specific form.",
+        ],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -733,49 +548,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
           }
-        },
-        "parameters": [
-          {
-            "name": "form_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
+        }
       },
       "post": {
-        "operationId": "update_form_schema_post",
-        "summary": "Push a modified schema back to the server to update a form's design.",
+        "operationId": "update_form_schema",
+        "summary": "Update Form Schema",
         "description": "Push a modified schema back to the server to update a form's design.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
         "parameters": [
           {
             "name": "form_id",
@@ -794,14 +577,46 @@
               }
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddUpdateFormResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/form/{form_id}/tree": {
       "get": {
-        "operationId": "get_form_tree_get",
-        "summary": "Fetch the form and all its related forms (references).",
+        "operationId": "get_form_tree",
+        "summary": "Get Form Tree",
         "description": "Fetch the form and all its related forms (references).",
+        "parameters": [
+          {
+            "name": "form_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -818,12 +633,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/form/{form_id}/query": {
+      "get": {
+        "operationId": "get_form_records",
+        "summary": "Get Form Records",
+        "description": "Query and retrieve all records for a specific form.",
         "parameters": [
           {
             "name": "form_id",
@@ -833,46 +655,7 @@
               "type": "string"
             }
           }
-        ]
-      }
-    },
-    "/update": {
-      "post": {
-        "operationId": "update_form_records_post",
-        "summary": "Bulk create, update, or delete records across one or more forms.",
-        "description": "Bulk create, update, or delete records across one or more forms.",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {}
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateFormRecordsDTO"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/query/rows": {
-      "post": {
-        "operationId": "query_rows_post",
-        "summary": "Query form rows with formulas, filters, and sorting.",
-        "description": "Queries records as rows using column expressions, optional filter formula, filter sets, and sorting.",
+        ],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -893,12 +676,50 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
           }
+        }
+      }
+    },
+    "/update": {
+      "post": {
+        "operationId": "update_form_records",
+        "summary": "Update Form Records",
+        "description": "Bulk create, update, or delete records across one or more forms.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordUpdateRequest"
+              }
+            }
+          }
         },
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/query/rows": {
+      "post": {
+        "operationId": "query_rows",
+        "summary": "Query Rows",
+        "description": "Queries records as rows using column expressions, optional filter formula, filter sets, and sorting.",
         "requestBody": {
           "required": true,
           "content": {
@@ -908,61 +729,476 @@
               }
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/databases/{database_id}/users": {
+      "get": {
+        "operationId": "get_database_users",
+        "summary": "Get Database Users",
+        "description": "List all users who have access to the specified database.",
+        "parameters": [
+          {
+            "name": "database_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "add_database_user",
+        "summary": "Add Database User",
+        "description": "Invite or add a new user to a database with a specific role.",
+        "parameters": [
+          {
+            "name": "database_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/databases/{database_id}/users/preflight": {
+      "post": {
+        "operationId": "preflight_database_user",
+        "summary": "Preflight Database User",
+        "description": "Check the status of a user's email before adding them to a database.",
+        "parameters": [
+          {
+            "name": "database_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreflightResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/databases/{database_id}/users/{user_id}/role": {
+      "post": {
+        "operationId": "update_database_user_role",
+        "summary": "Update Database User Role",
+        "description": "Modify the assigned role for an existing database user.",
+        "parameters": [
+          {
+            "name": "database_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/databases/{database_id}/users/{user_id}": {
+      "delete": {
+        "operationId": "delete_database_user",
+        "summary": "Delete Database User",
+        "description": "Remove a user's access to a specific database.",
+        "parameters": [
+          {
+            "name": "database_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs": {
+      "post": {
+        "operationId": "start_job",
+        "summary": "Start Job",
+        "description": "Starts a new long-running job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/JobRequest"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "format": "binary"
+                      }
+                    },
+                    "required": [
+                      "file"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{job_id}": {
+      "get": {
+        "operationId": "get_job_status",
+        "summary": "Get Job Status",
+        "description": "Retrieves the status of a long-running job",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobStatus"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
         }
       }
     }
   },
   "components": {
     "schemas": {
-      "AddDatabaseDTO": {
+      "AddDatabaseRequest": {
+        "title": "AddDatabaseRequest",
+        "type": "object",
         "properties": {
           "id": {
-            "title": "Id",
+            "title": "ID",
+            "description": "The id of the new database.",
             "type": "string"
           },
           "label": {
             "title": "Label",
+            "description": "Human readable name of the database.",
+            "type": "string"
+          },
+          "templateId": {
+            "title": "Template ID",
+            "description": "The id of the template to use in creating the new database. The the two templates currently supported are \"reporting\" (Multi-partner reporting) and \"casemanagement.\" If ommitted, a blank database with three simple roles will be added.",
             "type": "string"
           },
           "description": {
             "title": "Description",
-            "type": "string"
-          },
-          "templateId": {
-            "title": "Templateid",
+            "description": "An optional, longer description for the database.",
             "type": "string"
           }
         },
         "required": [
           "id",
-          "label",
-          "description",
-          "templateId"
-        ],
-        "title": "AddDatabaseDTO",
-        "type": "object"
+          "label"
+        ]
       },
-      "AddDatabaseUserDTO": {
+      "AddFormRequest": {
+        "title": "AddFormRequest",
+        "type": "object",
+        "properties": {
+          "formResource": {
+            "$ref": "#/components/schemas/DatabaseResource"
+          },
+          "formClass": {
+            "$ref": "#/components/schemas/FormSchema"
+          }
+        },
+        "required": [
+          "formResource",
+          "formClass"
+        ]
+      },
+      "AddUpdateFormResponse": {
+        "title": "AddUpdateFormResponse",
+        "type": "object",
+        "properties": {
+          "database": {
+            "title": "Database",
+            "$ref": "#/components/schemas/Database"
+          },
+          "forms": {
+            "title": "Forms",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Form"
+            }
+          }
+        },
+        "required": [
+          "database",
+          "forms"
+        ]
+      },
+      "AddUserRequest": {
+        "title": "AddUserRequest",
+        "type": "object",
         "properties": {
           "email": {
             "title": "Email",
+            "description": "The email of the user to add",
             "type": "string"
           },
           "name": {
             "title": "Name",
+            "description": "The name of the user to add. This is only used in the email invitation to the user if there is no existing ActivityInfo account with this email address.",
             "type": "string"
           },
           "locale": {
             "title": "Locale",
+            "description": "The locale to use when sending an email invite to the user, expressed as the two-letter ISO 639-1 code for the language, e.g. 'en' for English.",
             "type": "string"
           },
           "role": {
-            "$ref": "#/components/schemas/DatabaseRole"
+            "title": "Role",
+            "description": "The role to assign to the user.",
+            "$ref": "#/components/schemas/UserRole"
           },
           "grants": {
-            "items": {},
             "title": "Grants",
-            "type": "array"
+            "description": "Additional permissions to grant to the user.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Grant"
+            }
           }
         },
         "required": [
@@ -970,269 +1206,199 @@
           "name",
           "locale",
           "role"
-        ],
-        "title": "AddDatabaseUserDTO",
-        "type": "object"
+        ]
       },
-      "AddFormDTO": {
+      "AuditDatabaseRequest": {
+        "title": "AuditDatabaseRequest",
+        "type": "object",
         "properties": {
-          "formResource": {
-            "$ref": "#/components/schemas/FormResource"
-          },
-          "formClass": {
-            "$ref": "#/components/schemas/FormClass"
-          }
-        },
-        "required": [
-          "formResource",
-          "formClass"
-        ],
-        "title": "AddFormDTO",
-        "type": "object"
-      },
-      "Database": {
-        "properties": {
-          "databaseId": {
-            "title": "Databaseid",
+          "resourceFilter": {
+            "title": "Resource Filter",
+            "description": "The id of a form, folder, or report. If provided, the result will only include events that relate to this resource.",
             "type": "string"
           },
-          "label": {
-            "title": "Label",
-            "type": "string"
+          "typeFilter": {
+            "title": "Type Filter",
+            "description": "Only include events of the given types.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "anyOf": [
+                {
+                  "const": "RECORD",
+                  "description": "Any addition, modification, or deletion of a form record."
+                },
+                {
+                  "const": "FORM",
+                  "description": "The addition, renaming, or deletion of a form."
+                },
+                {
+                  "const": "REPORT",
+                  "description": "The addition, renaming or deletion of a report."
+                },
+                {
+                  "const": "FOLDER",
+                  "description": "The addition, renaming or deletion of a folder"
+                },
+                {
+                  "const": "DATABASE",
+                  "description": "The renaming of a database."
+                },
+                {
+                  "const": "LOCK",
+                  "description": "The addition, modification, or deletion of a record lock."
+                },
+                {
+                  "const": "USER_PERMISSION",
+                  "description": "Any change to a user's permissions."
+                },
+                {
+                  "const": "ROLE",
+                  "description": "Addition, modification, or deletion of a role."
+                },
+                {
+                  "const": "AUTOMATION",
+                  "description": "Addition, modification, or deletion of an automation."
+                }
+              ]
+            }
           },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Description"
-          }
-        },
-        "required": [
-          "databaseId",
-          "label"
-        ],
-        "title": "Database",
-        "type": "object"
-      },
-      "DatabaseRole": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "parameters": {
-            "additionalProperties": true,
-            "default": {},
-            "title": "Parameters",
-            "type": "object"
-          },
-          "resources": {
-            "default": [],
-            "items": {},
-            "title": "Resources",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "title": "DatabaseRole",
-        "type": "object"
-      },
-      "DatabaseTranslation": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "original": {
-            "title": "Original",
-            "type": "string"
-          },
-          "translated": {
-            "title": "Translated",
-            "type": "string"
-          },
-          "autoTranslated": {
-            "title": "Autotranslated",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "original",
-          "translated",
-          "autoTranslated"
-        ],
-        "title": "DatabaseTranslation",
-        "type": "object"
-      },
-      "DatabaseTranslations": {
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/DatabaseTranslationsID"
-          },
-          "version": {
-            "title": "Version",
+          "startTime": {
+            "title": "Start Time",
+            "description": "The start time of the request, in milliseconds since the unix epoch. The results will include the first 100 - 150 events that occurred before this time.",
             "type": "integer"
           },
-          "language": {
-            "title": "Language",
-            "type": "string"
-          },
-          "translatedStrings": {
-            "items": {
-              "$ref": "#/components/schemas/DatabaseTranslation"
-            },
-            "title": "Translatedstrings",
-            "type": "array"
+          "endTime": {
+            "title": "End Time",
+            "description": "The end time of the request, in milliseconds since the unix epoch. The results will include the events that occurred after the end time and before the start time.",
+            "type": "integer"
           }
         },
         "required": [
-          "id",
-          "version",
-          "language",
-          "translatedStrings"
-        ],
-        "title": "DatabaseTranslations",
-        "type": "object"
+          "startTime"
+        ]
       },
-      "DatabaseTranslationsID": {
+      "Database": {
+        "title": "Database",
+        "type": "object",
         "properties": {
           "databaseId": {
-            "title": "Databaseid",
-            "type": "string"
-          },
-          "dictionaryId": {
-            "title": "Dictionaryid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "databaseId",
-          "dictionaryId"
-        ],
-        "title": "DatabaseTranslationsID",
-        "type": "object"
-      },
-      "DatabaseTree": {
-        "properties": {
-          "databaseId": {
-            "title": "Databaseid",
+            "title": "Database ID",
+            "description": "This database's id",
             "type": "string"
           },
           "userId": {
-            "title": "Userid",
+            "title": "User ID",
+            "description": "The id of the requesting user. The contents of the tree depends on the permissions of the requesting user.",
             "type": "string"
           },
           "version": {
             "title": "Version",
+            "description": "The monotonically-increasing version of the database tree. The version number is incremented whenever a change is made that affects the database tree.",
             "type": "string"
           },
           "label": {
             "title": "Label",
+            "description": "This database's human-readable label.",
             "type": "string"
           },
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Description"
+            "title": "Description",
+            "type": "string"
           },
           "ownerRef": {
-            "$ref": "#/components/schemas/OwnerRef"
+            "title": "Owner Ref",
+            "$ref": "#/components/schemas/UserRef"
           },
           "language": {
             "title": "Language",
+            "description": "Current database language",
             "type": "string"
           },
           "originalLanguage": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Originallanguage"
+            "title": "Original Language",
+            "description": "Original database language",
+            "type": "string"
           },
           "languages": {
-            "default": [],
-            "items": {
-              "type": "string"
-            },
             "title": "Languages",
-            "type": "array"
-          },
-          "role": {
-            "$ref": "#/components/schemas/DatabaseRole"
+            "description": "The list of languages that have been defined for this database, including the original language, if set, and any translations.",
+            "type": "array",
+            "items": {
+              "title": "Language",
+              "description": "The two-letter ISO 639-1 code for the language, e.g. 'en' for English.",
+              "type": "string"
+            }
           },
           "suspended": {
             "title": "Suspended",
+            "description": "True if this database is suspended for billing reasons",
             "type": "boolean"
           },
-          "billingPlan": {
-            "type": "string",
-            "title": "Billingplan"
+          "role": {
+            "title": "Role",
+            "description": "The requesting user's assigned role in this database.",
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "roles": {
+            "title": "Roles",
+            "description": "The roles that have been defined for this database.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DatabaseRole"
+            }
           },
           "storage": {
             "title": "Storage",
+            "description": "",
             "type": "string"
           },
           "publishedTemplate": {
-            "title": "Publishedtemplate",
+            "title": "Published Template",
+            "description": "True if this database has been published as a template.",
             "type": "boolean"
           },
-          "resources": {
+          "securityCategories": {
+            "title": "Security Categories",
+            "description": "The security categories that have been defined for this database.",
+            "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Resource"
-            },
-            "title": "Resources",
-            "type": "array"
+              "$ref": "#/components/schemas/SecurityCategory"
+            }
           },
-          "grants": {
+          "resources": {
+            "title": "Resources",
+            "description": "The set of resources (folders, forms, and subforms) that belong to this database.",
+            "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Grant"
-            },
-            "title": "Grants",
-            "type": "array"
+              "$ref": "#/components/schemas/DatabaseResource"
+            }
           },
           "locks": {
-            "default": [],
-            "items": {},
             "title": "Locks",
-            "type": "array"
-          },
-          "roles": {
+            "description": "The record locks that have been defined on this database.",
+            "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Role"
-            },
-            "title": "Roles",
-            "type": "array"
+              "$ref": "#/components/schemas/DatabaseLock"
+            }
           },
-          "securityCategories": {
+          "grants": {
+            "title": "Grants",
+            "description": "The direct (non-role) permission grants that have been made to the requesting user for this database.",
+            "type": "array",
             "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "title": "Securitycategories",
-            "type": "array"
+              "$ref": "#/components/schemas/Grant"
+            }
+          },
+          "billingAccountId": {
+            "title": "Billing Account ID",
+            "description": "",
+            "type": "string"
+          },
+          "billingPlan": {
+            "title": "Billing Plan",
+            "description": "The billing plan name under which this database falls. The billing plan can have an affect on which features are avialable within this database.",
+            "type": "string"
           }
         },
         "required": [
@@ -1241,980 +1407,637 @@
           "version",
           "label",
           "ownerRef",
-          "billingAccountId",
-          "language",
           "role",
           "suspended",
           "storage",
           "publishedTemplate",
           "resources",
-          "grants",
           "roles",
-          "securityCategories"
-        ],
-        "title": "DatabaseTree",
-        "type": "object"
+          "securityCategories",
+          "billingAccountId",
+          "billingPlan"
+        ]
       },
-      "ErrorResponse": {
+      "DatabaseAudit": {
+        "title": "DatabaseAudit",
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "localizedMessage": {
-            "type": "string"
-          }
-        }
-      },
-      "FieldTypeParametersItemsUpdateDTO": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "label"
-        ],
-        "title": "FieldTypeParametersItemsUpdateDTO",
-        "type": "object"
-      },
-      "FieldTypeParametersUpdateDTO": {
-        "properties": {
-          "units": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Units"
-          },
-          "inputMask": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Inputmask"
-          },
-          "barcode": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Barcode"
-          },
-          "cardinality": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Cardinality"
-          },
-          "range": {
-            "anyOf": [
-              {
-                "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Range"
-          },
-          "formId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Formid"
-          },
-          "items": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/FieldTypeParametersItemsUpdateDTO"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Items"
-          },
-          "formula": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Formula"
-          },
-          "prefixFormula": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Prefixformula"
-          },
-          "lookupConfigs": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/TypeParameterLookupConfig"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Lookupconfigs"
-          },
-          "aggregation": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Aggregation"
-          }
-        },
-        "title": "FieldTypeParametersUpdateDTO",
-        "type": "object"
-      },
-      "FilteredPermission": {
-        "properties": {
-          "operation": {
-            "title": "Operation",
-            "type": "string"
-          },
-          "filter": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Filter"
-          },
-          "securityCategories": {
+          "events": {
+            "title": "Events",
+            "description": "List of matching auditable events.",
+            "type": "array",
             "items": {
-              "type": "string"
-            },
-            "title": "Securitycategories",
-            "type": "array"
-          }
-        },
-        "required": [
-          "operation"
-        ],
-        "title": "FilteredPermission",
-        "type": "object"
-      },
-      "FormClass": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
+              "$ref": "#/components/schemas/DatabaseAuditEvents"
+            }
           },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "schemaVersion": {
-            "title": "Schemaversion",
+          "startTime": {
+            "title": "Start Time",
+            "description": "The start time of the request, in milliseconds since the unix epoch. The results will include the first 100 - 150 events that occurred before this time.",
             "type": "integer"
           },
-          "databaseId": {
-            "title": "Databaseid",
-            "type": "string"
-          },
-          "parentFormId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Parentformid"
-          },
-          "recordLabelFieldId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Recordlabelfieldid"
-          },
-          "elements": {
-            "items": {
-              "$ref": "#/components/schemas/SchemaFieldDTO"
-            },
-            "title": "Elements",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "label",
-          "schemaVersion",
-          "databaseId",
-          "elements"
-        ],
-        "title": "FormClass",
-        "type": "object"
-      },
-      "FormResource": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "type": {
-            "title": "Type",
-            "type": "string"
-          },
-          "parentId": {
-            "title": "Parentid",
-            "type": "string"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "visibility": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Visibility"
-          }
-        },
-        "required": [
-          "id",
-          "type",
-          "parentId",
-          "label"
-        ],
-        "title": "FormResource",
-        "type": "object"
-      },
-      "FormSchema": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "schemaVersion": {
-            "title": "Schemaversion",
+          "endTime": {
+            "title": "End Time",
+            "description": "The end time of the request, in milliseconds since the unix epoch. The results will include the events that occurred after the end time and before the start time.",
             "type": "integer"
           },
-          "databaseId": {
-            "title": "Databaseid",
-            "type": "string"
-          },
-          "parentFormId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Parentformid"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "recordLabelFieldId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Recordlabelfieldid"
-          },
-          "elements": {
-            "items": {
-              "$ref": "#/components/schemas/SchemaFieldDTO"
-            },
-            "title": "Elements",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "schemaVersion",
-          "databaseId",
-          "label",
-          "elements"
-        ],
-        "title": "FormSchema",
-        "type": "object"
-      },
-      "Grant": {
-        "properties": {
-          "resourceId": {
-            "title": "Resourceid",
-            "type": "string"
-          },
-          "optional": {
-            "default": false,
-            "title": "Optional",
+          "moreEvents": {
+            "title": "More Events",
+            "description": "True if there are more events earlier than endTime available, but not included in this response. Submit a new request with a startTime equal to the endTime to fetch the next batch.",
             "type": "boolean"
-          },
-          "operations": {
-            "items": {
-              "$ref": "#/components/schemas/FilteredPermission"
-            },
-            "title": "Operations",
-            "type": "array"
-          },
-          "conditions": {
-            "items": {},
-            "title": "Conditions",
-            "type": "array"
           }
         },
         "required": [
-          "resourceId"
-        ],
-        "title": "Grant",
-        "type": "object"
+          "startTime",
+          "endTime",
+          "moreEvents"
+        ]
       },
-      "OwnerRef": {
+      "DatabaseAuditEvents": {
+        "title": "DatabaseAuditEvents",
+        "type": "object",
         "properties": {
           "id": {
-            "title": "Id",
+            "title": "ID",
+            "description": "An opaque, id uniquely identifying this event within this result set.",
             "type": "string"
           },
-          "name": {
-            "title": "Name",
-            "type": "string"
+          "time": {
+            "title": "Time",
+            "description": "The time of this event, in seconds since 1970-01-01.",
+            "type": "integer"
           },
-          "email": {
-            "title": "Email",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "email"
-        ],
-        "title": "OwnerRef",
-        "type": "object"
-      },
-      "RecordUpdateDTO": {
-        "properties": {
+          "user": {
+            "title": "User",
+            "description": "The user who initiated this event.",
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "recordRef": {
+            "title": "Record Ref",
+            "description": "The record ref, if this event concerns a record.",
+            "$ref": "#/components/schemas/RecordRef"
+          },
           "formId": {
-            "title": "Formid",
+            "title": "Form ID",
+            "description": "The form id, if this event concerns a form.",
             "type": "string"
-          },
-          "recordId": {
-            "title": "Recordid",
-            "type": "string"
-          },
-          "parentRecordId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Parentrecordid"
-          },
-          "deleted": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Deleted"
-          },
-          "fields": {
-            "additionalProperties": true,
-            "title": "Fields",
-            "type": "object"
-          }
-        },
-        "required": [
-          "formId",
-          "recordId",
-          "fields"
-        ],
-        "title": "RecordUpdateDTO",
-        "type": "object"
-      },
-      "UpdateFormRecordsDTO": {
-        "properties": {
-          "changes": {
-            "items": {
-              "$ref": "#/components/schemas/RecordUpdateDTO"
-            },
-            "title": "Changes",
-            "type": "array"
-          }
-        },
-        "required": [
-          "changes"
-        ],
-        "title": "UpdateFormRecordsDTO",
-        "type": "object"
-      },
-      "Resource": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "parentId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parentid"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "type": {
-            "title": "Type",
-            "type": "string"
-          },
-          "visibility": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Visibility"
-          },
-          "icon": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Icon"
-          }
-        },
-        "required": [
-          "id",
-          "parentId",
-          "label",
-          "type"
-        ],
-        "title": "Resource",
-        "type": "object"
-      },
-      "Role": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "permissions": {
-            "items": {
-              "$ref": "#/components/schemas/FilteredPermission"
-            },
-            "title": "Permissions",
-            "type": "array"
-          },
-          "parameters": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "title": "Parameters",
-            "type": "array"
-          },
-          "filters": {
-            "items": {},
-            "title": "Filters",
-            "type": "array"
-          },
-          "grants": {
-            "items": {
-              "$ref": "#/components/schemas/Grant"
-            },
-            "title": "Grants",
-            "type": "array"
           },
           "version": {
-            "default": 0,
             "title": "Version",
+            "description": "The version number of the affected resource.",
             "type": "integer"
           },
-          "grantBased": {
-            "default": true,
-            "title": "Grantbased",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "label"
-        ],
-        "title": "Role",
-        "type": "object"
-      },
-      "SchemaFieldDTO": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Code"
-          },
-          "label": {
-            "title": "Label",
+          "databaseUserId": {
+            "title": "Database User ID",
+            "description": "For user permission events, this is the id of the user who was affected.",
             "type": "string"
           },
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Description"
-          },
-          "relevanceCondition": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Relevancecondition"
-          },
-          "validationCondition": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Validationcondition"
-          },
-          "dataEntryVisible": {
-            "default": true,
-            "title": "Dataentryvisible",
-            "type": "boolean"
-          },
-          "tableVisible": {
-            "default": true,
-            "title": "Tablevisible",
-            "type": "boolean"
-          },
-          "required": {
-            "title": "Required",
-            "type": "boolean"
-          },
-          "key": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": false,
-            "title": "Key"
-          },
-          "unique": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": false,
-            "title": "Unique"
-          },
-          "readOnly": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": false,
-            "title": "Readonly"
-          },
-          "defaultValueFormula": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Defaultvalueformula"
+            "title": "Description",
+            "description": "A human-readable description of the event.",
+            "type": "string"
           },
           "type": {
             "title": "Type",
+            "description": "The type of event. Values: DATABASE_TREE, USER, RECORD, FORM, AUTOMATION",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "DATABASE_TREE",
+                "USER",
+                "RECORD",
+                "FORM",
+                "AUTOMATION"
+              ]
+            }
+          },
+          "resourceTypes": {
+            "title": "Resource Types",
+            "description": "One or more type(s) of the resource(s) affected",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "anyOf": [
+                {
+                  "const": "RECORD",
+                  "description": "Any addition, modification, or deletion of a form record."
+                },
+                {
+                  "const": "FORM",
+                  "description": "The addition, renaming, or deletion of a form."
+                },
+                {
+                  "const": "REPORT",
+                  "description": "The addition, renaming or deletion of a report."
+                },
+                {
+                  "const": "FOLDER",
+                  "description": "The addition, renaming or deletion of a folder"
+                },
+                {
+                  "const": "DATABASE",
+                  "description": "The renaming of a database."
+                },
+                {
+                  "const": "LOCK",
+                  "description": "The addition, modification, or deletion of a record lock."
+                },
+                {
+                  "const": "USER_PERMISSION",
+                  "description": "Any change to a user's permissions."
+                },
+                {
+                  "const": "ROLE",
+                  "description": "Addition, modification, or deletion of a role."
+                },
+                {
+                  "const": "AUTOMATION",
+                  "description": "Addition, modification, or deletion of an automation."
+                }
+              ]
+            }
+          },
+          "resourceId": {
+            "title": "Resource ID",
+            "description": "Id of the affected resource OR id of the database if more than one resource type is present",
             "type": "string"
           },
-          "typeParameters": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/FieldTypeParametersUpdateDTO"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
+          "added": {
+            "title": "Added",
+            "description": "True if this event concerns an addition.",
+            "type": "boolean"
+          },
+          "updated": {
+            "title": "Updated",
+            "description": "True if this event concerns an update.",
+            "type": "boolean"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "description": "True if this event concerns an deletion.",
+            "type": "boolean"
+          },
+          "recovered": {
+            "title": "Recovered",
+            "description": "True if this event concerns a recovery of data.",
+            "type": "boolean"
+          },
+          "reverted": {
+            "title": "Reverted",
+            "description": "True if this event has been reverted by an administrator.",
+            "type": "boolean"
+          },
+          "automation": {
+            "title": "Automation",
+            "description": "The automation, if this event concerns an automation.",
+            "$ref": "#/components/schemas/DatabaseAutomation"
+          },
+          "mergeId": {
+            "title": "Merge ID",
+            "description": "The merge id, if this event concerns a merge of records.",
+            "type": "string"
           }
         },
         "required": [
           "id",
-          "code",
-          "label",
-          "required",
-          "type"
-        ],
-        "title": "SchemaFieldDTO",
-        "type": "object"
+          "time",
+          "description",
+          "type",
+          "resourceTypes",
+          "resourceId",
+          "added",
+          "updated",
+          "deleted",
+          "recovered",
+          "reverted"
+        ]
       },
-      "TypeParameterLookupConfig": {
+      "DatabaseAutomation": {
+        "title": "DatabaseAutomation",
+        "type": "object",
         "properties": {
-          "id": {
-            "title": "Id",
+          "automationId": {
+            "title": "Automation ID",
+            "description": "The automation's id",
             "type": "string"
           },
-          "formula": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Formula"
+          "label": {
+            "title": "Label",
+            "description": "A human-readable label for this automation",
+            "type": "string"
           },
-          "lookupLabel": {
+          "resourceId": {
+            "title": "Resource ID",
+            "description": "The resource (form, or subform) to which this automation applies.",
+            "type": "string"
+          },
+          "trigger": {
+            "title": "Trigger",
+            "description": "The trigger that applies to this automation. Values: RECORD_ADDED, RECORD_EDITED, RECORD_DELETED",
+            "type": "string",
+            "enum": [
+              "RECORD_ADDED",
+              "RECORD_EDITED",
+              "RECORD_DELETED"
+            ]
+          },
+          "triggerFormula": {
+            "title": "Trigger Formula",
+            "description": "The formula to which this automation applies. currently not supported",
+            "type": "string"
+          },
+          "action": {
+            "title": "Action",
+            "description": "The action to be performed by this automation",
+            "$ref": "#/components/schemas/DatabaseAutomationAction"
+          },
+          "active": {
+            "title": "Active",
+            "description": "Determines whether this automation is active or not",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "automationId"
+        ]
+      },
+      "DatabaseAutomationAction": {
+        "title": "DatabaseAutomationAction",
+        "type": "object",
+        "properties": {
+          "type": {
+            "title": "Type",
+            "description": "The type of action, e.g. 'WEBHOOK'",
+            "type": "string"
+          },
+          "url": {
+            "title": "URL",
+            "description": "The URL of the webhook action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "DatabaseLock": {
+        "title": "DatabaseLock",
+        "description": "A record lock that has been defined for a database",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "This lock's id.",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "description": "A human-readable label for this lock",
+            "type": "string"
+          },
+          "resourceId": {
+            "title": "Resource ID",
+            "description": "The resource (database, folder, form, or subform) to which this lock applies.",
+            "type": "string"
+          },
+          "dateRange": {
+            "title": "Date Range",
+            "description": "The date range to which this lock applies, if it is a date-range lock.",
+            "$ref": "#/components/schemas/DatabaseLockDateRange"
+          },
+          "formula": {
+            "title": "Formula",
+            "description": "The formula to which this lock applies, if it is a rule-based lock.",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "description": "user description of the rule-based lock.",
+            "type": "string"
+          },
+          "deactivated": {
+            "title": "Deactivated",
+            "description": "Whether or not this lock is active. True when deactivated",
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "resourceId",
+          "deactivated"
+        ]
+      },
+      "DatabaseLockDateRange": {
+        "title": "DatabaseLock",
+        "description": "The start and end date for a date-range record lock on a database",
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "title": "Start Date",
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "title": "End Date",
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "startDate",
+          "endDate"
+        ]
+      },
+      "DatabaseResource": {
+        "title": "DatabaseResource",
+        "description": "A resource (folder, form or subform) that belongs to a database",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "The resource's id. Form and subform resources must have globally-unique ids (across all of ActivityInfo) but folder ids are only guaranteed to be unique within a single database.",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "description": "The resource type. Values: DATABASE, FOLDER, REPORT, FORM, SUB_FORM",
+            "type": "string",
+            "enum": [
+              "DATABASE",
+              "FOLDER",
+              "REPORT",
+              "FORM",
+              "SUB_FORM"
+            ]
+          },
+          "parentId": {
+            "title": "Parent ID",
+            "description": "The id of this resource's parent, for example, a folder id. If this is a top-level folder or form, then the parentId will be the id of the database itself.",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "description": "The resource's human-readable label.",
+            "type": "string"
+          },
+          "visibility": {
+            "title": "Visibility",
+            "description": "The resource's visibility. Values: PUBLIC, PRIVATE, REFERENCE",
+            "type": "string",
             "anyOf": [
               {
-                "type": "string"
+                "const": "PUBLIC",
+                "description": "Public. Visible to *all* Users on system, regardless of assigned permissions. "
               },
               {
-                "type": "null"
+                "const": "PRIVATE",
+                "description": "Visible only to users given explicit permissions. "
+              },
+              {
+                "const": "REFERENCE",
+                "description": "Visible only if another Resource on the Database is visible to the current User. Used to provide Forms with data to be referenced, but not requiring an explicit grant to be generated for the User. "
               }
-            ],
-            "default": null,
-            "title": "Lookuplabel"
+            ]
+          },
+          "icon": {
+            "title": "Icon",
+            "description": "Icon for the resource.",
+            "type": "string"
           }
         },
         "required": [
           "id"
-        ],
-        "title": "TypeParameterLookupConfig",
-        "type": "object"
+        ]
       },
-      "UpdateDatabaseDTO": {
-        "properties": {
-          "resourceUpdates": {
-            "items": {
-              "$ref": "#/components/schemas/Resource"
-            },
-            "title": "Resourceupdates",
-            "type": "array"
-          },
-          "resourceDeletions": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Resourcedeletions",
-            "type": "array"
-          },
-          "languageUpdates": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Languageupdates",
-            "type": "array"
-          },
-          "roleUpdates": {
-            "items": {
-              "$ref": "#/components/schemas/Role"
-            },
-            "title": "Roleupdates",
-            "type": "array"
-          },
-          "originalLanguage": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Originallanguage"
-          }
-        },
-        "title": "UpdateDatabaseDTO",
-        "type": "object"
-      },
-      "UpdateDatabaseTranslationsDTO": {
-        "properties": {
-          "strings": {
-            "items": {
-              "$ref": "#/components/schemas/DatabaseTranslation"
-            },
-            "title": "Strings",
-            "type": "array"
-          }
-        },
-        "required": [
-          "strings"
-        ],
-        "title": "UpdateDatabaseTranslationsDTO",
-        "type": "object"
-      },
-      "UpdateDatabaseUserRoleDTO": {
-        "properties": {
-          "assignments": {
-            "items": {
-              "$ref": "#/components/schemas/DatabaseRole"
-            },
-            "title": "Assignments",
-            "type": "array"
-          }
-        },
-        "required": [
-          "assignments"
-        ],
-        "title": "UpdateDatabaseUserRoleDTO",
-        "type": "object"
-      },
-      "UserPreflightDTO": {
-        "properties": {
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "name": {
-            "default": "",
-            "title": "Name",
-            "type": "string"
-          },
-          "locale": {
-            "default": "",
-            "title": "Locale",
-            "type": "string"
-          },
-          "role": {
-            "$ref": "#/components/schemas/DatabaseRole"
-          },
-          "grants": {
-            "items": {},
-            "title": "Grants",
-            "type": "array"
-          }
-        },
-        "required": [
-          "email"
-        ],
-        "title": "UserPreflightDTO",
-        "type": "object"
-      },
-      "UserPreflightResponse": {
-        "properties": {
-          "userId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Userid"
-          },
-          "activationStatus": {
-            "title": "Activationstatus",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "addedToDatabase": {
-            "title": "Addedtodatabase",
-            "type": "boolean"
-          },
-          "validEmail": {
-            "title": "Validemail",
-            "type": "boolean"
-          },
-          "localizedErrorMessage": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Localizederrormessage"
-          }
-        },
-        "required": [
-          "activationStatus",
-          "name",
-          "addedToDatabase",
-          "validEmail"
-        ],
-        "title": "UserPreflightResponse",
-        "type": "object"
-      },
-      "FormTreeEntry": {
+      "DatabaseRole": {
+        "title": "DatabaseRole",
+        "type": "object",
         "properties": {
           "id": {
-            "title": "Id",
+            "title": "ID",
+            "description": "This role's id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "description": "This role's human-readable label",
+            "type": "string"
+          },
+          "permissions": {
+            "title": "Permissions",
+            "description": "Permissions granted this role. Applicable for legacy roles, for grant based roles it will be limited to permissions that are NOT related to resources, like MANAGE_USERS, MANAGE_ROLES",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          },
+          "parameters": {
+            "title": "Parameters",
+            "description": "Parameters defined for this role. Parameters can be referenced in filtering formulas.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DatabaseRoleParameter"
+            }
+          },
+          "filters": {
+            "title": "Filters",
+            "description": "Pre-defined filters. Role filters allow other users to choose filters for permissions without having to write formulas themselves. -- NOTEWORTHY - only used by legacy roles",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DatabaseRoleFilter"
+            }
+          },
+          "grants": {
+            "title": "Grants",
+            "description": "",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Grant"
+            }
+          },
+          "version": {
+            "title": "Version",
+            "description": "",
+            "type": "integer",
+            "default": 0
+          },
+          "grantBased": {
+            "title": "Grant-Based",
+            "description": "",
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ]
+      },
+      "DatabaseRoleParameter": {
+        "title": "DatabaseRoleParameter",
+        "description": "Parameters defined for this role. Parameters can be referenced in filtering formulas.",
+        "type": "object",
+        "properties": {
+          "parameterId": {
+            "title": "Parameter ID",
+            "description": "This parameter's string id by which it will be referred to in formulas.",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "description": "Human-readable label for this parameter.",
+            "type": "string"
+          },
+          "range": {
+            "title": "Range",
+            "description": "The id of the form resource from which the parameter's values are looked up.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parameterId",
+          "label",
+          "range"
+        ]
+      },
+      "DatabaseRoleFilter": {
+        "title": "DatabaseRoleFilter",
+        "description": "Pre-defined filters. Role filters allow other users to choose filters for permissions without having to write formulas themselves. -- NOTEWORTHY - only used by legacy roles.",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "This filter's id.",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "description": "This filter's human-readable label.",
+            "type": "string"
+          },
+          "filter": {
+            "title": "Filter",
+            "description": "A formula that can be used to filter a record-level permission.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "filter"
+        ]
+      },
+      "FieldCondition": {
+        "title": "FieldCondition",
+        "description": "A field-level condition associated with a Grant for a single database resource (database, folder, form, subform)",
+        "type": "object",
+        "properties": {
+          "operations": {
+            "title": "Operations",
+            "description": "The field operations (view and/or edit) allowed for this condition",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "anyOf": [
+                {
+                  "const": "VIEW_FIELD",
+                  "description": "Allow the user to view a field's data."
+                },
+                {
+                  "const": "EDIT_FIELD",
+                  "description": "Allow the user to modify a field's data."
+                }
+              ]
+            }
+          },
+          "criteria": {
+            "title": "Criteria",
+            "description": "Whether the condition requires all or any of the condition's rules to be met",
+            "type": "string",
+            "enum": [
+              "ALL",
+              "ANY"
+            ]
+          },
+          "rules": {
+            "title": "Rules",
+            "description": "The condition's rules",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldConditionRule"
+            }
+          }
+        },
+        "required": [
+          "operations",
+          "criteria",
+          "rules"
+        ]
+      },
+      "FieldConditionRule": {
+        "title": "FieldConditionRule",
+        "description": "An individual rule for a field-level condition associated with a Grant for a database resource.",
+        "type": "object",
+        "properties": {
+          "objectType": {
+            "title": "Object Type",
+            "description": "The object type for this rule, e.g. 'FIELD'",
+            "type": "string"
+          },
+          "predicateType": {
+            "title": "Predicate Type",
+            "description": "The predicate for this rule, e.g. 'IS' or 'ISNOT'",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "description": "The comparison value for this rule, e.g. the field id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "objectType",
+          "predicateType",
+          "value"
+        ]
+      },
+      "Form": {
+        "title": "Form",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "The id of the form",
             "type": "string"
           },
           "schema": {
+            "title": "Schema",
             "$ref": "#/components/schemas/FormSchema"
           },
           "schemaVersion": {
-            "title": "Schemaversion",
+            "title": "Schema Version",
             "type": "integer"
+          },
+          "permissions": {
+            "title": "Permissions",
+            "$ref": "#/components/schemas/FormPermissions"
+          },
+          "visible": {
+            "title": "Visible",
+            "description": "True if the form is visible to the authenticated user",
+            "type": "boolean"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "description": "True if the form has been deleted",
+            "type": "boolean"
+          },
+          "suspended": {
+            "title": "Suspended",
+            "description": "True if the form belongs to a suspended database.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2222,120 +2045,1005 @@
           "schema",
           "schemaVersion",
           "permissions"
-        ],
-        "title": "FormTreeEntry",
-        "type": "object"
+        ]
+      },
+      "FormPermissions": {
+        "title": "FormPermissions",
+        "type": "object",
+        "properties": {
+          "view": {
+            "title": "View",
+            "type": "boolean"
+          },
+          "viewFilter": {
+            "title": "View Filter",
+            "type": "string"
+          },
+          "createRecord": {
+            "title": "Create Record",
+            "type": "boolean"
+          },
+          "createFilter": {
+            "title": "Create Filter",
+            "type": "string"
+          },
+          "editRecord": {
+            "title": "Edit Record",
+            "type": "boolean"
+          },
+          "editFilter": {
+            "title": "Edit Filter",
+            "type": "string"
+          },
+          "deleteRecord": {
+            "title": "Delete Record",
+            "type": "boolean"
+          },
+          "deleteFilter": {
+            "title": "Delete Filter",
+            "type": "string"
+          },
+          "bulkDelete": {
+            "title": "Bulk Delete",
+            "type": "boolean"
+          },
+          "exportRecords": {
+            "title": "Export Records",
+            "type": "boolean"
+          },
+          "resolveDuplicates": {
+            "title": "Resolve Duplicates",
+            "type": "boolean"
+          },
+          "manageImportConfigs": {
+            "title": "Manage Import Configs",
+            "type": "boolean"
+          },
+          "updateSchema": {
+            "title": "Update Schema",
+            "type": "boolean"
+          },
+          "collectionLinks": {
+            "title": "Collection Links",
+            "type": "boolean"
+          },
+          "publicForm": {
+            "title": "Public Form",
+            "type": "boolean"
+          },
+          "api": {
+            "title": "API",
+            "type": "boolean"
+          },
+          "securityCategories": {
+            "title": "Security Categories",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "locks": {
+            "title": "Locks",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DatabaseLock"
+            }
+          },
+          "fieldLevelConditions": {
+            "title": "Field-level Conditions",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldCondition"
+            }
+          }
+        },
+        "required": [
+          "view",
+          "createRecord",
+          "editRecord",
+          "deleteRecord"
+        ]
+      },
+      "FormSchema": {
+        "title": "FormSchema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "The immutable CUID for this form. Must be globally unique within an ActivityInfo server",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "description": "A human-readable label for this form",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "title": "Schema Version",
+            "description": "A monotonically increasing version number of this schema assigned by the server upon updates",
+            "type": "integer"
+          },
+          "databaseId": {
+            "title": "Database ID",
+            "description": "The id of the database to which this form belongs",
+            "type": "string"
+          },
+          "parentFormId": {
+            "title": "Parent Form ID",
+            "description": "The id of this form's parent, if this form is a subform. Note that subforms can only be created by adding a subform field to the parent form.",
+            "type": "string"
+          },
+          "recordLabelFieldId": {
+            "title": "Record Label Field ID",
+            "description": "",
+            "type": "string"
+          },
+          "elements": {
+            "title": "Elements",
+            "description": "This form's fields, section headers, and other elements.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormSchemaElement"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "schemaVersion",
+          "databaseId",
+          "label",
+          "elements"
+        ]
+      },
+      "FormSchemaElement": {
+        "title": "FormSchemaElement",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "An immutable CUID for this field that is unique within the form",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "description": "A developer-friendly code for this field that can be used in formulas and in the API. Must match the pattern ^[A-Za-z][A-Za-z0-9_]*",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "description": "A short human-friendly label for this field",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "description": "An optional more detailed sub-label for this field",
+            "type": "string"
+          },
+          "relevanceCondition": {
+            "title": "Relevance Condition",
+            "description": "A boolean-valued ActivityInfo formula that determines when this field is 'relevant'. Fields that are not relevant are not displayed during data entry and must be blank.",
+            "type": "string"
+          },
+          "validationCondition": {
+            "title": "Validation Condition",
+            "description": "A boolean-valued ActivityInfo formula that determines when this field's value is valid.",
+            "type": "string"
+          },
+          "dataEntryVisible": {
+            "title": "Data Entry Visible",
+            "description": "If false, this field is not shown in data entry",
+            "type": "boolean",
+            "default": true
+          },
+          "tableVisible": {
+            "title": "Table Visible",
+            "description": "If false, this field is not shown by default in the table view",
+            "type": "boolean",
+            "default": true
+          },
+          "required": {
+            "title": "Required",
+            "description": "If true, a value for this field must be provided",
+            "type": "boolean",
+            "default": false
+          },
+          "key": {
+            "title": "Key",
+            "description": "If true, this field is part of the form's natural key fields whose combination must be unique within the form",
+            "type": "boolean",
+            "default": false
+          },
+          "unique": {
+            "title": "Unique",
+            "description": "If true, the value for this field must be unique across the form's records",
+            "type": "boolean",
+            "default": false
+          },
+          "readOnly": {
+            "title": "Read Only",
+            "description": "If true, the value for this field cannot be modified by any user (but it can be set by default on record add).",
+            "type": "boolean",
+            "default": false
+          },
+          "defaultValue": {
+            "title": "Default Value",
+            "description": "The default value for this field, set on record add",
+            "type": "string"
+          },
+          "defaultValueFormula": {
+            "title": "Default Value Formula",
+            "description": "An ActivityInfo formula that generates the default value for this field, set on record add",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "description": "The field type.",
+            "type": "string",
+            "anyOf": [
+              {
+                "const": "serial",
+                "description": "A read-only, incrementing serial number for new records."
+              },
+              {
+                "const": "month",
+                "description": "Stores a month in the ISO-8601 calendar without reference to time-of-day or time-zone."
+              },
+              {
+                "const": "attachment",
+                "description": "Stores one or more files, which can include photos, signatures, documents, PDFs or any other type of file."
+              },
+              {
+                "const": "geopoint",
+                "description": "Stores a point within the WGS84 Geographic Reference System"
+              },
+              {
+                "const": "FREE_TEXT",
+                "description": "Stores a single line of Unicode text"
+              },
+              {
+                "const": "quantity",
+                "description": "Stores a real-valued number as a floating point"
+              },
+              {
+                "const": "enumerated",
+                "description": "Gives users a choice between a list of predefined values"
+              },
+              {
+                "const": "multiselectreference",
+                "description": "Stores a reference to one or more records in another form"
+              },
+              {
+                "const": "epiweek",
+                "description": "Stores a year and week number."
+              },
+              {
+                "const": "subform",
+                "description": "Defines a reference to another form that plays a child role to this parent form."
+              },
+              {
+                "const": "date",
+                "description": "Stores a date in the ISO-8601 calendar without reference to time-of-day or time-zone."
+              },
+              {
+                "const": "calculated",
+                "description": "A read-only field whose value is always calculated from a formula"
+              },
+              {
+                "const": "reversereference",
+                "description": "Defines a reverse link from a referenced form back to this form."
+              },
+              {
+                "const": "reference",
+                "description": "Stores a reference to one record in another form"
+              },
+              {
+                "const": "fortnight",
+                "description": "Stores a two-week period using year and a week number, where the week number must be odd. [Deprecated]"
+              },
+              {
+                "const": "section",
+                "description": "Defines a section header that helps organize a form. Does not have a field value."
+              },
+              {
+                "const": "NARRATIVE",
+                "description": "Stores multiple lines of Unicode text"
+              }
+            ]
+          },
+          "securityCategoryId": {
+            "title": "Security Category ID",
+            "type": "string"
+          },
+          "typeParameters": {
+            "title": "Type Parameters",
+            "description": "Additional type-specific properties of this field.",
+            "$ref": "#/components/schemas/FormSchemaElementParameter"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "required",
+          "key",
+          "type"
+        ]
+      },
+      "FormSchemaElementParameter": {
+        "title": "FormSchemaElementParameter",
+        "type": "object",
+        "properties": {
+          "prefixFormula": {
+            "title": "Prefix Formula",
+            "description": "For fields of type 'serial', provides a formula that will be used to compute the prefix of the generated serial number.",
+            "type": "string"
+          },
+          "digits": {
+            "title": "Digits",
+            "description": "For fields of type 'serial', indicates how many digits long the generated serial number will be",
+            "type": "integer"
+          },
+          "units": {
+            "title": "Units",
+            "description": "For fields of type 'quantity', describes the units of the quantity",
+            "type": "string"
+          },
+          "aggregation": {
+            "title": "Aggregation",
+            "description": "For fields of type 'quantity', describes the aggregation method e.g. 'sum'. Not currently used(?)",
+            "type": "string"
+          },
+          "inputMask": {
+            "title": "Input Mask",
+            "description": "For fields of type 'FREE_TEXT' (user type 'Text' or 'Barcode'), provides a pattern-based input mask",
+            "type": "string"
+          },
+          "barcode": {
+            "title": "Barcode",
+            "description": "For fields of type 'FREE_TEXT' (user type 'Text' or 'Barcode'), true when field is barcode",
+            "type": "boolean"
+          },
+          "formula": {
+            "title": "Formula",
+            "description": "For fields of type 'calculated', provides the formula for the field's value",
+            "type": "string"
+          },
+          "cardinality": {
+            "title": "Cardinality",
+            "description": "For fields of type 'enumerated' (user type 'Single selection' or 'Multiple selection'), indicates whether single or multiple select",
+            "type": "string",
+            "anyOf": [
+              {
+                "const": "single",
+                "description": "At most one instance may linked to the field"
+              },
+              {
+                "const": "multiple",
+                "description": "Any number of instances may be linked to the field"
+              }
+            ]
+          },
+          "values": {
+            "title": "Values",
+            "description": "For fields of type 'enumerated' (user type 'Single selection' or 'Multiple selection'), provided the list of valid choices",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormSchemaElementParameterValue"
+            }
+          },
+          "presentation": {
+            "title": "Presentation",
+            "description": "For fields of type 'enumerated' (user type 'Single selection' or 'Multiple selection'), indicate whether shown as dropdown or not. Only relevant for multiple selection, i.e. where cardinality: multiple",
+            "type": "string",
+            "enum": [
+              "automatic",
+              "dropdown"
+            ]
+          },
+          "range": {
+            "title": "Range",
+            "description": "For fields of type 'reference' or 'multiselectreference' (user type 'Reference', 'User', or 'Multiple Reference'), provides the id of the form that this field references. For 'User', this reference is '{dbid}@users'.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "formId": {
+                  "title": "Form ID",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "lookupConfigs": {
+            "title": "Lookup Configs",
+            "description": "For fields of type 'reference', specifies the lookup configuration for the field.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormSchemaElementParameterLookup"
+            }
+          },
+          "formId": {
+            "title": "Form ID",
+            "description": "For fields of type 'subform' and 'reversereference', provides the id of the form/subform that this field references",
+            "type": "string"
+          },
+          "fieldId": {
+            "title": "Field ID",
+            "description": "For fields of type 'reversereference', provides the id of the reference field on the form that this field references",
+            "type": "string"
+          },
+          "captureMethods": {
+            "title": "Capture Methods",
+            "description": "For fields of type 'attachment', indicates which types of attachments can be added.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "CAMERA",
+                "SIGNATURE",
+                "FILE"
+              ]
+            }
+          },
+          "requiredAccuracy": {
+            "title": "Required Accuracy",
+            "description": "For fields of type 'geopoint', indicates the accuracy required when automatically specifying location.",
+            "type": "integer"
+          },
+          "manualEntryAllowed": {
+            "title": "Manual Entry Allowed",
+            "description": "For fields of type 'geopoint', true when manual entry of location is allowed.",
+            "type": "boolean"
+          },
+          "indentationLevel": {
+            "title": "Indentation Level",
+            "description": "For fields of type 'section', indicates the level of indentation of the heading.",
+            "type": "integer"
+          },
+          "translationConfig": {
+            "title": "Translation Config",
+            "description": "For fields of type 'FREE_TEXT', 'NARRATIVE' or 'calculated', the translation config specifies which other field this is a translation of, and into which language.",
+            "$ref": "#/components/schemas/FormSchemaElementParameterTranslation"
+          }
+        }
+      },
+      "FormSchemaElementParameterLookup": {
+        "title": "FormSchemaElementParameterLookup",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "The immutable CUID of this lookup item. Must match the format [a-z][a-z0-9]{0,25} and be unique within this field.",
+            "type": "string"
+          },
+          "formula": {
+            "title": "Formula",
+            "description": "An ActivityInfo formula specifying the field or expression being looked up.",
+            "type": "string"
+          },
+          "lookupLabel": {
+            "title": "Lookup Label",
+            "description": "Human-readable label for this lookup item.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "formula",
+          "lookupLabel"
+        ]
+      },
+      "FormSchemaElementParameterTranslation": {
+        "title": "FormSchemaElementParameterTranslation",
+        "type": "object",
+        "properties": {
+          "fieldId": {
+            "title": "Field ID",
+            "description": "The id of the field of which this field is a translation. Both fields must be of the same type.",
+            "type": "string"
+          },
+          "languages": {
+            "title": "Languages",
+            "description": "The language of the translation.",
+            "type": "array",
+            "items": {
+              "title": "Language",
+              "description": "The two-letter ISO 639-1 code for the language, e.g. 'en' for English.",
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "fieldId",
+          "languages"
+        ]
+      },
+      "FormSchemaElementParameterValue": {
+        "title": "FormSchemaElementParameterValue",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "The immutable CUID of this selection item. Must match the format [a-z][a-z0-9]{0,25} and be unique within this field.",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "description": "Human-readable label for this selection item.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ]
       },
       "FormTree": {
+        "title": "FormTree",
+        "type": "object",
         "properties": {
           "root": {
             "title": "Root",
+            "description": "The id of the requested form",
             "type": "string"
           },
           "forms": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/FormTreeEntry"
-            },
             "title": "Forms",
-            "type": "object"
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Form"
+            }
           }
         },
         "required": [
           "root",
           "forms"
-        ],
-        "title": "FormTree",
-        "type": "object"
+        ]
+      },
+      "GetDatabasesResponse": {
+        "title": "GetDatabasesResponse",
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "title": "Database ID",
+            "description": "The globally-unique id of this database.",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "description": "The human-readable name of this database.",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "description": "A longer, optional description for this database.",
+            "type": "string"
+          },
+          "ownerId": {
+            "title": "Owner ID",
+            "description": "The id of the user who owns this database.",
+            "type": "string"
+          },
+          "billingAccountId": {
+            "title": "Billing Account ID",
+            "description": "The id of the billing account to which this database belongs",
+            "type": "integer"
+          },
+          "suspended": {
+            "title": "Suspended",
+            "description": "True if this database belongs to a billing account that has been suspended.",
+            "type": "boolean"
+          },
+          "publishedTemplate": {
+            "title": "Published Template",
+            "description": "True if this database has been published as a template.",
+            "type": "boolean"
+          },
+          "languages": {
+            "title": "Languages",
+            "description": "The list of languages that have been defined for this database, including the original language, if set, and any translations.",
+            "type": "array",
+            "items": {
+              "title": "Language",
+              "description": "The two-letter ISO 639-1 code for the language, e.g. 'en' for English.",
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "databaseId",
+          "label"
+        ]
+      },
+      "Grant": {
+        "title": "Grant",
+        "description": "A set of permissions for a single database resource (database, folder, form, subform) that is either associated with a role or given directly to a user.",
+        "type": "object",
+        "properties": {
+          "resourceId": {
+            "title": "Resource ID",
+            "description": "the database, folder, form or subform being granted access to.",
+            "type": "string"
+          },
+          "optional": {
+            "title": "Optional",
+            "description": "An optional resource is granted selectively to individual users assigned to a role.",
+            "type": "boolean",
+            "default": false
+          },
+          "operations": {
+            "title": "Operations",
+            "description": "The set of operations (add/edit/delete etc.) and their record-level conditions permitted on this resource",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          },
+          "conditions": {
+            "title": "Conditions",
+            "description": "The set of field-level conditions applied to this resource",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldCondition"
+            }
+          }
+        },
+        "required": [
+          "resourceId",
+          "optional",
+          "operations"
+        ]
+      },
+      "JobRequest": {
+        "title": "JobRequest",
+        "type": "object",
+        "properties": {
+          "type": {
+            "title": "Type",
+            "description": "The type of the job to start.",
+            "type": "string"
+          },
+          "descriptor": {
+            "title": "Descriptor",
+            "description": "The object containing the elements required for the specific type of job",
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "JobStatus": {
+        "title": "JobStatus",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "The job's id",
+            "type": "string"
+          },
+          "userId": {
+            "title": "User ID",
+            "description": "The id of the user who started the job",
+            "type": "string"
+          },
+          "descriptor": {
+            "title": "Descriptor",
+            "description": "The job descriptor used to start this job",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "state": {
+            "title": "State",
+            "description": "The job's current state",
+            "type": "string",
+            "anyOf": [
+              {
+                "const": "STARTED",
+                "description": "The job has started processing."
+              },
+              {
+                "const": "COMPLETED",
+                "description": "The job has completed successfully."
+              },
+              {
+                "const": "FAILED",
+                "description": "The job has failed."
+              }
+            ]
+          },
+          "jobResult": {
+            "title": "Job Result",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "percentComplete": {
+            "title": "Percent Complete",
+            "type": "number",
+            "format": "float"
+          },
+          "error": {
+            "title": "Error",
+            "description": "If the job state is FAILED, the reason for the failure.",
+            "$ref": "#/components/schemas/MessageResponse"
+          }
+        }
+      },
+      "MessageResponse": {
+        "title": "MessageResponse",
+        "type": "object",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "localizedMessage": {
+            "title": "Localized Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "Permission": {
+        "title": "Permission",
+        "description": "An individual operation (add/edit/view) and any associated record-level condition, either associated with a Grant for a specific database resource, or assigned to a role directly for higher-level database operations.",
+        "type": "object",
+        "properties": {
+          "operation": {
+            "title": "Operation",
+            "description": "One of a number of predetermined values",
+            "type": "string",
+            "anyOf": [
+              {
+                "const": "VIEW",
+                "description": "View the resource, whether a form, folder, or database."
+              },
+              {
+                "const": "DISCOVER",
+                "description": "Find the resource in the list of forms in the user interface"
+              },
+              {
+                "const": "ADD_RECORD",
+                "description": "Add a record within a form contained by this folder or form."
+              },
+              {
+                "const": "EDIT_RECORD",
+                "description": "Edit a record's values within a form contained by this folder or form."
+              },
+              {
+                "const": "MANAGE_REFERENCE_DATA",
+                "description": "Add, edit, and delete records within reference forms"
+              },
+              {
+                "const": "DELETE_RECORD",
+                "description": "Delete a record within this form."
+              },
+              {
+                "const": "BULK_DELETE",
+                "description": "Bulk record delete within this form"
+              },
+              {
+                "const": "EXPORT_RECORDS",
+                "description": "Export Records from a form, folder or database."
+              },
+              {
+                "const": "MANAGE_USERS",
+                "description": "Grant permissions to a user to this database, folder, or form."
+              },
+              {
+                "const": "LOCK_RECORDS",
+                "description": "Add, modify, or remove locks on records."
+              },
+              {
+                "const": "ADD_RESOURCE",
+                "description": "Create a new Resource (Form or Folder)"
+              },
+              {
+                "const": "EDIT_RESOURCE",
+                "description": "Edit a Resource's schema, structure, attributes or data."
+              },
+              {
+                "const": "DELETE_RESOURCE",
+                "description": "Delete a Resource (Form or Folder)"
+              },
+              {
+                "const": "MANAGE_COLLECTION_LINKS",
+                "description": "Manage (open/close) collection links for the given form"
+              },
+              {
+                "const": "AUDIT",
+                "description": "Access the Audit logs for a database (or a subset)"
+              },
+              {
+                "const": "SHARE_REPORTS",
+                "description": "Allow the user to share reports with other roles in the database."
+              },
+              {
+                "const": "PUBLISH_REPORTS",
+                "description": "Allows the user to publish reports."
+              },
+              {
+                "const": "MANAGE_ROLES",
+                "description": "Add, modify and delete roles"
+              },
+              {
+                "const": "MANAGE_AUTOMATIONS",
+                "description": "View, add, modify and delete automations"
+              },
+              {
+                "const": "MANAGE_TRANSLATIONS",
+                "description": "Allows the user to manage the translations."
+              },
+              {
+                "const": "RESOLVE_DUPLICATES",
+                "description": "View and merge duplicate records"
+              },
+              {
+                "const": "SHARE_VIEWS",
+                "description": "Allow the user to share views with other users in the database."
+              },
+              {
+                "const": "MANAGE_IMPORT_CONFIGS",
+                "description": "Allow the user to view and manage saved import configurations on the resource."
+              },
+              {
+                "const": "VIEW_FIELD",
+                "description": "Allow the user to view a field's data."
+              },
+              {
+                "const": "EDIT_FIELD",
+                "description": "Allow the user to modify a field's data."
+              }
+            ]
+          },
+          "filter": {
+            "title": "Filter",
+            "description": "A formula which restricts a permission to specific records. Only record-level permissions can be filtered.",
+            "type": "string"
+          },
+          "securityCategories": {
+            "title": "Security Categories",
+            "description": "The security categories that have been defined for this permission.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SecurityCategory"
+            }
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "QueryColumn": {
+        "title": "QueryColumn",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "The id of the column. This is the column name used to identify the column in the resulting table.",
+            "type": "string"
+          },
+          "formula": {
+            "title": "Formula",
+            "description": "An ActivityInfo formula that calculates the value shown in the column. formula and expression are interchangeable, but formula is given precedence.",
+            "type": "string"
+          },
+          "expression": {
+            "title": "Expression",
+            "description": "An ActivityInfo formula that calculates the value shown in the column. formula and expression are interchangeable, but formula is given precedence.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "QueryFilterSet": {
+        "title": "QueryFilterSet",
+        "type": "object",
+        "properties": {
+          "columnFormula": {
+            "title": "Column Formula",
+            "type": "string"
+          },
+          "values": {
+            "title": "Values",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "columnFormula",
+          "values"
+        ]
       },
       "QueryRowsRequest": {
+        "title": "QueryRowsRequest",
         "type": "object",
         "properties": {
           "rowSources": {
+            "title": "Row Sources",
+            "description": "Exactly one RowSource is required.",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/QueryRowsRowSource"
+              "$ref": "#/components/schemas/QuerySource"
             }
           },
           "formId": {
+            "title": "Form ID",
+            "description": "CUID of the root form to query. This is deprecated in favour of rowSources",
             "type": "string"
           },
           "columns": {
+            "title": "Columns",
+            "description": "The list of columns to retrieve",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/QueryRowsColumn"
+              "$ref": "#/components/schemas/QueryColumn"
             }
           },
           "filter": {
+            "title": "Filter",
+            "description": "A boolean-valued ActivityInfo formula to filter the records included in this query. Resulting rows must match both the filter formula, if provided, and all the provided filterSets. Filter sets are more efficient than formulas when you have a large number of values.",
             "type": "string"
           },
           "filterSets": {
+            "title": "Filter Sets",
+            "description": "Set-based filters to apply to records returned by the query, each of which is a pair of a formula and a set of values to include. Resulting rows must match both the filter formula, if provided, and all the provided filterSets. Filter sets are more efficient than formulas when you have a large number of values.",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/QueryRowsFilterSet"
+              "$ref": "#/components/schemas/QueryFilterSet"
             }
           },
           "sort": {
+            "title": "Sort",
+            "description": "Sort instructions specified with a formula and a direction. Only one sort instruction can be specified, so sorting on multiple columns must be done with a single formula expression.",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/QueryRowsSort"
+              "$ref": "#/components/schemas/QuerySort"
             }
           },
           "truncateStrings": {
             "type": "boolean"
           },
           "validation": {
-            "type": [
-              "object",
-              "null"
-            ],
+            "type": "object",
             "additionalProperties": true
           },
           "drafts": {
             "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
+        "additionalProperties": true,
         "required": [
+          "rowSources",
           "columns"
-        ],
-        "additionalProperties": true
+        ]
       },
-      "QueryRowsRowSource": {
-        "type": "object",
-        "properties": {
-          "rootFormId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "rootFormId"
-        ],
-        "additionalProperties": true
-      },
-      "QueryRowsColumn": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "formula": {
-            "type": "string"
-          },
-          "expression": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": true
-      },
-      "QueryRowsSort": {
+      "QuerySort": {
+        "title": "QuerySort",
         "type": "object",
         "properties": {
           "formula": {
+            "title": "Formula",
+            "description": "The formula on which to sort.",
             "type": "string"
           },
           "dir": {
+            "title": "Dir",
+            "description": "The direction to sort.",
             "type": "string",
             "enum": [
               "ASC",
@@ -2346,16 +3054,535 @@
         "required": [
           "formula",
           "dir"
-        ],
-        "additionalProperties": true
+        ]
       },
-      "QueryRowsFilterSet": {
+      "QuerySource": {
         "type": "object",
         "properties": {
-          "columnFormula": {
+          "rootFormId": {
+            "title": "Root Form ID",
+            "description": "CUID of the root form to query.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rootFormId"
+        ]
+      },
+      "RecordRef": {
+        "title": "RecordRef",
+        "type": "object",
+        "properties": {
+          "formId": {
+            "title": "Form ID",
             "type": "string"
           },
-          "values": {
+          "recordId": {
+            "title": "Record ID",
+            "type": "string"
+          }
+        },
+        "required": [
+          "formId",
+          "recordId"
+        ]
+      },
+      "RecordUpdateChange": {
+        "title": "RecordUpdateChange",
+        "type": "object",
+        "properties": {
+          "formId": {
+            "title": "Form ID",
+            "type": "string"
+          },
+          "recordId": {
+            "title": "Record ID",
+            "type": "string"
+          },
+          "parentRecordId": {
+            "title": "Parent Record ID",
+            "type": "string"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean",
+            "default": false
+          },
+          "fields": {
+            "title": "Fields",
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "formId",
+          "recordId",
+          "fields"
+        ]
+      },
+      "RecordUpdateRequest": {
+        "title": "RecordUpdateRequest",
+        "type": "object",
+        "properties": {
+          "changes": {
+            "title": "Changes",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordUpdateChange"
+            }
+          },
+          "fromImportContext": {
+            "title": "From Import Context",
+            "description": "True if update request comes from bulk importer",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "changes"
+        ]
+      },
+      "SecurityCategory": {
+        "title": "SecurityCategory",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ]
+      },
+      "TranslationDictionary": {
+        "title": "TranslationDictionary",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "The id of the dictionary",
+            "$ref": "#/components/schemas/TranslationDictionaryId"
+          },
+          "version": {
+            "title": "Version",
+            "description": "The current version number of the dictionary. The version number is incremented each time the dictionary is updated.",
+            "type": "integer"
+          },
+          "language": {
+            "title": "Language",
+            "description": "The two-letter ISO 639-1 code for the language, e.g. 'en' for English.",
+            "type": "string"
+          },
+          "translatedStrings": {
+            "title": "Translated Strings",
+            "description": "The list of translated strings.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TranslationString"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "language",
+          "translatedStrings"
+        ]
+      },
+      "TranslationDictionaryId": {
+        "title": "TranslationDictionaryId",
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "title": "Database ID",
+            "description": "The database to which this dictionary belongs",
+            "type": "string"
+          },
+          "dictionaryId": {
+            "title": "Dictionary ID",
+            "description": "The dictionary id. This will either be \"database\" or \"form/{formId}.\"",
+            "type": "string"
+          }
+        },
+        "required": [
+          "databaseId",
+          "dictionaryId"
+        ]
+      },
+      "TranslationString": {
+        "title": "TranslationString",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "The id of the string. This id is based on how the string is used in the database or form schema.",
+            "type": "string"
+          },
+          "original": {
+            "title": "Original",
+            "description": "The original, untranslated, string.",
+            "type": "string"
+          },
+          "translated": {
+            "title": "Translated",
+            "description": "The translated string",
+            "type": "string"
+          },
+          "autoTranslated": {
+            "title": "Autotranslated",
+            "description": "True if this translation was made automatically.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "original",
+          "translated",
+          "autoTranslated"
+        ]
+      },
+      "UpdateDatabaseRequest": {
+        "title": "UpdateDatabaseRequest",
+        "type": "object",
+        "properties": {
+          "resourceUpdates": {
+            "title": "Resource Updates",
+            "description": "List of resources to add or update.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DatabaseResource"
+            }
+          },
+          "resourceDeletions": {
+            "title": "Resource Deletions",
+            "description": "List of resource ids to delete from the database.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lockUpdates": {
+            "title": "Lock Updates",
+            "description": "List of locks to add or update",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DatabaseLock"
+            }
+          },
+          "lockDeletions": {
+            "title": "Lock Deletions",
+            "description": "List of lock ids to delete",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "roleUpdates": {
+            "title": "Role Updates",
+            "description": "List of roles to add or update",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DatabaseRole"
+            }
+          },
+          "roleDeletions": {
+            "title": "Role Deletions",
+            "description": "List of role ids to delete",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "languageUpdates": {
+            "title": "Language Updates",
+            "description": "List of languages to add or update",
+            "type": "array",
+            "items": {
+              "title": "Language",
+              "description": "The two-letter ISO 639-1 code for the language, e.g. 'en' for English.",
+              "type": "string"
+            }
+          },
+          "languageDeletions": {
+            "title": "Language Deletions",
+            "description": "List of languages to delete",
+            "type": "array",
+            "items": {
+              "title": "Language",
+              "description": "The two-letter ISO 639-1 code for the language, e.g. 'en' for English.",
+              "type": "string"
+            }
+          },
+          "originalLanguage": {
+            "title": "Original Language",
+            "description": "Original language update",
+            "type": "string"
+          }
+        }
+      },
+      "UpdateTranslationsRequest": {
+        "title": "UpdateTranslationsRequest",
+        "type": "object",
+        "properties": {
+          "strings": {
+            "title": "Strings",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TranslationString"
+            }
+          }
+        },
+        "required": [
+          "strings"
+        ]
+      },
+      "UpdateUserRequest": {
+        "title": "UpdateUserRequest",
+        "type": "object",
+        "properties": {
+          "assignments": {
+            "title": "Assignments",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserRole"
+            }
+          }
+        },
+        "required": [
+          "assignments"
+        ]
+      },
+      "User": {
+        "title": "User",
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "title": "Database ID",
+            "type": "string"
+          },
+          "userId": {
+            "title": "User ID",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "description": "The user's name, provided either when invited or by the user themselves after activating their account.",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "description": "This user's email address.",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "description": "This user's assigned role in the database.",
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "version": {
+            "title": "Version",
+            "description": "A monotonically-increasing version number. This version is incremented each time a change is made to the users permissions.",
+            "type": "integer"
+          },
+          "inviteDate": {
+            "title": "Invite Date",
+            "description": "The date on which the user was invited to this database.",
+            "type": "string",
+            "format": "date"
+          },
+          "inviteTime": {
+            "title": "Invite Time",
+            "type": "number"
+          },
+          "deliveryStatus": {
+            "title": "Delivery Status",
+            "type": "string",
+            "anyOf": [
+              {
+                "const": "UNKNOWN",
+                "description": "No record of email delivery is available for this user."
+              },
+              {
+                "const": "OK",
+                "description": "Email has been successfully delivered to this user."
+              },
+              {
+                "const": "HARD_BOUNCE",
+                "description": "Attempts to email this user failed with a \"hard bounce,\" meaning that the account does not exist, or the domain is not accepting email."
+              },
+              {
+                "const": "SPAM_COMPLAINT",
+                "description": "Attempts to email this user were rejected as spam by their mail server. No additional attempt will be made to send email to this user."
+              },
+              {
+                "const": "MANUAL_SUPPRESSION",
+                "description": "Mail to this address have been manually blocked by ActivityInfo support staff."
+              }
+            ]
+          },
+          "inviteAccepted": {
+            "title": "Invite Accepted",
+            "description": "True if the user has accepted the invitation to create an ActivityInfo account.",
+            "type": "boolean"
+          },
+          "locked": {
+            "title": "Locked",
+            "description": "True if this user's account has been locked following too many failed authentication attempts.",
+            "type": "boolean"
+          },
+          "userLicenseType": {
+            "title": "User License Type",
+            "description": "The type of user license required for this user, in this database.",
+            "type": "string",
+            "anyOf": [
+              {
+                "const": "NONE",
+                "description": "The user has not been assigned any permissions, and so does not require a license, or is a member of the platform technical support team."
+              },
+              {
+                "const": "BASIC",
+                "description": "The user has only \"basic\" permissions and requires only a basic user license."
+              },
+              {
+                "const": "FULL",
+                "description": "The user requires a \"full\" user license."
+              }
+            ]
+          },
+          "lastLoginDate": {
+            "title": "Last Login Date",
+            "description": "Date of last login on the platform.",
+            "type": "string",
+            "format": "date"
+          },
+          "lastLoginTime": {
+            "title": "Last Login Time",
+            "type": "number"
+          },
+          "activationStatus": {
+            "title": "Activation Status",
+            "description": "The user's current account status.",
+            "type": "string",
+            "anyOf": [
+              {
+                "const": "NO_ACCOUNT",
+                "description": "The email has no account in the system"
+              },
+              {
+                "const": "PENDING",
+                "description": "The user has been invited to access a database, or started signing up for a free trial, but has not confirmed their account"
+              },
+              {
+                "const": "ACTIVE",
+                "description": "The user has activated their account and accepted the terms of service."
+              },
+              {
+                "const": "INACTIVE",
+                "description": "The user no longer has access to any databases, nor do they have an active trial or billing account."
+              },
+              {
+                "const": "CLOSED",
+                "description": "The user has requested the closure of their account. "
+              }
+            ]
+          }
+        },
+        "required": [
+          "databaseId",
+          "userId",
+          "name",
+          "email",
+          "role"
+        ]
+      },
+      "UserPreflightResponse": {
+        "title": "UserPreflightResponse",
+        "type": "object",
+        "properties": {
+          "userId": {
+            "title": "User ID",
+            "type": "string"
+          },
+          "activationStatus": {
+            "title": "Activation Status",
+            "type": "string",
+            "enum": [
+              "NO_ACCOUNT",
+              "PENDING",
+              "ACTIVE",
+              "INACTIVE",
+              "CLOSED"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "addedToDatabase": {
+            "title": "Added To Database",
+            "type": "boolean"
+          },
+          "validEmail": {
+            "title": "Valid Email",
+            "type": "boolean"
+          },
+          "localizedErrorMessage": {
+            "title": "Localized Error Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "validEmail",
+          "activationStatus",
+          "addedToDatabase"
+        ]
+      },
+      "UserRef": {
+        "title": "UserRef",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email"
+        ]
+      },
+      "UserRole": {
+        "title": "UserRole",
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "The id of the role assigned to this user.",
+            "type": "string"
+          },
+          "parameters": {
+            "title": "Parameters",
+            "description": "The user's values of the parameters defined for this role.",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "resources": {
+            "title": "Resources",
+            "description": "The role's optional resources (database, folder, forms, or subforms) granted to this user.",
             "type": "array",
             "items": {
               "type": "string"
@@ -2363,10 +3590,8 @@
           }
         },
         "required": [
-          "columnFormula",
-          "values"
-        ],
-        "additionalProperties": true
+          "id"
+        ]
       }
     },
     "securitySchemes": {

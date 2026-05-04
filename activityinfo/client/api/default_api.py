@@ -17,25 +17,31 @@ from typing_extensions import Annotated
 
 from pydantic import StrictStr
 from typing import Any, Dict, List, Optional
-from client.models.add_database_dto import AddDatabaseDTO
-from client.models.add_database_user_dto import AddDatabaseUserDTO
-from client.models.add_form_dto import AddFormDTO
-from client.models.database import Database
-from client.models.database_translations import DatabaseTranslations
-from client.models.database_tree import DatabaseTree
-from client.models.form_schema import FormSchema
-from client.models.form_tree import FormTree
-from client.models.query_rows_request import QueryRowsRequest
-from client.models.update_database_dto import UpdateDatabaseDTO
-from client.models.update_database_translations_dto import UpdateDatabaseTranslationsDTO
-from client.models.update_database_user_role_dto import UpdateDatabaseUserRoleDTO
-from client.models.update_form_records_dto import UpdateFormRecordsDTO
-from client.models.user_preflight_dto import UserPreflightDTO
-from client.models.user_preflight_response import UserPreflightResponse
+from activityinfo.client.models.add_database_request import AddDatabaseRequest
+from activityinfo.client.models.add_form_request import AddFormRequest
+from activityinfo.client.models.add_update_form_response import AddUpdateFormResponse
+from activityinfo.client.models.add_user_request import AddUserRequest
+from activityinfo.client.models.audit_database_request import AuditDatabaseRequest
+from activityinfo.client.models.database import Database
+from activityinfo.client.models.database_audit import DatabaseAudit
+from activityinfo.client.models.form_schema import FormSchema
+from activityinfo.client.models.form_tree import FormTree
+from activityinfo.client.models.get_databases_response import GetDatabasesResponse
+from activityinfo.client.models.job_request import JobRequest
+from activityinfo.client.models.job_status import JobStatus
+from activityinfo.client.models.message_response import MessageResponse
+from activityinfo.client.models.query_rows_request import QueryRowsRequest
+from activityinfo.client.models.record_update_request import RecordUpdateRequest
+from activityinfo.client.models.translation_dictionary import TranslationDictionary
+from activityinfo.client.models.update_database_request import UpdateDatabaseRequest
+from activityinfo.client.models.update_translations_request import UpdateTranslationsRequest
+from activityinfo.client.models.update_user_request import UpdateUserRequest
+from activityinfo.client.models.user import User
+from activityinfo.client.models.user_preflight_response import UserPreflightResponse
 
-from client.api_client import ApiClient, RequestSerialized
-from client.api_response import ApiResponse
-from client.rest import RESTResponseType
+from activityinfo.client.api_client import ApiClient, RequestSerialized
+from activityinfo.client.api_response import ApiResponse
+from activityinfo.client.rest import RESTResponseType
 
 
 class DefaultApi:
@@ -52,9 +58,9 @@ class DefaultApi:
 
 
     @validate_call
-    async def add_database_post(
+    async def add_database(
         self,
-        add_database_dto: Optional[AddDatabaseDTO] = None,
+        add_database_request: Optional[AddDatabaseRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -67,13 +73,13 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """Create a new database.
+    ) -> Database:
+        """Add Database
 
         Create a new database.
 
-        :param add_database_dto:
-        :type add_database_dto: AddDatabaseDTO
+        :param add_database_request:
+        :type add_database_request: AddDatabaseRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -96,8 +102,8 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._add_database_post_serialize(
-            add_database_dto=add_database_dto,
+        _param = self._add_database_serialize(
+            add_database_request=add_database_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -105,8 +111,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "Database",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -120,9 +126,9 @@ class DefaultApi:
 
 
     @validate_call
-    async def add_database_post_with_http_info(
+    async def add_database_with_http_info(
         self,
-        add_database_dto: Optional[AddDatabaseDTO] = None,
+        add_database_request: Optional[AddDatabaseRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -135,13 +141,13 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """Create a new database.
+    ) -> ApiResponse[Database]:
+        """Add Database
 
         Create a new database.
 
-        :param add_database_dto:
-        :type add_database_dto: AddDatabaseDTO
+        :param add_database_request:
+        :type add_database_request: AddDatabaseRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -164,8 +170,8 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._add_database_post_serialize(
-            add_database_dto=add_database_dto,
+        _param = self._add_database_serialize(
+            add_database_request=add_database_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -173,8 +179,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "Database",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -188,9 +194,9 @@ class DefaultApi:
 
 
     @validate_call
-    async def add_database_post_without_preload_content(
+    async def add_database_without_preload_content(
         self,
-        add_database_dto: Optional[AddDatabaseDTO] = None,
+        add_database_request: Optional[AddDatabaseRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -204,12 +210,12 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Create a new database.
+        """Add Database
 
         Create a new database.
 
-        :param add_database_dto:
-        :type add_database_dto: AddDatabaseDTO
+        :param add_database_request:
+        :type add_database_request: AddDatabaseRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -232,8 +238,8 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._add_database_post_serialize(
-            add_database_dto=add_database_dto,
+        _param = self._add_database_serialize(
+            add_database_request=add_database_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -241,8 +247,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "Database",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -251,9 +257,9 @@ class DefaultApi:
         return response_data.response
 
 
-    def _add_database_post_serialize(
+    def _add_database_serialize(
         self,
-        add_database_dto,
+        add_database_request,
         _request_auth,
         _content_type,
         _headers,
@@ -279,8 +285,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if add_database_dto is not None:
-            _body_params = add_database_dto
+        if add_database_request is not None:
+            _body_params = add_database_request
 
 
         # set the HTTP header `Accept`
@@ -329,10 +335,10 @@ class DefaultApi:
 
 
     @validate_call
-    async def add_database_user_post(
+    async def add_database_user(
         self,
         database_id: StrictStr,
-        add_database_user_dto: Optional[AddDatabaseUserDTO] = None,
+        add_user_request: Optional[AddUserRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -345,15 +351,15 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """Invite or add a new user to a database with a specific role.
+    ) -> User:
+        """Add Database User
 
         Invite or add a new user to a database with a specific role.
 
         :param database_id: (required)
         :type database_id: str
-        :param add_database_user_dto:
-        :type add_database_user_dto: AddDatabaseUserDTO
+        :param add_user_request:
+        :type add_user_request: AddUserRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -376,9 +382,9 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._add_database_user_post_serialize(
+        _param = self._add_database_user_serialize(
             database_id=database_id,
-            add_database_user_dto=add_database_user_dto,
+            add_user_request=add_user_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -386,8 +392,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "User",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -401,10 +407,10 @@ class DefaultApi:
 
 
     @validate_call
-    async def add_database_user_post_with_http_info(
+    async def add_database_user_with_http_info(
         self,
         database_id: StrictStr,
-        add_database_user_dto: Optional[AddDatabaseUserDTO] = None,
+        add_user_request: Optional[AddUserRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -417,15 +423,15 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """Invite or add a new user to a database with a specific role.
+    ) -> ApiResponse[User]:
+        """Add Database User
 
         Invite or add a new user to a database with a specific role.
 
         :param database_id: (required)
         :type database_id: str
-        :param add_database_user_dto:
-        :type add_database_user_dto: AddDatabaseUserDTO
+        :param add_user_request:
+        :type add_user_request: AddUserRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -448,9 +454,9 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._add_database_user_post_serialize(
+        _param = self._add_database_user_serialize(
             database_id=database_id,
-            add_database_user_dto=add_database_user_dto,
+            add_user_request=add_user_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -458,8 +464,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "User",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -473,10 +479,10 @@ class DefaultApi:
 
 
     @validate_call
-    async def add_database_user_post_without_preload_content(
+    async def add_database_user_without_preload_content(
         self,
         database_id: StrictStr,
-        add_database_user_dto: Optional[AddDatabaseUserDTO] = None,
+        add_user_request: Optional[AddUserRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -490,14 +496,14 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Invite or add a new user to a database with a specific role.
+        """Add Database User
 
         Invite or add a new user to a database with a specific role.
 
         :param database_id: (required)
         :type database_id: str
-        :param add_database_user_dto:
-        :type add_database_user_dto: AddDatabaseUserDTO
+        :param add_user_request:
+        :type add_user_request: AddUserRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -520,9 +526,9 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._add_database_user_post_serialize(
+        _param = self._add_database_user_serialize(
             database_id=database_id,
-            add_database_user_dto=add_database_user_dto,
+            add_user_request=add_user_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -530,8 +536,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "User",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -540,10 +546,10 @@ class DefaultApi:
         return response_data.response
 
 
-    def _add_database_user_post_serialize(
+    def _add_database_user_serialize(
         self,
         database_id,
-        add_database_user_dto,
+        add_user_request,
         _request_auth,
         _content_type,
         _headers,
@@ -571,8 +577,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if add_database_user_dto is not None:
-            _body_params = add_database_user_dto
+        if add_user_request is not None:
+            _body_params = add_user_request
 
 
         # set the HTTP header `Accept`
@@ -621,10 +627,10 @@ class DefaultApi:
 
 
     @validate_call
-    async def add_form_post(
+    async def add_form(
         self,
         database_id: StrictStr,
-        add_form_dto: Optional[AddFormDTO] = None,
+        add_form_request: Optional[AddFormRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -637,15 +643,15 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """Add a new form to a specific database.
+    ) -> AddUpdateFormResponse:
+        """Add Form
 
         Add a new form to a specific database.
 
         :param database_id: (required)
         :type database_id: str
-        :param add_form_dto:
-        :type add_form_dto: AddFormDTO
+        :param add_form_request:
+        :type add_form_request: AddFormRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -668,9 +674,9 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._add_form_post_serialize(
+        _param = self._add_form_serialize(
             database_id=database_id,
-            add_form_dto=add_form_dto,
+            add_form_request=add_form_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -678,8 +684,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "AddUpdateFormResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -693,10 +699,10 @@ class DefaultApi:
 
 
     @validate_call
-    async def add_form_post_with_http_info(
+    async def add_form_with_http_info(
         self,
         database_id: StrictStr,
-        add_form_dto: Optional[AddFormDTO] = None,
+        add_form_request: Optional[AddFormRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -709,15 +715,15 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """Add a new form to a specific database.
+    ) -> ApiResponse[AddUpdateFormResponse]:
+        """Add Form
 
         Add a new form to a specific database.
 
         :param database_id: (required)
         :type database_id: str
-        :param add_form_dto:
-        :type add_form_dto: AddFormDTO
+        :param add_form_request:
+        :type add_form_request: AddFormRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -740,9 +746,9 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._add_form_post_serialize(
+        _param = self._add_form_serialize(
             database_id=database_id,
-            add_form_dto=add_form_dto,
+            add_form_request=add_form_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -750,8 +756,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "AddUpdateFormResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -765,10 +771,10 @@ class DefaultApi:
 
 
     @validate_call
-    async def add_form_post_without_preload_content(
+    async def add_form_without_preload_content(
         self,
         database_id: StrictStr,
-        add_form_dto: Optional[AddFormDTO] = None,
+        add_form_request: Optional[AddFormRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -782,14 +788,14 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Add a new form to a specific database.
+        """Add Form
 
         Add a new form to a specific database.
 
         :param database_id: (required)
         :type database_id: str
-        :param add_form_dto:
-        :type add_form_dto: AddFormDTO
+        :param add_form_request:
+        :type add_form_request: AddFormRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -812,9 +818,9 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._add_form_post_serialize(
+        _param = self._add_form_serialize(
             database_id=database_id,
-            add_form_dto=add_form_dto,
+            add_form_request=add_form_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -822,8 +828,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "AddUpdateFormResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -832,10 +838,10 @@ class DefaultApi:
         return response_data.response
 
 
-    def _add_form_post_serialize(
+    def _add_form_serialize(
         self,
         database_id,
-        add_form_dto,
+        add_form_request,
         _request_auth,
         _content_type,
         _headers,
@@ -863,8 +869,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if add_form_dto is not None:
-            _body_params = add_form_dto
+        if add_form_request is not None:
+            _body_params = add_form_request
 
 
         # set the HTTP header `Accept`
@@ -913,10 +919,10 @@ class DefaultApi:
 
 
     @validate_call
-    async def delete_database_user_delete(
+    async def audit_database(
         self,
         database_id: StrictStr,
-        user_id: Optional[StrictStr],
+        audit_database_request: Optional[AuditDatabaseRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -929,15 +935,15 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """Remove a user's access to a specific database.
+    ) -> DatabaseAudit:
+        """Audit Database
 
-        Remove a user's access to a specific database.
+        Gets entries from the database's audit log.
 
         :param database_id: (required)
         :type database_id: str
-        :param user_id: (required)
-        :type user_id: str
+        :param audit_database_request:
+        :type audit_database_request: AuditDatabaseRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -960,9 +966,9 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._delete_database_user_delete_serialize(
+        _param = self._audit_database_serialize(
             database_id=database_id,
-            user_id=user_id,
+            audit_database_request=audit_database_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -970,8 +976,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "DatabaseAudit",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -985,10 +991,10 @@ class DefaultApi:
 
 
     @validate_call
-    async def delete_database_user_delete_with_http_info(
+    async def audit_database_with_http_info(
         self,
         database_id: StrictStr,
-        user_id: Optional[StrictStr],
+        audit_database_request: Optional[AuditDatabaseRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1001,15 +1007,15 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """Remove a user's access to a specific database.
+    ) -> ApiResponse[DatabaseAudit]:
+        """Audit Database
 
-        Remove a user's access to a specific database.
+        Gets entries from the database's audit log.
 
         :param database_id: (required)
         :type database_id: str
-        :param user_id: (required)
-        :type user_id: str
+        :param audit_database_request:
+        :type audit_database_request: AuditDatabaseRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1032,9 +1038,9 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._delete_database_user_delete_serialize(
+        _param = self._audit_database_serialize(
             database_id=database_id,
-            user_id=user_id,
+            audit_database_request=audit_database_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1042,8 +1048,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "DatabaseAudit",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1057,10 +1063,10 @@ class DefaultApi:
 
 
     @validate_call
-    async def delete_database_user_delete_without_preload_content(
+    async def audit_database_without_preload_content(
         self,
         database_id: StrictStr,
-        user_id: Optional[StrictStr],
+        audit_database_request: Optional[AuditDatabaseRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1074,7 +1080,420 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Remove a user's access to a specific database.
+        """Audit Database
+
+        Gets entries from the database's audit log.
+
+        :param database_id: (required)
+        :type database_id: str
+        :param audit_database_request:
+        :type audit_database_request: AuditDatabaseRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._audit_database_serialize(
+            database_id=database_id,
+            audit_database_request=audit_database_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "DatabaseAudit",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _audit_database_serialize(
+        self,
+        database_id,
+        audit_database_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if database_id is not None:
+            _path_params['database_id'] = database_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if audit_database_request is not None:
+            _body_params = audit_database_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/databases/{database_id}/audit',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    async def delete_database(
+        self,
+        database_id: StrictStr,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> str:
+        """Delete Database
+
+        Deletes a database and all the forms and records contained therein. Only the owner of a database may delete a database.
+
+        :param database_id: (required)
+        :type database_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._delete_database_serialize(
+            database_id=database_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "str",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        await response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    async def delete_database_with_http_info(
+        self,
+        database_id: StrictStr,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[str]:
+        """Delete Database
+
+        Deletes a database and all the forms and records contained therein. Only the owner of a database may delete a database.
+
+        :param database_id: (required)
+        :type database_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._delete_database_serialize(
+            database_id=database_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "str",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        await response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    async def delete_database_without_preload_content(
+        self,
+        database_id: StrictStr,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Delete Database
+
+        Deletes a database and all the forms and records contained therein. Only the owner of a database may delete a database.
+
+        :param database_id: (required)
+        :type database_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._delete_database_serialize(
+            database_id=database_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "str",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _delete_database_serialize(
+        self,
+        database_id,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if database_id is not None:
+            _path_params['database_id'] = database_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'text/plain', 
+                    'application/json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='DELETE',
+            resource_path='/databases/{database_id}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    async def delete_database_user(
+        self,
+        database_id: StrictStr,
+        user_id: StrictStr,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> str:
+        """Delete Database User
 
         Remove a user's access to a specific database.
 
@@ -1104,7 +1523,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._delete_database_user_delete_serialize(
+        _param = self._delete_database_user_serialize(
             database_id=database_id,
             user_id=user_id,
             _request_auth=_request_auth,
@@ -1114,8 +1533,152 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "str",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        await response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    async def delete_database_user_with_http_info(
+        self,
+        database_id: StrictStr,
+        user_id: StrictStr,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[str]:
+        """Delete Database User
+
+        Remove a user's access to a specific database.
+
+        :param database_id: (required)
+        :type database_id: str
+        :param user_id: (required)
+        :type user_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._delete_database_user_serialize(
+            database_id=database_id,
+            user_id=user_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "str",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        await response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    async def delete_database_user_without_preload_content(
+        self,
+        database_id: StrictStr,
+        user_id: StrictStr,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Delete Database User
+
+        Remove a user's access to a specific database.
+
+        :param database_id: (required)
+        :type database_id: str
+        :param user_id: (required)
+        :type user_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._delete_database_user_serialize(
+            database_id=database_id,
+            user_id=user_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "str",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1124,7 +1687,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _delete_database_user_delete_serialize(
+    def _delete_database_user_serialize(
         self,
         database_id,
         user_id,
@@ -1163,6 +1726,7 @@ class DefaultApi:
         if 'Accept' not in _header_params:
             _header_params['Accept'] = self.api_client.select_header_accept(
                 [
+                    'text/plain', 
                     'application/json'
                 ]
             )
@@ -1192,7 +1756,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_database_translations_get(
+    async def get_database_translations(
         self,
         database_id: StrictStr,
         language_code: StrictStr,
@@ -1208,8 +1772,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> DatabaseTranslations:
-        """Fetch all database-level translations for a specific language.
+    ) -> TranslationDictionary:
+        """Get Database Translations
 
         Fetch all database-level translations for a specific language.
 
@@ -1239,7 +1803,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_database_translations_get_serialize(
+        _param = self._get_database_translations_serialize(
             database_id=database_id,
             language_code=language_code,
             _request_auth=_request_auth,
@@ -1249,8 +1813,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "DatabaseTranslations",
-            '401': "ErrorResponse",
+            '200': "TranslationDictionary",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1264,7 +1828,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_database_translations_get_with_http_info(
+    async def get_database_translations_with_http_info(
         self,
         database_id: StrictStr,
         language_code: StrictStr,
@@ -1280,8 +1844,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[DatabaseTranslations]:
-        """Fetch all database-level translations for a specific language.
+    ) -> ApiResponse[TranslationDictionary]:
+        """Get Database Translations
 
         Fetch all database-level translations for a specific language.
 
@@ -1311,7 +1875,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_database_translations_get_serialize(
+        _param = self._get_database_translations_serialize(
             database_id=database_id,
             language_code=language_code,
             _request_auth=_request_auth,
@@ -1321,8 +1885,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "DatabaseTranslations",
-            '401': "ErrorResponse",
+            '200': "TranslationDictionary",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1336,7 +1900,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_database_translations_get_without_preload_content(
+    async def get_database_translations_without_preload_content(
         self,
         database_id: StrictStr,
         language_code: StrictStr,
@@ -1353,7 +1917,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Fetch all database-level translations for a specific language.
+        """Get Database Translations
 
         Fetch all database-level translations for a specific language.
 
@@ -1383,7 +1947,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_database_translations_get_serialize(
+        _param = self._get_database_translations_serialize(
             database_id=database_id,
             language_code=language_code,
             _request_auth=_request_auth,
@@ -1393,8 +1957,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "DatabaseTranslations",
-            '401': "ErrorResponse",
+            '200': "TranslationDictionary",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1403,7 +1967,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _get_database_translations_get_serialize(
+    def _get_database_translations_serialize(
         self,
         database_id,
         language_code,
@@ -1471,7 +2035,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_database_tree_get(
+    async def get_database_tree(
         self,
         database_id: StrictStr,
         _request_timeout: Union[
@@ -1486,8 +2050,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> DatabaseTree:
-        """Fetch the full hierarchical tree structure of a database.
+    ) -> Database:
+        """Get Database Tree
 
         Fetch the full hierarchical tree structure of a database.
 
@@ -1515,7 +2079,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_database_tree_get_serialize(
+        _param = self._get_database_tree_serialize(
             database_id=database_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -1524,8 +2088,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "DatabaseTree",
-            '401': "ErrorResponse",
+            '200': "Database",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1539,7 +2103,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_database_tree_get_with_http_info(
+    async def get_database_tree_with_http_info(
         self,
         database_id: StrictStr,
         _request_timeout: Union[
@@ -1554,8 +2118,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[DatabaseTree]:
-        """Fetch the full hierarchical tree structure of a database.
+    ) -> ApiResponse[Database]:
+        """Get Database Tree
 
         Fetch the full hierarchical tree structure of a database.
 
@@ -1583,7 +2147,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_database_tree_get_serialize(
+        _param = self._get_database_tree_serialize(
             database_id=database_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -1592,8 +2156,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "DatabaseTree",
-            '401': "ErrorResponse",
+            '200': "Database",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1607,7 +2171,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_database_tree_get_without_preload_content(
+    async def get_database_tree_without_preload_content(
         self,
         database_id: StrictStr,
         _request_timeout: Union[
@@ -1623,7 +2187,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Fetch the full hierarchical tree structure of a database.
+        """Get Database Tree
 
         Fetch the full hierarchical tree structure of a database.
 
@@ -1651,7 +2215,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_database_tree_get_serialize(
+        _param = self._get_database_tree_serialize(
             database_id=database_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -1660,8 +2224,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "DatabaseTree",
-            '401': "ErrorResponse",
+            '200': "Database",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1670,7 +2234,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _get_database_tree_get_serialize(
+    def _get_database_tree_serialize(
         self,
         database_id,
         _request_auth,
@@ -1735,7 +2299,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_database_users_get(
+    async def get_database_users(
         self,
         database_id: StrictStr,
         _request_timeout: Union[
@@ -1750,8 +2314,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """List all users who have access to the specified database.
+    ) -> List[User]:
+        """Get Database Users
 
         List all users who have access to the specified database.
 
@@ -1779,7 +2343,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_database_users_get_serialize(
+        _param = self._get_database_users_serialize(
             database_id=database_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -1788,8 +2352,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "List[User]",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1803,7 +2367,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_database_users_get_with_http_info(
+    async def get_database_users_with_http_info(
         self,
         database_id: StrictStr,
         _request_timeout: Union[
@@ -1818,8 +2382,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """List all users who have access to the specified database.
+    ) -> ApiResponse[List[User]]:
+        """Get Database Users
 
         List all users who have access to the specified database.
 
@@ -1847,7 +2411,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_database_users_get_serialize(
+        _param = self._get_database_users_serialize(
             database_id=database_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -1856,8 +2420,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "List[User]",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1871,7 +2435,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_database_users_get_without_preload_content(
+    async def get_database_users_without_preload_content(
         self,
         database_id: StrictStr,
         _request_timeout: Union[
@@ -1887,7 +2451,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """List all users who have access to the specified database.
+        """Get Database Users
 
         List all users who have access to the specified database.
 
@@ -1915,7 +2479,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_database_users_get_serialize(
+        _param = self._get_database_users_serialize(
             database_id=database_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -1924,8 +2488,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "List[User]",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -1934,7 +2498,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _get_database_users_get_serialize(
+    def _get_database_users_serialize(
         self,
         database_id,
         _request_auth,
@@ -1999,7 +2563,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_get(
+    async def get_form_records(
         self,
         form_id: StrictStr,
         _request_timeout: Union[
@@ -2014,8 +2578,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> List[object]:
-        """Query and retrieve all records for a specific form.
+    ) -> List[Dict[str, object]]:
+        """Get Form Records
 
         Query and retrieve all records for a specific form.
 
@@ -2043,7 +2607,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_get_serialize(
+        _param = self._get_form_records_serialize(
             form_id=form_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -2052,8 +2616,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "List[object]",
-            '401': "ErrorResponse",
+            '200': "List[Dict[str, object]]",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2067,7 +2631,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_get_with_http_info(
+    async def get_form_records_with_http_info(
         self,
         form_id: StrictStr,
         _request_timeout: Union[
@@ -2082,8 +2646,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[List[object]]:
-        """Query and retrieve all records for a specific form.
+    ) -> ApiResponse[List[Dict[str, object]]]:
+        """Get Form Records
 
         Query and retrieve all records for a specific form.
 
@@ -2111,7 +2675,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_get_serialize(
+        _param = self._get_form_records_serialize(
             form_id=form_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -2120,8 +2684,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "List[object]",
-            '401': "ErrorResponse",
+            '200': "List[Dict[str, object]]",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2135,7 +2699,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_get_without_preload_content(
+    async def get_form_records_without_preload_content(
         self,
         form_id: StrictStr,
         _request_timeout: Union[
@@ -2151,7 +2715,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Query and retrieve all records for a specific form.
+        """Get Form Records
 
         Query and retrieve all records for a specific form.
 
@@ -2179,7 +2743,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_get_serialize(
+        _param = self._get_form_records_serialize(
             form_id=form_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -2188,8 +2752,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "List[object]",
-            '401': "ErrorResponse",
+            '200': "List[Dict[str, object]]",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2198,7 +2762,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _get_form_get_serialize(
+    def _get_form_records_serialize(
         self,
         form_id,
         _request_auth,
@@ -2263,7 +2827,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_schema_get(
+    async def get_form_schema(
         self,
         form_id: StrictStr,
         _request_timeout: Union[
@@ -2279,7 +2843,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> FormSchema:
-        """Retrieve the design/schema (fields, types, formulas) for a specific form.
+        """Get Form Schema
 
         Retrieve the design/schema (fields, types, formulas) for a specific form.
 
@@ -2307,7 +2871,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_schema_get_serialize(
+        _param = self._get_form_schema_serialize(
             form_id=form_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -2317,7 +2881,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "FormSchema",
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2331,7 +2895,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_schema_get_with_http_info(
+    async def get_form_schema_with_http_info(
         self,
         form_id: StrictStr,
         _request_timeout: Union[
@@ -2347,7 +2911,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[FormSchema]:
-        """Retrieve the design/schema (fields, types, formulas) for a specific form.
+        """Get Form Schema
 
         Retrieve the design/schema (fields, types, formulas) for a specific form.
 
@@ -2375,7 +2939,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_schema_get_serialize(
+        _param = self._get_form_schema_serialize(
             form_id=form_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -2385,7 +2949,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "FormSchema",
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2399,7 +2963,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_schema_get_without_preload_content(
+    async def get_form_schema_without_preload_content(
         self,
         form_id: StrictStr,
         _request_timeout: Union[
@@ -2415,7 +2979,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Retrieve the design/schema (fields, types, formulas) for a specific form.
+        """Get Form Schema
 
         Retrieve the design/schema (fields, types, formulas) for a specific form.
 
@@ -2443,7 +3007,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_schema_get_serialize(
+        _param = self._get_form_schema_serialize(
             form_id=form_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -2453,7 +3017,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "FormSchema",
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2462,7 +3026,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _get_form_schema_get_serialize(
+    def _get_form_schema_serialize(
         self,
         form_id,
         _request_auth,
@@ -2527,7 +3091,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_translations_get(
+    async def get_form_translations(
         self,
         database_id: StrictStr,
         form_id: StrictStr,
@@ -2544,8 +3108,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """Retrieve all translated labels for a specific form and its fields.
+    ) -> TranslationDictionary:
+        """Get Form Translations
 
         Retrieve all translated labels for a specific form and its fields.
 
@@ -2577,7 +3141,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_translations_get_serialize(
+        _param = self._get_form_translations_serialize(
             database_id=database_id,
             form_id=form_id,
             language_code=language_code,
@@ -2588,8 +3152,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "TranslationDictionary",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2603,7 +3167,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_translations_get_with_http_info(
+    async def get_form_translations_with_http_info(
         self,
         database_id: StrictStr,
         form_id: StrictStr,
@@ -2620,8 +3184,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """Retrieve all translated labels for a specific form and its fields.
+    ) -> ApiResponse[TranslationDictionary]:
+        """Get Form Translations
 
         Retrieve all translated labels for a specific form and its fields.
 
@@ -2653,7 +3217,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_translations_get_serialize(
+        _param = self._get_form_translations_serialize(
             database_id=database_id,
             form_id=form_id,
             language_code=language_code,
@@ -2664,8 +3228,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "TranslationDictionary",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2679,7 +3243,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_translations_get_without_preload_content(
+    async def get_form_translations_without_preload_content(
         self,
         database_id: StrictStr,
         form_id: StrictStr,
@@ -2697,7 +3261,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Retrieve all translated labels for a specific form and its fields.
+        """Get Form Translations
 
         Retrieve all translated labels for a specific form and its fields.
 
@@ -2729,7 +3293,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_translations_get_serialize(
+        _param = self._get_form_translations_serialize(
             database_id=database_id,
             form_id=form_id,
             language_code=language_code,
@@ -2740,8 +3304,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "TranslationDictionary",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2750,7 +3314,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _get_form_translations_get_serialize(
+    def _get_form_translations_serialize(
         self,
         database_id,
         form_id,
@@ -2821,7 +3385,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_tree_get(
+    async def get_form_tree(
         self,
         form_id: StrictStr,
         _request_timeout: Union[
@@ -2837,7 +3401,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> FormTree:
-        """Fetch the form and all its related forms (references).
+        """Get Form Tree
 
         Fetch the form and all its related forms (references).
 
@@ -2865,7 +3429,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_tree_get_serialize(
+        _param = self._get_form_tree_serialize(
             form_id=form_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -2875,7 +3439,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "FormTree",
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2889,7 +3453,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_tree_get_with_http_info(
+    async def get_form_tree_with_http_info(
         self,
         form_id: StrictStr,
         _request_timeout: Union[
@@ -2905,7 +3469,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[FormTree]:
-        """Fetch the form and all its related forms (references).
+        """Get Form Tree
 
         Fetch the form and all its related forms (references).
 
@@ -2933,7 +3497,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_tree_get_serialize(
+        _param = self._get_form_tree_serialize(
             form_id=form_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -2943,7 +3507,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "FormTree",
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2957,7 +3521,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_form_tree_get_without_preload_content(
+    async def get_form_tree_without_preload_content(
         self,
         form_id: StrictStr,
         _request_timeout: Union[
@@ -2973,7 +3537,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Fetch the form and all its related forms (references).
+        """Get Form Tree
 
         Fetch the form and all its related forms (references).
 
@@ -3001,7 +3565,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_form_tree_get_serialize(
+        _param = self._get_form_tree_serialize(
             form_id=form_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -3011,7 +3575,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "FormTree",
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3020,7 +3584,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _get_form_tree_get_serialize(
+    def _get_form_tree_serialize(
         self,
         form_id,
         _request_auth,
@@ -3085,8 +3649,9 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_user_databases_get(
+    async def get_job_status(
         self,
+        job_id: StrictStr,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3099,11 +3664,13 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> List[Database]:
-        """List all databases the authenticated user has access to.
+    ) -> List[JobStatus]:
+        """Get Job Status
 
-        List all databases the authenticated user has access to.
+        Retrieves the status of a long-running job
 
+        :param job_id: (required)
+        :type job_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3126,7 +3693,8 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_user_databases_get_serialize(
+        _param = self._get_job_status_serialize(
+            job_id=job_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3134,8 +3702,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "List[Database]",
-            '401': "ErrorResponse",
+            '200': "List[JobStatus]",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3149,7 +3717,203 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_user_databases_get_with_http_info(
+    async def get_job_status_with_http_info(
+        self,
+        job_id: StrictStr,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[List[JobStatus]]:
+        """Get Job Status
+
+        Retrieves the status of a long-running job
+
+        :param job_id: (required)
+        :type job_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._get_job_status_serialize(
+            job_id=job_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "List[JobStatus]",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        await response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    async def get_job_status_without_preload_content(
+        self,
+        job_id: StrictStr,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Get Job Status
+
+        Retrieves the status of a long-running job
+
+        :param job_id: (required)
+        :type job_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._get_job_status_serialize(
+            job_id=job_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "List[JobStatus]",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _get_job_status_serialize(
+        self,
+        job_id,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if job_id is not None:
+            _path_params['job_id'] = job_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='GET',
+            resource_path='/jobs/{job_id}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    async def get_user_databases(
         self,
         _request_timeout: Union[
             None,
@@ -3163,10 +3927,10 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[List[Database]]:
-        """List all databases the authenticated user has access to.
+    ) -> List[GetDatabasesResponse]:
+        """Get User Databases
 
-        List all databases the authenticated user has access to.
+        Gets all the databases that the authenticated user owns, or that have been shared with the authenticated user.
 
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -3190,7 +3954,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_user_databases_get_serialize(
+        _param = self._get_user_databases_serialize(
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3198,8 +3962,72 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "List[Database]",
-            '401': "ErrorResponse",
+            '200': "List[GetDatabasesResponse]",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        await response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    async def get_user_databases_with_http_info(
+        self,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[List[GetDatabasesResponse]]:
+        """Get User Databases
+
+        Gets all the databases that the authenticated user owns, or that have been shared with the authenticated user.
+
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._get_user_databases_serialize(
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "List[GetDatabasesResponse]",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3213,7 +4041,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def get_user_databases_get_without_preload_content(
+    async def get_user_databases_without_preload_content(
         self,
         _request_timeout: Union[
             None,
@@ -3228,9 +4056,9 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """List all databases the authenticated user has access to.
+        """Get User Databases
 
-        List all databases the authenticated user has access to.
+        Gets all the databases that the authenticated user owns, or that have been shared with the authenticated user.
 
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -3254,7 +4082,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._get_user_databases_get_serialize(
+        _param = self._get_user_databases_serialize(
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3262,8 +4090,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "List[Database]",
-            '401': "ErrorResponse",
+            '200': "List[GetDatabasesResponse]",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3272,7 +4100,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _get_user_databases_get_serialize(
+    def _get_user_databases_serialize(
         self,
         _request_auth,
         _content_type,
@@ -3334,7 +4162,299 @@ class DefaultApi:
 
 
     @validate_call
-    async def query_rows_post(
+    async def preflight_database_user(
+        self,
+        database_id: StrictStr,
+        add_user_request: Optional[AddUserRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> UserPreflightResponse:
+        """Preflight Database User
+
+        Check the status of a user's email before adding them to a database.
+
+        :param database_id: (required)
+        :type database_id: str
+        :param add_user_request:
+        :type add_user_request: AddUserRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._preflight_database_user_serialize(
+            database_id=database_id,
+            add_user_request=add_user_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "UserPreflightResponse",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        await response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    async def preflight_database_user_with_http_info(
+        self,
+        database_id: StrictStr,
+        add_user_request: Optional[AddUserRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[UserPreflightResponse]:
+        """Preflight Database User
+
+        Check the status of a user's email before adding them to a database.
+
+        :param database_id: (required)
+        :type database_id: str
+        :param add_user_request:
+        :type add_user_request: AddUserRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._preflight_database_user_serialize(
+            database_id=database_id,
+            add_user_request=add_user_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "UserPreflightResponse",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        await response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    async def preflight_database_user_without_preload_content(
+        self,
+        database_id: StrictStr,
+        add_user_request: Optional[AddUserRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Preflight Database User
+
+        Check the status of a user's email before adding them to a database.
+
+        :param database_id: (required)
+        :type database_id: str
+        :param add_user_request:
+        :type add_user_request: AddUserRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._preflight_database_user_serialize(
+            database_id=database_id,
+            add_user_request=add_user_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "UserPreflightResponse",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _preflight_database_user_serialize(
+        self,
+        database_id,
+        add_user_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if database_id is not None:
+            _path_params['database_id'] = database_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if add_user_request is not None:
+            _body_params = add_user_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/databases/{database_id}/users/preflight',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    async def query_rows(
         self,
         query_rows_request: QueryRowsRequest,
         _request_timeout: Union[
@@ -3350,7 +4470,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> List[Dict[str, object]]:
-        """Query form rows with formulas, filters, and sorting.
+        """Query Rows
 
         Queries records as rows using column expressions, optional filter formula, filter sets, and sorting.
 
@@ -3378,7 +4498,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._query_rows_post_serialize(
+        _param = self._query_rows_serialize(
             query_rows_request=query_rows_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -3388,7 +4508,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "List[Dict[str, object]]",
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3402,7 +4522,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def query_rows_post_with_http_info(
+    async def query_rows_with_http_info(
         self,
         query_rows_request: QueryRowsRequest,
         _request_timeout: Union[
@@ -3418,7 +4538,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[List[Dict[str, object]]]:
-        """Query form rows with formulas, filters, and sorting.
+        """Query Rows
 
         Queries records as rows using column expressions, optional filter formula, filter sets, and sorting.
 
@@ -3446,7 +4566,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._query_rows_post_serialize(
+        _param = self._query_rows_serialize(
             query_rows_request=query_rows_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -3456,7 +4576,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "List[Dict[str, object]]",
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3470,7 +4590,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def query_rows_post_without_preload_content(
+    async def query_rows_without_preload_content(
         self,
         query_rows_request: QueryRowsRequest,
         _request_timeout: Union[
@@ -3486,7 +4606,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Query form rows with formulas, filters, and sorting.
+        """Query Rows
 
         Queries records as rows using column expressions, optional filter formula, filter sets, and sorting.
 
@@ -3514,7 +4634,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._query_rows_post_serialize(
+        _param = self._query_rows_serialize(
             query_rows_request=query_rows_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -3524,7 +4644,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "List[Dict[str, object]]",
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3533,7 +4653,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _query_rows_post_serialize(
+    def _query_rows_serialize(
         self,
         query_rows_request,
         _request_auth,
@@ -3611,10 +4731,9 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_database_post(
+    async def start_job(
         self,
-        database_id: StrictStr,
-        update_database_dto: Optional[UpdateDatabaseDTO] = None,
+        job_request: Optional[JobRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3627,15 +4746,13 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """Modify database-level settings (e.g., enabled languages).
+    ) -> JobStatus:
+        """Start Job
 
-        Modify database-level settings (e.g., enabled languages).
+        Starts a new long-running job
 
-        :param database_id: (required)
-        :type database_id: str
-        :param update_database_dto:
-        :type update_database_dto: UpdateDatabaseDTO
+        :param job_request:
+        :type job_request: JobRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3658,9 +4775,8 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_database_post_serialize(
-            database_id=database_id,
-            update_database_dto=update_database_dto,
+        _param = self._start_job_serialize(
+            job_request=job_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3668,8 +4784,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "JobStatus",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3683,10 +4799,9 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_database_post_with_http_info(
+    async def start_job_with_http_info(
         self,
-        database_id: StrictStr,
-        update_database_dto: Optional[UpdateDatabaseDTO] = None,
+        job_request: Optional[JobRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3699,15 +4814,13 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """Modify database-level settings (e.g., enabled languages).
+    ) -> ApiResponse[JobStatus]:
+        """Start Job
 
-        Modify database-level settings (e.g., enabled languages).
+        Starts a new long-running job
 
-        :param database_id: (required)
-        :type database_id: str
-        :param update_database_dto:
-        :type update_database_dto: UpdateDatabaseDTO
+        :param job_request:
+        :type job_request: JobRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3730,9 +4843,8 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_database_post_serialize(
-            database_id=database_id,
-            update_database_dto=update_database_dto,
+        _param = self._start_job_serialize(
+            job_request=job_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3740,8 +4852,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "JobStatus",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3755,10 +4867,9 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_database_post_without_preload_content(
+    async def start_job_without_preload_content(
         self,
-        database_id: StrictStr,
-        update_database_dto: Optional[UpdateDatabaseDTO] = None,
+        job_request: Optional[JobRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3772,14 +4883,12 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Modify database-level settings (e.g., enabled languages).
+        """Start Job
 
-        Modify database-level settings (e.g., enabled languages).
+        Starts a new long-running job
 
-        :param database_id: (required)
-        :type database_id: str
-        :param update_database_dto:
-        :type update_database_dto: UpdateDatabaseDTO
+        :param job_request:
+        :type job_request: JobRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3802,9 +4911,8 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_database_post_serialize(
-            database_id=database_id,
-            update_database_dto=update_database_dto,
+        _param = self._start_job_serialize(
+            job_request=job_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3812,8 +4920,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "JobStatus",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3822,10 +4930,300 @@ class DefaultApi:
         return response_data.response
 
 
-    def _update_database_post_serialize(
+    def _start_job_serialize(
+        self,
+        job_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if job_request is not None:
+            _body_params = job_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json', 
+                        'multipart/form-data'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/jobs',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    async def update_database(
+        self,
+        database_id: StrictStr,
+        update_database_request: Optional[UpdateDatabaseRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> Database:
+        """Update Database
+
+        Modify database-level settings (e.g., enabled languages).
+
+        :param database_id: (required)
+        :type database_id: str
+        :param update_database_request:
+        :type update_database_request: UpdateDatabaseRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._update_database_serialize(
+            database_id=database_id,
+            update_database_request=update_database_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Database",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        await response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    async def update_database_with_http_info(
+        self,
+        database_id: StrictStr,
+        update_database_request: Optional[UpdateDatabaseRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[Database]:
+        """Update Database
+
+        Modify database-level settings (e.g., enabled languages).
+
+        :param database_id: (required)
+        :type database_id: str
+        :param update_database_request:
+        :type update_database_request: UpdateDatabaseRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._update_database_serialize(
+            database_id=database_id,
+            update_database_request=update_database_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Database",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        await response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    async def update_database_without_preload_content(
+        self,
+        database_id: StrictStr,
+        update_database_request: Optional[UpdateDatabaseRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Update Database
+
+        Modify database-level settings (e.g., enabled languages).
+
+        :param database_id: (required)
+        :type database_id: str
+        :param update_database_request:
+        :type update_database_request: UpdateDatabaseRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._update_database_serialize(
+            database_id=database_id,
+            update_database_request=update_database_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Database",
+            '401': "MessageResponse",
+        }
+        response_data = await self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _update_database_serialize(
         self,
         database_id,
-        update_database_dto,
+        update_database_request,
         _request_auth,
         _content_type,
         _headers,
@@ -3853,8 +5251,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if update_database_dto is not None:
-            _body_params = update_database_dto
+        if update_database_request is not None:
+            _body_params = update_database_request
 
 
         # set the HTTP header `Accept`
@@ -3903,11 +5301,11 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_database_translations_post(
+    async def update_database_translations(
         self,
         database_id: StrictStr,
         language_code: StrictStr,
-        update_database_translations_dto: Optional[UpdateDatabaseTranslationsDTO] = None,
+        update_translations_request: Optional[UpdateTranslationsRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3920,8 +5318,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """Update global translations for a specific database.
+    ) -> MessageResponse:
+        """Update Database Translations
 
         Update global translations for a specific database.
 
@@ -3929,8 +5327,8 @@ class DefaultApi:
         :type database_id: str
         :param language_code: (required)
         :type language_code: str
-        :param update_database_translations_dto:
-        :type update_database_translations_dto: UpdateDatabaseTranslationsDTO
+        :param update_translations_request:
+        :type update_translations_request: UpdateTranslationsRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3953,10 +5351,10 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_database_translations_post_serialize(
+        _param = self._update_database_translations_serialize(
             database_id=database_id,
             language_code=language_code,
-            update_database_translations_dto=update_database_translations_dto,
+            update_translations_request=update_translations_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3964,8 +5362,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "MessageResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -3979,11 +5377,11 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_database_translations_post_with_http_info(
+    async def update_database_translations_with_http_info(
         self,
         database_id: StrictStr,
         language_code: StrictStr,
-        update_database_translations_dto: Optional[UpdateDatabaseTranslationsDTO] = None,
+        update_translations_request: Optional[UpdateTranslationsRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3996,8 +5394,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """Update global translations for a specific database.
+    ) -> ApiResponse[MessageResponse]:
+        """Update Database Translations
 
         Update global translations for a specific database.
 
@@ -4005,8 +5403,8 @@ class DefaultApi:
         :type database_id: str
         :param language_code: (required)
         :type language_code: str
-        :param update_database_translations_dto:
-        :type update_database_translations_dto: UpdateDatabaseTranslationsDTO
+        :param update_translations_request:
+        :type update_translations_request: UpdateTranslationsRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -4029,10 +5427,10 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_database_translations_post_serialize(
+        _param = self._update_database_translations_serialize(
             database_id=database_id,
             language_code=language_code,
-            update_database_translations_dto=update_database_translations_dto,
+            update_translations_request=update_translations_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -4040,8 +5438,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "MessageResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -4055,11 +5453,11 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_database_translations_post_without_preload_content(
+    async def update_database_translations_without_preload_content(
         self,
         database_id: StrictStr,
         language_code: StrictStr,
-        update_database_translations_dto: Optional[UpdateDatabaseTranslationsDTO] = None,
+        update_translations_request: Optional[UpdateTranslationsRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4073,7 +5471,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Update global translations for a specific database.
+        """Update Database Translations
 
         Update global translations for a specific database.
 
@@ -4081,8 +5479,8 @@ class DefaultApi:
         :type database_id: str
         :param language_code: (required)
         :type language_code: str
-        :param update_database_translations_dto:
-        :type update_database_translations_dto: UpdateDatabaseTranslationsDTO
+        :param update_translations_request:
+        :type update_translations_request: UpdateTranslationsRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -4105,10 +5503,10 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_database_translations_post_serialize(
+        _param = self._update_database_translations_serialize(
             database_id=database_id,
             language_code=language_code,
-            update_database_translations_dto=update_database_translations_dto,
+            update_translations_request=update_translations_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -4116,8 +5514,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "MessageResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -4126,11 +5524,11 @@ class DefaultApi:
         return response_data.response
 
 
-    def _update_database_translations_post_serialize(
+    def _update_database_translations_serialize(
         self,
         database_id,
         language_code,
-        update_database_translations_dto,
+        update_translations_request,
         _request_auth,
         _content_type,
         _headers,
@@ -4160,8 +5558,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if update_database_translations_dto is not None:
-            _body_params = update_database_translations_dto
+        if update_translations_request is not None:
+            _body_params = update_translations_request
 
 
         # set the HTTP header `Accept`
@@ -4210,11 +5608,11 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_database_user_role_post(
+    async def update_database_user_role(
         self,
         database_id: StrictStr,
         user_id: StrictStr,
-        update_database_user_role_dto: Optional[UpdateDatabaseUserRoleDTO] = None,
+        update_user_request: Optional[UpdateUserRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4227,8 +5625,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """Modify the assigned role for an existing database user.
+    ) -> User:
+        """Update Database User Role
 
         Modify the assigned role for an existing database user.
 
@@ -4236,8 +5634,8 @@ class DefaultApi:
         :type database_id: str
         :param user_id: (required)
         :type user_id: str
-        :param update_database_user_role_dto:
-        :type update_database_user_role_dto: UpdateDatabaseUserRoleDTO
+        :param update_user_request:
+        :type update_user_request: UpdateUserRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -4260,10 +5658,10 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_database_user_role_post_serialize(
+        _param = self._update_database_user_role_serialize(
             database_id=database_id,
             user_id=user_id,
-            update_database_user_role_dto=update_database_user_role_dto,
+            update_user_request=update_user_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -4271,8 +5669,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "User",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -4286,11 +5684,11 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_database_user_role_post_with_http_info(
+    async def update_database_user_role_with_http_info(
         self,
         database_id: StrictStr,
         user_id: StrictStr,
-        update_database_user_role_dto: Optional[UpdateDatabaseUserRoleDTO] = None,
+        update_user_request: Optional[UpdateUserRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4303,8 +5701,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """Modify the assigned role for an existing database user.
+    ) -> ApiResponse[User]:
+        """Update Database User Role
 
         Modify the assigned role for an existing database user.
 
@@ -4312,8 +5710,8 @@ class DefaultApi:
         :type database_id: str
         :param user_id: (required)
         :type user_id: str
-        :param update_database_user_role_dto:
-        :type update_database_user_role_dto: UpdateDatabaseUserRoleDTO
+        :param update_user_request:
+        :type update_user_request: UpdateUserRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -4336,10 +5734,10 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_database_user_role_post_serialize(
+        _param = self._update_database_user_role_serialize(
             database_id=database_id,
             user_id=user_id,
-            update_database_user_role_dto=update_database_user_role_dto,
+            update_user_request=update_user_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -4347,8 +5745,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "User",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -4362,11 +5760,11 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_database_user_role_post_without_preload_content(
+    async def update_database_user_role_without_preload_content(
         self,
         database_id: StrictStr,
         user_id: StrictStr,
-        update_database_user_role_dto: Optional[UpdateDatabaseUserRoleDTO] = None,
+        update_user_request: Optional[UpdateUserRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4380,7 +5778,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Modify the assigned role for an existing database user.
+        """Update Database User Role
 
         Modify the assigned role for an existing database user.
 
@@ -4388,8 +5786,8 @@ class DefaultApi:
         :type database_id: str
         :param user_id: (required)
         :type user_id: str
-        :param update_database_user_role_dto:
-        :type update_database_user_role_dto: UpdateDatabaseUserRoleDTO
+        :param update_user_request:
+        :type update_user_request: UpdateUserRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -4412,10 +5810,10 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_database_user_role_post_serialize(
+        _param = self._update_database_user_role_serialize(
             database_id=database_id,
             user_id=user_id,
-            update_database_user_role_dto=update_database_user_role_dto,
+            update_user_request=update_user_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -4423,8 +5821,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "User",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -4433,11 +5831,11 @@ class DefaultApi:
         return response_data.response
 
 
-    def _update_database_user_role_post_serialize(
+    def _update_database_user_role_serialize(
         self,
         database_id,
         user_id,
-        update_database_user_role_dto,
+        update_user_request,
         _request_auth,
         _content_type,
         _headers,
@@ -4467,8 +5865,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if update_database_user_role_dto is not None:
-            _body_params = update_database_user_role_dto
+        if update_user_request is not None:
+            _body_params = update_user_request
 
 
         # set the HTTP header `Accept`
@@ -4517,9 +5915,9 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_form_records_post(
+    async def update_form_records(
         self,
-        update_form_records_dto: Optional[UpdateFormRecordsDTO] = None,
+        record_update_request: Optional[RecordUpdateRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4533,12 +5931,12 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> None:
-        """Bulk create, update, or delete records across one or more forms.
+        """Update Form Records
 
         Bulk create, update, or delete records across one or more forms.
 
-        :param update_form_records_dto:
-        :type update_form_records_dto: UpdateFormRecordsDTO
+        :param record_update_request:
+        :type record_update_request: RecordUpdateRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -4561,8 +5959,8 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_form_records_post_serialize(
-            update_form_records_dto=update_form_records_dto,
+        _param = self._update_form_records_serialize(
+            record_update_request=record_update_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -4571,7 +5969,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': None,
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -4585,9 +5983,9 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_form_records_post_with_http_info(
+    async def update_form_records_with_http_info(
         self,
-        update_form_records_dto: Optional[UpdateFormRecordsDTO] = None,
+        record_update_request: Optional[RecordUpdateRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4601,12 +5999,12 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[None]:
-        """Bulk create, update, or delete records across one or more forms.
+        """Update Form Records
 
         Bulk create, update, or delete records across one or more forms.
 
-        :param update_form_records_dto:
-        :type update_form_records_dto: UpdateFormRecordsDTO
+        :param record_update_request:
+        :type record_update_request: RecordUpdateRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -4629,8 +6027,8 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_form_records_post_serialize(
-            update_form_records_dto=update_form_records_dto,
+        _param = self._update_form_records_serialize(
+            record_update_request=record_update_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -4639,7 +6037,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': None,
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -4653,9 +6051,9 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_form_records_post_without_preload_content(
+    async def update_form_records_without_preload_content(
         self,
-        update_form_records_dto: Optional[UpdateFormRecordsDTO] = None,
+        record_update_request: Optional[RecordUpdateRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4669,12 +6067,12 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Bulk create, update, or delete records across one or more forms.
+        """Update Form Records
 
         Bulk create, update, or delete records across one or more forms.
 
-        :param update_form_records_dto:
-        :type update_form_records_dto: UpdateFormRecordsDTO
+        :param record_update_request:
+        :type record_update_request: RecordUpdateRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -4697,8 +6095,8 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_form_records_post_serialize(
-            update_form_records_dto=update_form_records_dto,
+        _param = self._update_form_records_serialize(
+            record_update_request=record_update_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -4707,7 +6105,7 @@ class DefaultApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': None,
-            '401': "ErrorResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -4716,9 +6114,9 @@ class DefaultApi:
         return response_data.response
 
 
-    def _update_form_records_post_serialize(
+    def _update_form_records_serialize(
         self,
-        update_form_records_dto,
+        record_update_request,
         _request_auth,
         _content_type,
         _headers,
@@ -4744,8 +6142,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if update_form_records_dto is not None:
-            _body_params = update_form_records_dto
+        if record_update_request is not None:
+            _body_params = record_update_request
 
 
         # set the HTTP header `Accept`
@@ -4794,7 +6192,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_form_schema_post(
+    async def update_form_schema(
         self,
         form_id: StrictStr,
         form_schema: Optional[FormSchema] = None,
@@ -4810,8 +6208,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """Push a modified schema back to the server to update a form's design.
+    ) -> AddUpdateFormResponse:
+        """Update Form Schema
 
         Push a modified schema back to the server to update a form's design.
 
@@ -4841,7 +6239,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_form_schema_post_serialize(
+        _param = self._update_form_schema_serialize(
             form_id=form_id,
             form_schema=form_schema,
             _request_auth=_request_auth,
@@ -4851,8 +6249,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "AddUpdateFormResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -4866,7 +6264,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_form_schema_post_with_http_info(
+    async def update_form_schema_with_http_info(
         self,
         form_id: StrictStr,
         form_schema: Optional[FormSchema] = None,
@@ -4882,8 +6280,8 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """Push a modified schema back to the server to update a form's design.
+    ) -> ApiResponse[AddUpdateFormResponse]:
+        """Update Form Schema
 
         Push a modified schema back to the server to update a form's design.
 
@@ -4913,7 +6311,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_form_schema_post_serialize(
+        _param = self._update_form_schema_serialize(
             form_id=form_id,
             form_schema=form_schema,
             _request_auth=_request_auth,
@@ -4923,8 +6321,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "AddUpdateFormResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -4938,7 +6336,7 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_form_schema_post_without_preload_content(
+    async def update_form_schema_without_preload_content(
         self,
         form_id: StrictStr,
         form_schema: Optional[FormSchema] = None,
@@ -4955,7 +6353,7 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Push a modified schema back to the server to update a form's design.
+        """Update Form Schema
 
         Push a modified schema back to the server to update a form's design.
 
@@ -4985,7 +6383,7 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_form_schema_post_serialize(
+        _param = self._update_form_schema_serialize(
             form_id=form_id,
             form_schema=form_schema,
             _request_auth=_request_auth,
@@ -4995,8 +6393,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "AddUpdateFormResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -5005,7 +6403,7 @@ class DefaultApi:
         return response_data.response
 
 
-    def _update_form_schema_post_serialize(
+    def _update_form_schema_serialize(
         self,
         form_id,
         form_schema,
@@ -5086,12 +6484,11 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_form_translations_post(
+    async def update_form_schema_translations(
         self,
-        database_id: Optional[StrictStr],
-        form_id: Optional[StrictStr],
-        language_code: Optional[StrictStr],
-        update_database_translations_dto: Optional[UpdateDatabaseTranslationsDTO] = None,
+        form_id: StrictStr,
+        language_code: StrictStr,
+        update_translations_request: Optional[UpdateTranslationsRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -5104,19 +6501,17 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> object:
-        """Apply new translations to a specific form and its fields.
+    ) -> MessageResponse:
+        """Update Form Schema Translations
 
         Apply new translations to a specific form and its fields.
 
-        :param database_id: (required)
-        :type database_id: str
         :param form_id: (required)
         :type form_id: str
         :param language_code: (required)
         :type language_code: str
-        :param update_database_translations_dto:
-        :type update_database_translations_dto: UpdateDatabaseTranslationsDTO
+        :param update_translations_request:
+        :type update_translations_request: UpdateTranslationsRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -5139,11 +6534,10 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_form_translations_post_serialize(
-            database_id=database_id,
+        _param = self._update_form_schema_translations_serialize(
             form_id=form_id,
             language_code=language_code,
-            update_database_translations_dto=update_database_translations_dto,
+            update_translations_request=update_translations_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -5151,8 +6545,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "MessageResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -5166,12 +6560,11 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_form_translations_post_with_http_info(
+    async def update_form_schema_translations_with_http_info(
         self,
-        database_id: Optional[StrictStr],
-        form_id: Optional[StrictStr],
-        language_code: Optional[StrictStr],
-        update_database_translations_dto: Optional[UpdateDatabaseTranslationsDTO] = None,
+        form_id: StrictStr,
+        language_code: StrictStr,
+        update_translations_request: Optional[UpdateTranslationsRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -5184,19 +6577,17 @@ class DefaultApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[object]:
-        """Apply new translations to a specific form and its fields.
+    ) -> ApiResponse[MessageResponse]:
+        """Update Form Schema Translations
 
         Apply new translations to a specific form and its fields.
 
-        :param database_id: (required)
-        :type database_id: str
         :param form_id: (required)
         :type form_id: str
         :param language_code: (required)
         :type language_code: str
-        :param update_database_translations_dto:
-        :type update_database_translations_dto: UpdateDatabaseTranslationsDTO
+        :param update_translations_request:
+        :type update_translations_request: UpdateTranslationsRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -5219,11 +6610,10 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_form_translations_post_serialize(
-            database_id=database_id,
+        _param = self._update_form_schema_translations_serialize(
             form_id=form_id,
             language_code=language_code,
-            update_database_translations_dto=update_database_translations_dto,
+            update_translations_request=update_translations_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -5231,8 +6621,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "MessageResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -5246,12 +6636,11 @@ class DefaultApi:
 
 
     @validate_call
-    async def update_form_translations_post_without_preload_content(
+    async def update_form_schema_translations_without_preload_content(
         self,
-        database_id: Optional[StrictStr],
-        form_id: Optional[StrictStr],
-        language_code: Optional[StrictStr],
-        update_database_translations_dto: Optional[UpdateDatabaseTranslationsDTO] = None,
+        form_id: StrictStr,
+        language_code: StrictStr,
+        update_translations_request: Optional[UpdateTranslationsRequest] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -5265,18 +6654,16 @@ class DefaultApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Apply new translations to a specific form and its fields.
+        """Update Form Schema Translations
 
         Apply new translations to a specific form and its fields.
 
-        :param database_id: (required)
-        :type database_id: str
         :param form_id: (required)
         :type form_id: str
         :param language_code: (required)
         :type language_code: str
-        :param update_database_translations_dto:
-        :type update_database_translations_dto: UpdateDatabaseTranslationsDTO
+        :param update_translations_request:
+        :type update_translations_request: UpdateTranslationsRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -5299,11 +6686,10 @@ class DefaultApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._update_form_translations_post_serialize(
-            database_id=database_id,
+        _param = self._update_form_schema_translations_serialize(
             form_id=form_id,
             language_code=language_code,
-            update_database_translations_dto=update_database_translations_dto,
+            update_translations_request=update_translations_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -5311,8 +6697,8 @@ class DefaultApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "object",
-            '401': "ErrorResponse",
+            '200': "MessageResponse",
+            '401': "MessageResponse",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -5321,12 +6707,11 @@ class DefaultApi:
         return response_data.response
 
 
-    def _update_form_translations_post_serialize(
+    def _update_form_schema_translations_serialize(
         self,
-        database_id,
         form_id,
         language_code,
-        update_database_translations_dto,
+        update_translations_request,
         _request_auth,
         _content_type,
         _headers,
@@ -5348,8 +6733,6 @@ class DefaultApi:
         _body_params: Optional[bytes] = None
 
         # process the path parameters
-        if database_id is not None:
-            _path_params['database_id'] = database_id
         if form_id is not None:
             _path_params['form_id'] = form_id
         if language_code is not None:
@@ -5358,8 +6741,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if update_database_translations_dto is not None:
-            _body_params = update_database_translations_dto
+        if update_translations_request is not None:
+            _body_params = update_translations_request
 
 
         # set the HTTP header `Accept`
@@ -5391,299 +6774,7 @@ class DefaultApi:
 
         return self.api_client.param_serialize(
             method='POST',
-            resource_path='/databases/translations/{database_id}/form/{form_id}/{language_code}',
-            path_params=_path_params,
-            query_params=_query_params,
-            header_params=_header_params,
-            body=_body_params,
-            post_params=_form_params,
-            files=_files,
-            auth_settings=_auth_settings,
-            collection_formats=_collection_formats,
-            _host=_host,
-            _request_auth=_request_auth
-        )
-
-
-
-
-    @validate_call
-    async def user_preflight_post(
-        self,
-        database_id: StrictStr,
-        user_preflight_dto: Optional[UserPreflightDTO] = None,
-        _request_timeout: Union[
-            None,
-            Annotated[StrictFloat, Field(gt=0)],
-            Tuple[
-                Annotated[StrictFloat, Field(gt=0)],
-                Annotated[StrictFloat, Field(gt=0)]
-            ]
-        ] = None,
-        _request_auth: Optional[Dict[StrictStr, Any]] = None,
-        _content_type: Optional[StrictStr] = None,
-        _headers: Optional[Dict[StrictStr, Any]] = None,
-        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> UserPreflightResponse:
-        """Check the status of a user's email before adding them to a database.
-
-        Check the status of a user's email before adding them to a database.
-
-        :param database_id: (required)
-        :type database_id: str
-        :param user_preflight_dto:
-        :type user_preflight_dto: UserPreflightDTO
-        :param _request_timeout: timeout setting for this request. If one
-                                 number provided, it will be total request
-                                 timeout. It can also be a pair (tuple) of
-                                 (connection, read) timeouts.
-        :type _request_timeout: int, tuple(int, int), optional
-        :param _request_auth: set to override the auth_settings for an a single
-                              request; this effectively ignores the
-                              authentication in the spec for a single request.
-        :type _request_auth: dict, optional
-        :param _content_type: force content-type for the request.
-        :type _content_type: str, Optional
-        :param _headers: set to override the headers for a single
-                         request; this effectively ignores the headers
-                         in the spec for a single request.
-        :type _headers: dict, optional
-        :param _host_index: set to override the host_index for a single
-                            request; this effectively ignores the host_index
-                            in the spec for a single request.
-        :type _host_index: int, optional
-        :return: Returns the result object.
-        """ # noqa: E501
-
-        _param = self._user_preflight_post_serialize(
-            database_id=database_id,
-            user_preflight_dto=user_preflight_dto,
-            _request_auth=_request_auth,
-            _content_type=_content_type,
-            _headers=_headers,
-            _host_index=_host_index
-        )
-
-        _response_types_map: Dict[str, Optional[str]] = {
-            '200': "UserPreflightResponse",
-            '401': "ErrorResponse",
-        }
-        response_data = await self.api_client.call_api(
-            *_param,
-            _request_timeout=_request_timeout
-        )
-        await response_data.read()
-        return self.api_client.response_deserialize(
-            response_data=response_data,
-            response_types_map=_response_types_map,
-        ).data
-
-
-    @validate_call
-    async def user_preflight_post_with_http_info(
-        self,
-        database_id: StrictStr,
-        user_preflight_dto: Optional[UserPreflightDTO] = None,
-        _request_timeout: Union[
-            None,
-            Annotated[StrictFloat, Field(gt=0)],
-            Tuple[
-                Annotated[StrictFloat, Field(gt=0)],
-                Annotated[StrictFloat, Field(gt=0)]
-            ]
-        ] = None,
-        _request_auth: Optional[Dict[StrictStr, Any]] = None,
-        _content_type: Optional[StrictStr] = None,
-        _headers: Optional[Dict[StrictStr, Any]] = None,
-        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[UserPreflightResponse]:
-        """Check the status of a user's email before adding them to a database.
-
-        Check the status of a user's email before adding them to a database.
-
-        :param database_id: (required)
-        :type database_id: str
-        :param user_preflight_dto:
-        :type user_preflight_dto: UserPreflightDTO
-        :param _request_timeout: timeout setting for this request. If one
-                                 number provided, it will be total request
-                                 timeout. It can also be a pair (tuple) of
-                                 (connection, read) timeouts.
-        :type _request_timeout: int, tuple(int, int), optional
-        :param _request_auth: set to override the auth_settings for an a single
-                              request; this effectively ignores the
-                              authentication in the spec for a single request.
-        :type _request_auth: dict, optional
-        :param _content_type: force content-type for the request.
-        :type _content_type: str, Optional
-        :param _headers: set to override the headers for a single
-                         request; this effectively ignores the headers
-                         in the spec for a single request.
-        :type _headers: dict, optional
-        :param _host_index: set to override the host_index for a single
-                            request; this effectively ignores the host_index
-                            in the spec for a single request.
-        :type _host_index: int, optional
-        :return: Returns the result object.
-        """ # noqa: E501
-
-        _param = self._user_preflight_post_serialize(
-            database_id=database_id,
-            user_preflight_dto=user_preflight_dto,
-            _request_auth=_request_auth,
-            _content_type=_content_type,
-            _headers=_headers,
-            _host_index=_host_index
-        )
-
-        _response_types_map: Dict[str, Optional[str]] = {
-            '200': "UserPreflightResponse",
-            '401': "ErrorResponse",
-        }
-        response_data = await self.api_client.call_api(
-            *_param,
-            _request_timeout=_request_timeout
-        )
-        await response_data.read()
-        return self.api_client.response_deserialize(
-            response_data=response_data,
-            response_types_map=_response_types_map,
-        )
-
-
-    @validate_call
-    async def user_preflight_post_without_preload_content(
-        self,
-        database_id: StrictStr,
-        user_preflight_dto: Optional[UserPreflightDTO] = None,
-        _request_timeout: Union[
-            None,
-            Annotated[StrictFloat, Field(gt=0)],
-            Tuple[
-                Annotated[StrictFloat, Field(gt=0)],
-                Annotated[StrictFloat, Field(gt=0)]
-            ]
-        ] = None,
-        _request_auth: Optional[Dict[StrictStr, Any]] = None,
-        _content_type: Optional[StrictStr] = None,
-        _headers: Optional[Dict[StrictStr, Any]] = None,
-        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> RESTResponseType:
-        """Check the status of a user's email before adding them to a database.
-
-        Check the status of a user's email before adding them to a database.
-
-        :param database_id: (required)
-        :type database_id: str
-        :param user_preflight_dto:
-        :type user_preflight_dto: UserPreflightDTO
-        :param _request_timeout: timeout setting for this request. If one
-                                 number provided, it will be total request
-                                 timeout. It can also be a pair (tuple) of
-                                 (connection, read) timeouts.
-        :type _request_timeout: int, tuple(int, int), optional
-        :param _request_auth: set to override the auth_settings for an a single
-                              request; this effectively ignores the
-                              authentication in the spec for a single request.
-        :type _request_auth: dict, optional
-        :param _content_type: force content-type for the request.
-        :type _content_type: str, Optional
-        :param _headers: set to override the headers for a single
-                         request; this effectively ignores the headers
-                         in the spec for a single request.
-        :type _headers: dict, optional
-        :param _host_index: set to override the host_index for a single
-                            request; this effectively ignores the host_index
-                            in the spec for a single request.
-        :type _host_index: int, optional
-        :return: Returns the result object.
-        """ # noqa: E501
-
-        _param = self._user_preflight_post_serialize(
-            database_id=database_id,
-            user_preflight_dto=user_preflight_dto,
-            _request_auth=_request_auth,
-            _content_type=_content_type,
-            _headers=_headers,
-            _host_index=_host_index
-        )
-
-        _response_types_map: Dict[str, Optional[str]] = {
-            '200': "UserPreflightResponse",
-            '401': "ErrorResponse",
-        }
-        response_data = await self.api_client.call_api(
-            *_param,
-            _request_timeout=_request_timeout
-        )
-        return response_data.response
-
-
-    def _user_preflight_post_serialize(
-        self,
-        database_id,
-        user_preflight_dto,
-        _request_auth,
-        _content_type,
-        _headers,
-        _host_index,
-    ) -> RequestSerialized:
-
-        _host = None
-
-        _collection_formats: Dict[str, str] = {
-        }
-
-        _path_params: Dict[str, str] = {}
-        _query_params: List[Tuple[str, str]] = []
-        _header_params: Dict[str, Optional[str]] = _headers or {}
-        _form_params: List[Tuple[str, str]] = []
-        _files: Dict[
-            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
-        ] = {}
-        _body_params: Optional[bytes] = None
-
-        # process the path parameters
-        if database_id is not None:
-            _path_params['database_id'] = database_id
-        # process the query parameters
-        # process the header parameters
-        # process the form parameters
-        # process the body parameter
-        if user_preflight_dto is not None:
-            _body_params = user_preflight_dto
-
-
-        # set the HTTP header `Accept`
-        if 'Accept' not in _header_params:
-            _header_params['Accept'] = self.api_client.select_header_accept(
-                [
-                    'application/json'
-                ]
-            )
-
-        # set the HTTP header `Content-Type`
-        if _content_type:
-            _header_params['Content-Type'] = _content_type
-        else:
-            _default_content_type = (
-                self.api_client.select_header_content_type(
-                    [
-                        'application/json'
-                    ]
-                )
-            )
-            if _default_content_type is not None:
-                _header_params['Content-Type'] = _default_content_type
-
-        # authentication setting
-        _auth_settings: List[str] = [
-            'bearerAuth'
-        ]
-
-        return self.api_client.param_serialize(
-            method='POST',
-            resource_path='/databases/{database_id}/users/preflight',
+            resource_path='/form/{form_id}/schema/translations/{language_code}',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,

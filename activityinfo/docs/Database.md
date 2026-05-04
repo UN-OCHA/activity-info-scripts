@@ -5,9 +5,26 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**database_id** | **str** |  | 
-**label** | **str** |  | 
+**database_id** | **str** | This database&#39;s id | 
+**user_id** | **str** | The id of the requesting user. The contents of the tree depends on the permissions of the requesting user. | 
+**version** | **str** | The monotonically-increasing version of the database tree. The version number is incremented whenever a change is made that affects the database tree. | 
+**label** | **str** | This database&#39;s human-readable label. | 
 **description** | **str** |  | [optional] 
+**owner_ref** | [**UserRef**](UserRef.md) |  | 
+**language** | **str** | Current database language | [optional] 
+**original_language** | **str** | Original database language | [optional] 
+**languages** | **List[str]** | The list of languages that have been defined for this database, including the original language, if set, and any translations. | [optional] 
+**suspended** | **bool** | True if this database is suspended for billing reasons | 
+**role** | [**UserRole**](UserRole.md) | The requesting user&#39;s assigned role in this database. | 
+**roles** | [**List[DatabaseRole]**](DatabaseRole.md) | The roles that have been defined for this database. | 
+**storage** | **str** |  | 
+**published_template** | **bool** | True if this database has been published as a template. | 
+**security_categories** | [**List[SecurityCategory]**](SecurityCategory.md) | The security categories that have been defined for this database. | 
+**resources** | [**List[DatabaseResource]**](DatabaseResource.md) | The set of resources (folders, forms, and subforms) that belong to this database. | 
+**locks** | [**List[DatabaseLock]**](DatabaseLock.md) | The record locks that have been defined on this database. | [optional] 
+**grants** | [**List[Grant]**](Grant.md) | The direct (non-role) permission grants that have been made to the requesting user for this database. | [optional] 
+**billing_account_id** | **str** |  | 
+**billing_plan** | **str** | The billing plan name under which this database falls. The billing plan can have an affect on which features are avialable within this database. | 
 
 ## Example
 

@@ -19,8 +19,8 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from client.models.resource import Resource
-from client.models.role import Role
+from activityinfo.client.models.resource import Resource
+from activityinfo.client.models.role import Role
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python

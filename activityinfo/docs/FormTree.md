@@ -5,8 +5,8 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**root** | **str** |  | 
-**forms** | [**Dict[str, FormTreeEntry]**](FormTreeEntry.md) |  | 
+**root** | **str** | The id of the requested form | 
+**forms** | [**Dict[str, Form]**](Form.md) |  | 
 
 ## Example
 

@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
@@ -29,11 +29,18 @@ class UserPreflightResponse(BaseModel):
     """ # noqa: E501
     user_id: Optional[StrictStr] = Field(default=None, alias="userId")
     activation_status: StrictStr = Field(alias="activationStatus")
-    name: StrictStr
+    name: Optional[StrictStr] = None
     added_to_database: StrictBool = Field(alias="addedToDatabase")
     valid_email: StrictBool = Field(alias="validEmail")
     localized_error_message: Optional[StrictStr] = Field(default=None, alias="localizedErrorMessage")
     __properties: ClassVar[List[str]] = ["userId", "activationStatus", "name", "addedToDatabase", "validEmail", "localizedErrorMessage"]
+
+    @field_validator('activation_status')
+    def activation_status_validate_enum(cls, value):
+        """Validates the enum"""
+        if value not in set(['NO_ACCOUNT', 'PENDING', 'ACTIVE', 'INACTIVE', 'CLOSED']):
+            raise ValueError("must be one of enum values ('NO_ACCOUNT', 'PENDING', 'ACTIVE', 'INACTIVE', 'CLOSED')")
+        return value
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -74,16 +81,6 @@ class UserPreflightResponse(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # set to None if user_id (nullable) is None
-        # and model_fields_set contains the field
-        if self.user_id is None and "user_id" in self.model_fields_set:
-            _dict['userId'] = None
-
-        # set to None if localized_error_message (nullable) is None
-        # and model_fields_set contains the field
-        if self.localized_error_message is None and "localized_error_message" in self.model_fields_set:
-            _dict['localizedErrorMessage'] = None
-
         return _dict
 
     @classmethod

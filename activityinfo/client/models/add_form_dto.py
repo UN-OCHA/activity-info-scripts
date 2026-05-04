@@ -19,8 +19,8 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Any, ClassVar, Dict, List
-from client.models.form_class import FormClass
-from client.models.form_resource import FormResource
+from activityinfo.client.models.form_class import FormClass
+from activityinfo.client.models.form_resource import FormResource
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python

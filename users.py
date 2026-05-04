@@ -7,11 +7,9 @@ import pandas as pd
 import typer
 from rich.table import Table
 
+from activityinfo.client import AddUserRequest, UpdateUserRequest, UserRole
 from activityinfo.client.models import (
-    AddDatabaseUserDTO,
-    UpdateDatabaseUserRoleDTO,
     DatabaseRole,
-    UserPreflightDTO
 )
 from common import find_resource_by_prefix
 from utils import get_client, handle_api_errors, console
@@ -101,8 +99,8 @@ async def _add_bulk_async(
 
     # --- 2. Retrieve Target Database State ---
     with handle_api_errors("Could not get target database information"):
-        target_tree = await client.get_database_tree_get(target_database_id)
-        existing_users = cast(List[Dict[str, Any]], await client.get_database_users_get(target_database_id))
+        target_tree = await client.get_database_tree(database_id=target_database_id)
+        existing_users = cast(List[Dict[str, Any]], await client.get_database_users(database_id=target_database_id))
 
     db_type = "HPC" if target_tree.label.startswith("HPC.tools") else "AIT" if target_tree.label.startswith(
         "AIT") else "Other"
@@ -121,8 +119,8 @@ async def _add_bulk_async(
 
         with handle_api_errors("Could not retrieve coordination or partner records"):
             coordination_entity_records = cast(List[Dict[str, Any]],
-                                               await client.get_form_get(coordination_entities_form.id))
-            partner_records = cast(List[Dict[str, Any]], await client.get_form_get(partners_form.id))
+                                               await client.get_form_records(form_id=coordination_entities_form.id))
+            partner_records = cast(List[Dict[str, Any]], await client.get_form_records(form_id=partners_form.id))
 
     elif db_type == "AIT":
         partners_form = find_resource_by_prefix(target_tree.resources, "Partner")
@@ -131,7 +129,7 @@ async def _add_bulk_async(
             raise typer.Exit(code=1)
 
         with handle_api_errors("Could not retrieve partner records"):
-            partner_records = cast(List[Dict[str, Any]], await client.get_form_get(partners_form.id))
+            partner_records = cast(List[Dict[str, Any]], await client.get_form_records(form_id=partners_form.id))
 
     else:
         console.print("[red]Error: database type not recognised as HPC.tools or AIT")
@@ -167,7 +165,8 @@ async def _add_bulk_async(
 
         # Email preflight
         with handle_api_errors(f"Preflight failed for {email_raw}"):
-            preflight = await client.user_preflight_post(target_database_id, UserPreflightDTO(email=email_raw))
+            preflight = await client.preflight_database_user(database_id=target_database_id,
+                                                             add_user_request=AddUserRequest(email=email_raw))
 
         if not preflight.valid_email:
             results.append(
@@ -321,7 +320,7 @@ async def _add_bulk_async(
         for add in user_additions:
             status.update(f"Adding user: {add['email']}")
             with handle_api_errors(f"Could not add user {add['email']}"):
-                await client.add_database_user_post(target_database_id, AddDatabaseUserDTO(
+                await client.add_database_user(database_id=target_database_id, add_user_request=AddUserRequest(
                     name=cast(str, add['name']),
                     email=cast(str, add['email']),
                     locale=cast(str, add['locale']),
@@ -333,10 +332,10 @@ async def _add_bulk_async(
         for up in user_updates:
             status.update(f"Updating user: {up['email']}")
             with handle_api_errors(f"Could not update user {up['email']}"):
-                await client.update_database_user_role_post(target_database_id, cast(str, up['user_id']),
-                                                            UpdateDatabaseUserRoleDTO(
-                                                                assignments=[cast(DatabaseRole, up['role'])]
-                                                            ))
+                await client.update_database_user_role(database_id=target_database_id, user_id=cast(str, up['user_id']),
+                                                       update_user_request=UpdateUserRequest(
+                                                           assignments=[cast(UserRole, up['role'])]
+                                                       ))
                 results.append({**up['orig_row'], "Status": "Modified", "Message": ""})
 
         for dele in user_deletions:
@@ -345,7 +344,7 @@ async def _add_bulk_async(
                 # Capture current role for reporting
                 role_id_val = dele.get("role", {}).get("id", "")
                 role_lbl = next((r.label for r in target_tree.roles if r.id == role_id_val), role_id_val)
-                await client.delete_database_user_delete(target_database_id, cast(str, dele.get("userId")))
+                await client.delete_database_user(database_id=target_database_id, user_id=cast(str, dele.get("userId")))
                 results.append(
                     {"Email": str(dele.get("email", "")), "Role": role_lbl, "cde": "", "org": "", "Status": "Deleted",
                      "Message": ""})

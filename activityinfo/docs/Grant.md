@@ -1,14 +1,15 @@
 # Grant
 
+A set of permissions for a single database resource (database, folder, form, subform) that is either associated with a role or given directly to a user.
 
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**resource_id** | **str** |  | 
-**optional** | **bool** |  | [optional] [default to False]
-**operations** | [**List[FilteredPermission]**](FilteredPermission.md) |  | [optional] 
-**conditions** | **List[object]** |  | [optional] 
+**resource_id** | **str** | the database, folder, form or subform being granted access to. | 
+**optional** | **bool** | An optional resource is granted selectively to individual users assigned to a role. | [default to False]
+**operations** | [**List[Permission]**](Permission.md) | The set of operations (add/edit/delete etc.) and their record-level conditions permitted on this resource | 
+**conditions** | [**List[FieldCondition]**](FieldCondition.md) | The set of field-level conditions applied to this resource | [optional] 
 
 ## Example
 

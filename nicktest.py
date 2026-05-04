@@ -24,7 +24,7 @@ async def _print_schema_async(form_id: str):
     client = get_client()
 
     with handle_api_errors(f"Failed to get schema for {form_id}"):
-        schema = await client.get_form_schema_get(form_id)
+        schema = await client.get_form_schema(form_id=form_id)
 
     pprint(schema, expand_all=True)
 
@@ -43,7 +43,7 @@ async def _print_tree_async(db_id: str):
     client = get_client()
 
     with handle_api_errors(f"Failed to get tree for {db_id}"):
-        tree = await client.get_database_tree_get(db_id)
+        tree = await client.get_database_tree(database_id=db_id)
 
     pprint(tree, expand_all=True)
 

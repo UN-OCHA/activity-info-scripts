@@ -39,7 +39,7 @@ async def search_databases(query: str) -> str:
     Use this to get the database_id without listing everything.
     """
     client = get_client()
-    dbs = await client.get_user_databases_get()
+    dbs = await client.get_user_databases()
     matches = [db.to_dict() for db in dbs if query.lower() in db.label.lower()]
     return json.dumps(matches, indent=2)
 
@@ -51,7 +51,7 @@ async def find_form_in_database(database_id: str, form_name_query: str) -> str:
     Returns the form_id and parent folder.
     """
     client = get_client()
-    tree = await client.get_database_tree_get(database_id)
+    tree = await client.get_database_tree(database_id=database_id)
     # Flatten the tree in Python to find the form
     matches = []
     # Recursive search or flat iteration depending on your model structure
@@ -72,7 +72,7 @@ async def list_databases() -> str:
     Start here to find which database to explore.
     """
     client = get_client()
-    dbs = await client.get_user_databases_get()
+    dbs = await client.get_user_databases()
     return json.dumps([db.to_dict() for db in dbs], indent=2)
 
 
@@ -80,7 +80,7 @@ async def list_databases() -> str:
 async def get_database_structure(database_id: str) -> str:
     """Full tree for deep inspection. Use only if find_form_in_database fails."""
     client = get_client()
-    tree = await client.get_database_tree_get(database_id)
+    tree = await client.get_database_tree(database_id)
     return tree.to_json()
 
 
@@ -88,7 +88,7 @@ async def get_database_structure(database_id: str) -> str:
 async def get_form_schema(form_id: str) -> str:
     """Direct access to form fields and structure."""
     client = get_client()
-    schema = await client.get_form_schema_get(form_id)
+    schema = await client.get_form_schema(form_id=form_id)
     return schema.to_json()
 
 
@@ -96,7 +96,7 @@ async def get_form_schema(form_id: str) -> str:
 async def get_form_data(form_id: str) -> str:
     """Direct access to records."""
     client = get_client()
-    records = await client.get_form_get(form_id)
+    records = await client.get_form_records(form_id=form_id)
     return json.dumps(records, indent=2)
 
 

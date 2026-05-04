@@ -17,9 +17,9 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List
-from client.models.form_tree_entry import FormTreeEntry
+from activityinfo.client.models.form import Form
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -28,8 +28,8 @@ class FormTree(BaseModel):
     """
     FormTree
     """ # noqa: E501
-    root: StrictStr
-    forms: Dict[str, FormTreeEntry]
+    root: StrictStr = Field(description="The id of the requested form")
+    forms: Dict[str, Form]
     __properties: ClassVar[List[str]] = ["root", "forms"]
 
     model_config = ConfigDict(
@@ -92,7 +92,7 @@ class FormTree(BaseModel):
         _obj = cls.model_validate({
             "root": obj.get("root"),
             "forms": dict(
-                (_k, FormTreeEntry.from_dict(_v))
+                (_k, Form.from_dict(_v))
                 for _k, _v in obj["forms"].items()
             )
             if obj.get("forms") is not None

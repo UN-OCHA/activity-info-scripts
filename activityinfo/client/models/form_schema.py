@@ -19,7 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from client.models.schema_field_dto import SchemaFieldDTO
+from activityinfo.client.models.form_schema_element import FormSchemaElement
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -28,14 +28,14 @@ class FormSchema(BaseModel):
     """
     FormSchema
     """ # noqa: E501
-    id: StrictStr
-    schema_version: StrictInt = Field(alias="schemaVersion")
-    database_id: StrictStr = Field(alias="databaseId")
-    parent_form_id: Optional[StrictStr] = Field(default=None, alias="parentFormId")
-    label: StrictStr
+    id: StrictStr = Field(description="The immutable CUID for this form. Must be globally unique within an ActivityInfo server")
+    label: StrictStr = Field(description="A human-readable label for this form")
+    schema_version: StrictInt = Field(description="A monotonically increasing version number of this schema assigned by the server upon updates", alias="schemaVersion")
+    database_id: StrictStr = Field(description="The id of the database to which this form belongs", alias="databaseId")
+    parent_form_id: Optional[StrictStr] = Field(default=None, description="The id of this form's parent, if this form is a subform. Note that subforms can only be created by adding a subform field to the parent form.", alias="parentFormId")
     record_label_field_id: Optional[StrictStr] = Field(default=None, alias="recordLabelFieldId")
-    elements: List[SchemaFieldDTO]
-    __properties: ClassVar[List[str]] = ["id", "schemaVersion", "databaseId", "parentFormId", "label", "recordLabelFieldId", "elements"]
+    elements: List[FormSchemaElement] = Field(description="This form's fields, section headers, and other elements.")
+    __properties: ClassVar[List[str]] = ["id", "label", "schemaVersion", "databaseId", "parentFormId", "recordLabelFieldId", "elements"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -83,16 +83,6 @@ class FormSchema(BaseModel):
                 if _item_elements:
                     _items.append(_item_elements.to_dict())
             _dict['elements'] = _items
-        # set to None if parent_form_id (nullable) is None
-        # and model_fields_set contains the field
-        if self.parent_form_id is None and "parent_form_id" in self.model_fields_set:
-            _dict['parentFormId'] = None
-
-        # set to None if record_label_field_id (nullable) is None
-        # and model_fields_set contains the field
-        if self.record_label_field_id is None and "record_label_field_id" in self.model_fields_set:
-            _dict['recordLabelFieldId'] = None
-
         return _dict
 
     @classmethod
@@ -106,12 +96,12 @@ class FormSchema(BaseModel):
 
         _obj = cls.model_validate({
             "id": obj.get("id"),
+            "label": obj.get("label"),
             "schemaVersion": obj.get("schemaVersion"),
             "databaseId": obj.get("databaseId"),
             "parentFormId": obj.get("parentFormId"),
-            "label": obj.get("label"),
             "recordLabelFieldId": obj.get("recordLabelFieldId"),
-            "elements": [SchemaFieldDTO.from_dict(_item) for _item in obj["elements"]] if obj.get("elements") is not None else None
+            "elements": [FormSchemaElement.from_dict(_item) for _item in obj["elements"]] if obj.get("elements") is not None else None
         })
         return _obj
 

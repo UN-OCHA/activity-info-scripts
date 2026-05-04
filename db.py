@@ -1,4 +1,5 @@
 import asyncio
+
 import typer
 from rich.table import Table
 
@@ -29,7 +30,7 @@ async def _list_databases_async():
         # Wrap the call in our standard error handler to catch and display any issues
         with handle_api_errors("Could not fetch databases"):
             # Call the API to get the user's accessible databases
-            databases = await client.get_user_databases_get()
+            databases = await client.get_user_databases()
 
     # Check if the result set is empty and inform the user
     if not databases:
