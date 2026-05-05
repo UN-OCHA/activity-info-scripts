@@ -1265,12 +1265,14 @@
           "startTime": {
             "title": "Start Time",
             "description": "The start time of the request, in milliseconds since the unix epoch. The results will include the first 100 - 150 events that occurred before this time.",
-            "type": "integer"
+            "type": "integer",
+            "format": "int64"
           },
           "endTime": {
             "title": "End Time",
             "description": "The end time of the request, in milliseconds since the unix epoch. The results will include the events that occurred after the end time and before the start time.",
-            "type": "integer"
+            "type": "integer",
+            "format": "int64"
           }
         },
         "required": [
