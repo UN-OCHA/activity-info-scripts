@@ -1478,7 +1478,7 @@
           "recordRef": {
             "title": "Record Ref",
             "description": "The record ref, if this event concerns a record.",
-            "$ref": "#/components/schemas/RecordRef"
+            "type": "string"
           },
           "formId": {
             "title": "Form ID",
@@ -1503,17 +1503,14 @@
           "type": {
             "title": "Type",
             "description": "The type of event. Values: DATABASE_TREE, USER, RECORD, FORM, AUTOMATION",
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "DATABASE_TREE",
-                "USER",
-                "RECORD",
-                "FORM",
-                "AUTOMATION"
-              ]
-            }
+            "type": "string",
+            "enum": [
+              "DATABASE_TREE",
+              "USER",
+              "RECORD",
+              "FORM",
+              "AUTOMATION"
+            ]
           },
           "resourceTypes": {
             "title": "Resource Types",
@@ -2908,24 +2905,6 @@
         },
         "required": [
           "rootFormId"
-        ]
-      },
-      "RecordRef": {
-        "title": "RecordRef",
-        "type": "object",
-        "properties": {
-          "formId": {
-            "title": "Form ID",
-            "type": "string"
-          },
-          "recordId": {
-            "title": "Record ID",
-            "type": "string"
-          }
-        },
-        "required": [
-          "formId",
-          "recordId"
         ]
       },
       "RecordUpdateChange": {
