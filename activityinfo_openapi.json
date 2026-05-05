@@ -997,6 +997,35 @@
         }
       }
     },
+    "/imports/stage/direct": {
+      "post": {
+        "operationId": "stage_import_direct",
+        "summary": "Stage Import Direct",
+        "description": "Creates a direct upload staging slot and returns an upload URL and import id.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StageImportResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jobs": {
       "post": {
         "operationId": "start_job",
@@ -1077,10 +1106,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/JobStatus"
-                  }
+                  "$ref": "#/components/schemas/JobStatus"
                 }
               }
             }
@@ -2565,6 +2591,26 @@
           "resourceId",
           "optional",
           "operations"
+        ]
+      },
+      "StageImportResponse": {
+        "title": "StageImportResponse",
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "title": "Upload URL",
+            "description": "Pre-signed URL to upload staged import payload.",
+            "type": "string"
+          },
+          "importId": {
+            "title": "Import ID",
+            "description": "Identifier used when starting an importRecords job.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploadUrl",
+          "importId"
         ]
       },
       "JobRequest": {
