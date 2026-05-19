@@ -19,6 +19,16 @@ from utils import get_client, console, handle_api_errors
 # Initialize a Typer sub-application for nick tests
 app = typer.Typer(no_args_is_help=True)
 
+@app.command(help="Nick's test scripts: Build System ID dictionary.")
+def id_dictionary(
+        database_id: Annotated[str, typer.Argument(help="The ActivityInfo ID of the database")],
+):
+    client = get_client()
+    with handle_api_errors(f"Failed to get tree for {database_id}"):
+        tree = client.api.get_database_tree(database_id)
+
+    pprint(tree, expand_all=True)
+
 
 @app.command(help="Nick's test scripts: Print Form Schema.")
 def form_schema(
