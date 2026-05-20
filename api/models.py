@@ -195,6 +195,7 @@ class FieldTypeParametersUpdateDTO(BaseModel):
     cardinality: Optional[str] = Field(default=None, alias="cardinality")
     range: Optional[List[Dict[str, str]]] = Field(default=None, alias="range")
     form_id: Optional[str] = Field(default=None, alias="formId")
+    field_id: Optional[str] = Field(default=None, alias="fieldId")
     values: Optional[List[FieldTypeParametersValuesUpdateDTO]] = Field(default=None, alias="values")
     formula: Optional[str] = Field(default=None, alias="formula")
     prefix_formula: Optional[str] = Field(default=None, alias="prefixFormula")
