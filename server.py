@@ -56,7 +56,7 @@ async def find_form_in_database(database_id: str, form_name_query: str) -> str:
     matches = []
     # Recursive search or flat iteration depending on your model structure
     for resource in tree.resources:
-        if form_name_query.lower() in resource.label.lower():
+        if resource.label and form_name_query.lower() in resource.label.lower():
             matches.append({"id": resource.id, "label": resource.label, "type": resource.type})
 
     return json.dumps(matches, indent=2)

@@ -50,10 +50,10 @@ client/models/query_rows_request.py
 client/models/query_sort.py
 client/models/query_source.py
 client/models/range_inner.py
-client/models/record_ref.py
 client/models/record_update_change.py
 client/models/record_update_request.py
 client/models/security_category.py
+client/models/stage_import_response.py
 client/models/translation_dictionary.py
 client/models/translation_dictionary_id.py
 client/models/translation_string.py
@@ -106,10 +106,10 @@ docs/QueryRowsRequest.md
 docs/QuerySort.md
 docs/QuerySource.md
 docs/RangeInner.md
-docs/RecordRef.md
 docs/RecordUpdateChange.md
 docs/RecordUpdateRequest.md
 docs/SecurityCategory.md
+docs/StageImportResponse.md
 docs/TranslationDictionary.md
 docs/TranslationDictionaryId.md
 docs/TranslationString.md

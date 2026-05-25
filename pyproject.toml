@@ -45,3 +45,33 @@ py-modules = [
 [tool.setuptools.packages.find]
 include = ["parser*"]
 exclude = ["activityinfo*"]
+
+[tool.mypy]
+python_version = "3.11"
+files = [
+    "main.py",
+    "utils.py",
+    "db.py",
+    "config.py",
+    "forms.py",
+    "translations.py",
+    "users.py",
+    "nicktest.py",
+    "common.py",
+    "id_translation.py",
+    "server.py",
+    "parser",
+]
+exclude = ["^build/", "^activityinfo/build/"]
+warn_return_any = true
+warn_unused_configs = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["jsonpatch", "jsonpointer"]
+ignore_missing_imports = true
+
+# OpenAPI-generated client: many no-any-return findings; check at generation time.
+[[tool.mypy.overrides]]
+module = ["activityinfo.*", "client.*"]
+ignore_errors = true

@@ -67,10 +67,10 @@ __all__ = [
     "QuerySort",
     "QuerySource",
     "RangeInner",
-    "RecordRef",
     "RecordUpdateChange",
     "RecordUpdateRequest",
     "SecurityCategory",
+    "StageImportResponse",
     "TranslationDictionary",
     "TranslationDictionaryId",
     "TranslationString",
@@ -137,10 +137,10 @@ from activityinfo.client.models.query_rows_request import QueryRowsRequest as Qu
 from activityinfo.client.models.query_sort import QuerySort as QuerySort
 from activityinfo.client.models.query_source import QuerySource as QuerySource
 from activityinfo.client.models.range_inner import RangeInner as RangeInner
-from activityinfo.client.models.record_ref import RecordRef as RecordRef
 from activityinfo.client.models.record_update_change import RecordUpdateChange as RecordUpdateChange
 from activityinfo.client.models.record_update_request import RecordUpdateRequest as RecordUpdateRequest
 from activityinfo.client.models.security_category import SecurityCategory as SecurityCategory
+from activityinfo.client.models.stage_import_response import StageImportResponse as StageImportResponse
 from activityinfo.client.models.translation_dictionary import TranslationDictionary as TranslationDictionary
 from activityinfo.client.models.translation_dictionary_id import TranslationDictionaryId as TranslationDictionaryId
 from activityinfo.client.models.translation_string import TranslationString as TranslationString

@@ -1394,7 +1394,8 @@
           "billingAccountId": {
             "title": "Billing Account ID",
             "description": "",
-            "type": "integer"
+            "type": "integer",
+            "format": "int64"
           },
           "billingPlan": {
             "title": "Billing Plan",
@@ -2272,7 +2273,6 @@
           "id",
           "label",
           "required",
-          "key",
           "type"
         ]
       },
@@ -2528,7 +2528,8 @@
           "billingAccountId": {
             "title": "Billing Account ID",
             "description": "The id of the billing account to which this database belongs",
-            "type": "integer"
+            "type": "integer",
+            "format": "int64"
           },
           "suspended": {
             "title": "Suspended",
@@ -2657,9 +2658,9 @@
             "description": "The job's current state",
             "type": "string",
             "enum": [
-              "STARTED",
-              "COMPLETED",
-              "FAILED"
+              "started",
+              "completed",
+              "failed"
             ]
           },
           "jobResult": {

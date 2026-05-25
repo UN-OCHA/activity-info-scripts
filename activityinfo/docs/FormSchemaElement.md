@@ -14,7 +14,7 @@ Name | Type | Description | Notes
 **data_entry_visible** | **bool** | If false, this field is not shown in data entry | [optional] [default to True]
 **table_visible** | **bool** | If false, this field is not shown by default in the table view | [optional] [default to True]
 **required** | **bool** | If true, a value for this field must be provided | [default to False]
-**key** | **bool** | If true, this field is part of the form&#39;s natural key fields whose combination must be unique within the form | [default to False]
+**key** | **bool** | If true, this field is part of the form&#39;s natural key fields whose combination must be unique within the form | [optional] [default to False]
 **unique** | **bool** | If true, the value for this field must be unique across the form&#39;s records | [optional] [default to False]
 **read_only** | **bool** | If true, the value for this field cannot be modified by any user (but it can be set by default on record add). | [optional] [default to False]
 **default_value** | **str** | The default value for this field, set on record add | [optional] 

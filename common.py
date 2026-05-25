@@ -1,13 +1,23 @@
 from typing import List, Optional, Dict, Any, cast
 
-from activityinfo.client import DatabaseResource, FormSchema, DefaultApi
-from activityinfo.client.models.database_tree import DatabaseTree
+from activityinfo.client import DatabaseResource, FormSchema, DefaultApi, Database
+from activityinfo.client.models.range_inner import RangeInner
+
+
+def require_label(label: Optional[str]) -> str:
+    if not label:
+        raise ValueError("Resource label is required")
+    return label
+
+
+def label_starts_with(resource: DatabaseResource, prefix: str) -> bool:
+    return resource.label is not None and resource.label.startswith(prefix)
 
 # Folders prefixed with these numbers are considered 'Data' folders in our standard structure
 DATA_FOLDER_PREFIXES = ["3", "4", "5", "6"]
 
 
-def filter_data_forms(tree: DatabaseTree, folder_id: str) -> List[DatabaseResource]:
+def filter_data_forms(tree: Database, folder_id: str) -> List[DatabaseResource]:
     """
     Filter the database tree to find only 'Data Forms'.
     
@@ -26,6 +36,7 @@ def filter_data_forms(tree: DatabaseTree, folder_id: str) -> List[DatabaseResour
         res for res in tree.resources
         if res.type == "FOLDER"
            and res.parent_id == folder_id
+           and res.label is not None
            and res.label.startswith(tuple(DATA_FOLDER_PREFIXES))
     ]
 
@@ -59,12 +70,13 @@ def find_resource_by_prefix(items: List[DatabaseResource], prefix: str) -> Optio
 
     # 1. Exact match
     for item in matches:
-        if item.label == prefix:
+        if require_label(item.label) == prefix:
             return item
 
     # 2. Match followed by '.' or '_'
     for item in matches:
-        if len(item.label) > len(prefix) and item.label[len(prefix)] in (".", "_"):
+        item_label = require_label(item.label)
+        if len(item_label) > len(prefix) and item_label[len(prefix)] in (".", "_"):
             return item
 
     # 3. Fallback to the first match (e.g., prefix='3.1' matches '3.1A')
@@ -82,7 +94,7 @@ def find_all_resources_by_prefix(items: List[DatabaseResource], prefix: str) -> 
     Returns:
         A list of matching items.
     """
-    return [item for item in items if item.label.startswith(prefix)]
+    return [item for item in items if item.label is not None and item.label.startswith(prefix)]
 
 
 async def get_records_with_multiref(client: DefaultApi, form_id: str) -> List[Dict[str, Any]]:
@@ -117,7 +129,13 @@ async def get_records_with_multiref(client: DefaultApi, form_id: str) -> List[Di
         field_code = field.code
 
         # Fetch the records of the referenced form to build a lookup map
-        ref_form_id = field.type_parameters.range[0]["formId"]
+        first_range = field.type_parameters.range[0]
+        ref_form_id = cast(
+            Optional[str],
+            first_range.form_id if isinstance(first_range, RangeInner) else first_range.get("formId"),
+        )
+        if not ref_form_id:
+            continue
         ref_records = cast(List[Dict[str, Any]], await client.get_form_records(form_id=ref_form_id))
         ref_records_map = {rec["@id"]: rec for rec in ref_records}
 

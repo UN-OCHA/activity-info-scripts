@@ -73,7 +73,7 @@ class String(ExprNode):
 # ---------- Arithmetic / Logical ----------
 
 @dataclass(frozen=True)
-class Number:
+class Number(ExprNode):
     """Represents a numeric literal."""
     value: float
 
@@ -153,12 +153,12 @@ class Comparison(ExprNode):
         l = await evaluate_expr(self.left, resolver)
         r = await evaluate_expr(self.right, resolver)
 
-        if self.op == "==": return l == r
-        if self.op == "!=": return l != r
-        if self.op == "<": return l < r
-        if self.op == ">": return l > r
-        if self.op == ">=": return l >= r
-        if self.op == "<=": return l <= r
+        if self.op == "==": return bool(l == r)
+        if self.op == "!=": return bool(l != r)
+        if self.op == "<": return bool(l < r)
+        if self.op == ">": return bool(l > r)
+        if self.op == ">=": return bool(l >= r)
+        if self.op == "<=": return bool(l <= r)
 
         raise ValueError(f"Unknown comparison operator: {self.op}")
 
@@ -371,12 +371,8 @@ class FunctionCall(ExprNode):
 
         raise ValueError(f"Unknown function: {func_name}")
 
-    def __str__(self) -> str:
-        args_str = ", ".join(str(arg) for arg in self.args)
-        return f"{self.name}({args_str})"
-
     def identifiers(self) -> Set[str]:
-        ids = set()
+        ids: Set[str] = set()
         for arg in self.args:
             ids |= arg.identifiers()
         return ids

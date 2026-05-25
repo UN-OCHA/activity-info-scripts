@@ -52,10 +52,10 @@ from activityinfo.client.models.query_rows_request import QueryRowsRequest
 from activityinfo.client.models.query_sort import QuerySort
 from activityinfo.client.models.query_source import QuerySource
 from activityinfo.client.models.range_inner import RangeInner
-from activityinfo.client.models.record_ref import RecordRef
 from activityinfo.client.models.record_update_change import RecordUpdateChange
 from activityinfo.client.models.record_update_request import RecordUpdateRequest
 from activityinfo.client.models.security_category import SecurityCategory
+from activityinfo.client.models.stage_import_response import StageImportResponse
 from activityinfo.client.models.translation_dictionary import TranslationDictionary
 from activityinfo.client.models.translation_dictionary_id import TranslationDictionaryId
 from activityinfo.client.models.translation_string import TranslationString

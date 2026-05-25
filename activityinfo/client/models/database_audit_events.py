@@ -20,7 +20,6 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from activityinfo.client.models.database_automation import DatabaseAutomation
-from activityinfo.client.models.record_ref import RecordRef
 from activityinfo.client.models.user_ref import UserRef
 from typing import Optional, Set
 from typing_extensions import Self
@@ -33,12 +32,12 @@ class DatabaseAuditEvents(BaseModel):
     id: StrictStr = Field(description="An opaque, id uniquely identifying this event within this result set.")
     time: StrictInt = Field(description="The time of this event, in seconds since 1970-01-01.")
     user: Optional[UserRef] = Field(default=None, description="The user who initiated this event.")
-    record_ref: Optional[RecordRef] = Field(default=None, description="The record ref, if this event concerns a record.", alias="recordRef")
+    record_ref: Optional[StrictStr] = Field(default=None, description="The record ref, if this event concerns a record.", alias="recordRef")
     form_id: Optional[StrictStr] = Field(default=None, description="The form id, if this event concerns a form.", alias="formId")
     version: Optional[StrictInt] = Field(default=None, description="The version number of the affected resource.")
     database_user_id: Optional[StrictStr] = Field(default=None, description="For user permission events, this is the id of the user who was affected.", alias="databaseUserId")
     description: StrictStr = Field(description="A human-readable description of the event.")
-    type: List[StrictStr] = Field(description="The type of event. Values: DATABASE_TREE, USER, RECORD, FORM, AUTOMATION")
+    type: StrictStr = Field(description="The type of event. Values: DATABASE_TREE, USER, RECORD, FORM, AUTOMATION")
     resource_types: List[StrictStr] = Field(description="One or more type(s) of the resource(s) affected", alias="resourceTypes")
     resource_id: StrictStr = Field(description="Id of the affected resource OR id of the database if more than one resource type is present", alias="resourceId")
     added: StrictBool = Field(description="True if this event concerns an addition.")
@@ -53,9 +52,8 @@ class DatabaseAuditEvents(BaseModel):
     @field_validator('type')
     def type_validate_enum(cls, value):
         """Validates the enum"""
-        for i in value:
-            if i not in set(['DATABASE_TREE', 'USER', 'RECORD', 'FORM', 'AUTOMATION']):
-                raise ValueError("each list item must be one of ('DATABASE_TREE', 'USER', 'RECORD', 'FORM', 'AUTOMATION')")
+        if value not in set(['DATABASE_TREE', 'USER', 'RECORD', 'FORM', 'AUTOMATION']):
+            raise ValueError("must be one of enum values ('DATABASE_TREE', 'USER', 'RECORD', 'FORM', 'AUTOMATION')")
         return value
 
     @field_validator('resource_types')
@@ -108,9 +106,6 @@ class DatabaseAuditEvents(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of user
         if self.user:
             _dict['user'] = self.user.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of record_ref
-        if self.record_ref:
-            _dict['recordRef'] = self.record_ref.to_dict()
         # override the default output from pydantic by calling `to_dict()` of automation
         if self.automation:
             _dict['automation'] = self.automation.to_dict()
@@ -129,7 +124,7 @@ class DatabaseAuditEvents(BaseModel):
             "id": obj.get("id"),
             "time": obj.get("time"),
             "user": UserRef.from_dict(obj["user"]) if obj.get("user") is not None else None,
-            "recordRef": RecordRef.from_dict(obj["recordRef"]) if obj.get("recordRef") is not None else None,
+            "recordRef": obj.get("recordRef"),
             "formId": obj.get("formId"),
             "version": obj.get("version"),
             "databaseUserId": obj.get("databaseUserId"),

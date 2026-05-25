@@ -1,6 +1,9 @@
+import asyncio
 import os
 from contextlib import contextmanager
-from typing import Dict, Any
+from contextvars import ContextVar
+from functools import wraps
+from typing import Awaitable, Dict, Any, Callable, TypeVar
 
 import typer
 from dotenv import load_dotenv
@@ -14,14 +17,49 @@ load_dotenv()
 # Initialize a rich Console for stylized CLI output
 console = Console()
 
+# Clients created via get_client() while run_cli_async is active are closed on exit.
+_pending_api_clients: ContextVar[list[DefaultApi] | None] = ContextVar(
+    "_pending_api_clients", default=None
+)
+
+T = TypeVar("T")
+
 
 def get_client() -> DefaultApi:
     configuration = Configuration(
         host=os.getenv("ACTIVITYINFO_BASE_URL", "https://www.activityinfo.org/resources/"),
         access_token=os.getenv("API_TOKEN")
     )
-    client = ApiClient(configuration)
-    return DefaultApi(client)
+    api_client = ApiClient(configuration)
+    client = DefaultApi(api_client)
+    pending = _pending_api_clients.get()
+    if pending is not None:
+        pending.append(client)
+    return client
+
+
+async def _close_pending_clients(clients: list[DefaultApi]) -> None:
+    for client in clients:
+        await client.api_client.close()
+
+
+async def run_cli_async(coro: Awaitable[T]) -> T:
+    """
+    Run a coroutine for a one-shot CLI command and close any ApiClients
+    created via get_client() during the run.
+    """
+    clients: list[DefaultApi] = []
+    token = _pending_api_clients.set(clients)
+    try:
+        return await coro
+    finally:
+        _pending_api_clients.reset(token)
+        await _close_pending_clients(clients)
+
+
+def run_cli(coro: Awaitable[T]) -> T:
+    """Sync entry point for Typer commands: asyncio.run + client cleanup."""
+    return asyncio.run(run_cli_async(coro))
 
 
 @contextmanager
@@ -52,3 +90,11 @@ def build_nested_dict(flat_dict: Dict[str, Any]) -> Dict[str, Any]:
             curr = curr[part]
         curr[parts[-1]] = value
     return nested
+
+
+def wrap_async(f: Callable[..., Awaitable[T]]) -> Callable[..., T]:
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        return run_cli(f(*args, **kwargs))
+
+    return wrapper

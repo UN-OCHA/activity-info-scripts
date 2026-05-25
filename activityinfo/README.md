@@ -111,6 +111,7 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**get_user_databases**](docs/DefaultApi.md#get_user_databases) | **GET** /databases | Get User Databases
 *DefaultApi* | [**preflight_database_user**](docs/DefaultApi.md#preflight_database_user) | **POST** /databases/{database_id}/users/preflight | Preflight Database User
 *DefaultApi* | [**query_rows**](docs/DefaultApi.md#query_rows) | **POST** /query/rows | Query Rows
+*DefaultApi* | [**stage_import_direct**](docs/DefaultApi.md#stage_import_direct) | **POST** /imports/stage/direct | Stage Import Direct
 *DefaultApi* | [**start_job**](docs/DefaultApi.md#start_job) | **POST** /jobs | Start Job
 *DefaultApi* | [**update_database**](docs/DefaultApi.md#update_database) | **POST** /databases/{database_id} | Update Database
 *DefaultApi* | [**update_database_translations**](docs/DefaultApi.md#update_database_translations) | **POST** /databases/{database_id}/translations/{language_code} | Update Database Translations
@@ -161,10 +162,10 @@ Class | Method | HTTP request | Description
  - [QuerySort](docs/QuerySort.md)
  - [QuerySource](docs/QuerySource.md)
  - [RangeInner](docs/RangeInner.md)
- - [RecordRef](docs/RecordRef.md)
  - [RecordUpdateChange](docs/RecordUpdateChange.md)
  - [RecordUpdateRequest](docs/RecordUpdateRequest.md)
  - [SecurityCategory](docs/SecurityCategory.md)
+ - [StageImportResponse](docs/StageImportResponse.md)
  - [TranslationDictionary](docs/TranslationDictionary.md)
  - [TranslationDictionaryId](docs/TranslationDictionaryId.md)
  - [TranslationString](docs/TranslationString.md)

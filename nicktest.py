@@ -1,26 +1,22 @@
-import asyncio
 from typing import Annotated
 
 import typer
 from rich.pretty import pprint
 
-from utils import get_client, handle_api_errors
+from utils import get_client, handle_api_errors, wrap_async
 
 # Initialize a Typer sub-application for nick tests
 app = typer.Typer(no_args_is_help=True)
 
 
 @app.command(help="Nick's test scripts: Print Form Schema.")
-def print_schema(
+@wrap_async
+async def print_schema(
         form_id: Annotated[str, typer.Argument(help="The ID of the form")]
 ):
     """
     Print the form schema to console.
     """
-    asyncio.run(_print_schema_async(form_id))
-
-
-async def _print_schema_async(form_id: str):
     client = get_client()
 
     with handle_api_errors(f"Failed to get schema for {form_id}"):
@@ -30,16 +26,13 @@ async def _print_schema_async(form_id: str):
 
 
 @app.command(help="Nick's test scripts: Print DB Tree.")
-def print_tree(
+@wrap_async
+async def print_tree(
         db_id: Annotated[str, typer.Argument(help="The ID of the database")]
 ):
     """
     Print the form schema to console.
     """
-    asyncio.run(_print_tree_async(db_id))
-
-
-async def _print_tree_async(db_id: str):
     client = get_client()
 
     with handle_api_errors(f"Failed to get tree for {db_id}"):

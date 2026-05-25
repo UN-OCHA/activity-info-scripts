@@ -1,4 +1,3 @@
-import asyncio
 import os.path
 import re
 from typing import Annotated, Set, List, Dict, Any, Optional, cast
@@ -12,7 +11,7 @@ from activityinfo.client.models import (
     DatabaseRole,
 )
 from common import find_resource_by_prefix
-from utils import get_client, handle_api_errors, console
+from utils import get_client, handle_api_errors, console, wrap_async
 
 # Initialize a Typer sub-application for user management
 app = typer.Typer(no_args_is_help=True)
@@ -44,7 +43,8 @@ def get_record_id_by_org_abbrev(records: List[Dict[str, Any]], abbrev: str) -> O
 
 
 @app.command(help="Bulk add or update users in a database from a CSV file.", no_args_is_help=True)
-def add_bulk(
+@wrap_async
+async def add_bulk(
         target_database_id: Annotated[str, typer.Argument(help="The ID of the target database")],
         input_file_path: Annotated[str, typer.Argument(help="The path to the input CSV file")],
         remove_users: Annotated[bool, typer.Option(help="Remove existing users missing from the input list")] = False,
@@ -57,19 +57,6 @@ def add_bulk(
     Synchronize database users with an external list provided in a CSV file.
     Implements SPPB-43 requirements including parameter matching and preflight checks.
     """
-    asyncio.run(_add_bulk_async(
-        target_database_id, input_file_path, remove_users, dry_run, yes, output_csv
-    ))
-
-
-async def _add_bulk_async(
-        target_database_id: str,
-        input_file_path: str,
-        remove_users: bool,
-        dry_run: bool,
-        yes: bool,
-        output_csv: str
-):
     client = get_client()
 
     # --- 1. Load and Validate Input File ---
@@ -145,9 +132,9 @@ async def _add_bulk_async(
     user_additions: List[Dict[str, Any]] = []
     user_updates: List[Dict[str, Any]] = []
 
-    for idx, row in data.iterrows():
+    for row_num, (_, row) in enumerate(data.iterrows(), start=1):
 
-        print(f"Processing {idx + 1} of {len(data)}")
+        print(f"Processing {row_num} of {len(data)}")
 
         # Spec: Stop if empty row reached
         if pd.isna(row[email_col]) and pd.isna(row.get("role")):
@@ -165,8 +152,10 @@ async def _add_bulk_async(
 
         # Email preflight
         with handle_api_errors(f"Preflight failed for {email_raw}"):
-            preflight = await client.preflight_database_user(database_id=target_database_id,
-                                                             add_user_request=AddUserRequest(email=email_raw))
+            preflight = await client.preflight_database_user(
+                database_id=target_database_id,
+                add_user_request=AddUserRequest.model_construct(email=email_raw),
+            )
 
         if not preflight.valid_email:
             results.append(
@@ -236,7 +225,7 @@ async def _add_bulk_async(
                 "name": final_name,
                 "email": email_clean,
                 "locale": final_lang,
-                "role": DatabaseRole(id=role_id, parameters=role_params),
+                "role": UserRole(id=role_id, parameters=role_params),
                 "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw}
             })
         else:
@@ -252,7 +241,7 @@ async def _add_bulk_async(
                 user_updates.append({
                     "user_id": existing_user.get("userId"),
                     "email": email_clean,
-                    "role": DatabaseRole(id=role_id, parameters=role_params),
+                    "role": UserRole(id=role_id, parameters=role_params),
                     "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw}
                 })
             else:
@@ -278,13 +267,13 @@ async def _add_bulk_async(
         table.add_column("Parameters", style="dim")
 
         for add in user_additions:
-            role_obj = cast(DatabaseRole, add['role'])
+            role_obj = cast(UserRole, add['role'])
             role_label = role_id_to_label.get(role_obj.id, role_obj.id)
             params = str(role_obj.parameters) if role_obj.parameters else "-"
             table.add_row("Add", str(add['email']), role_label, params, style="green")
 
         for up in user_updates:
-            role_obj = cast(DatabaseRole, up['role'])
+            role_obj = cast(UserRole, up['role'])
             role_label = role_id_to_label.get(role_obj.id, role_obj.id)
             params = str(role_obj.parameters) if role_obj.parameters else "-"
             table.add_row("Modify", str(up['email']), role_label, params, style="yellow")
@@ -324,7 +313,7 @@ async def _add_bulk_async(
                     name=cast(str, add['name']),
                     email=cast(str, add['email']),
                     locale=cast(str, add['locale']),
-                    role=cast(DatabaseRole, add['role']),
+                    role=cast(UserRole, add['role']),
                     grants=[]
                 ))
                 results.append({**add['orig_row'], "Status": "Added", "Message": ""})

@@ -1,16 +1,15 @@
-import asyncio
-
 import typer
 from rich.table import Table
 
-from utils import get_client, handle_api_errors, console
+from utils import get_client, handle_api_errors, console, wrap_async
 
 # Initialize a Typer sub-application specifically for database-level utilities
 app = typer.Typer(no_args_is_help=True)
 
 
 @app.command(name="list")
-def list_databases():
+@wrap_async
+async def list_databases():
     """
     List all databases accessible with the current API token.
     
@@ -18,10 +17,6 @@ def list_databases():
     on the ActivityInfo platform and displays their ID, Label, and Description in 
     a formatted table.
     """
-    asyncio.run(_list_databases_async())
-
-
-async def _list_databases_async():
     # Instantiate the ActivityInfo API client
     client = get_client()
 

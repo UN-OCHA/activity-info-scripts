@@ -1,9 +1,9 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from .ast import Identifier
 
 class DictResolver:
     """Resolves identifiers against a nested dictionary."""
-    def __init__(self, data: Dict[str, Any], originating_data: Dict[str, Any] = None):
+    def __init__(self, data: Dict[str, Any], originating_data: Optional[Dict[str, Any]] = None):
         self._data = data
         self._originating_data = originating_data if originating_data is not None else data
 
@@ -24,7 +24,7 @@ class DictResolver:
         raise NotImplementedError("AGGREGATE not supported by DictResolver")
 
 class RecordResolver(DictResolver):
-    def __init__(self, client: Any, data: Dict[str, Any], originating_data: Dict[str, Any] = None):
+    def __init__(self, client: Any, data: Dict[str, Any], originating_data: Optional[Dict[str, Any]] = None):
         super().__init__(data, originating_data)
         self._client = client
 

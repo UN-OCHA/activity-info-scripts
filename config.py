@@ -1,4 +1,3 @@
-import asyncio
 from itertools import groupby
 from typing import Annotated, Optional, List, Dict, Any, cast
 
@@ -6,13 +5,14 @@ import typer
 from cuid2 import Cuid
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
-from activityinfo.client import FormSchemaElement, FormSchemaElementParameter, FormSchemaElementParameterLookup, \
+from activityinfo.client import DatabaseResource, FormSchemaElement, FormSchemaElementParameter, FormSchemaElementParameterLookup, \
     RecordUpdateRequest, RecordUpdateChange
 from activityinfo.client.models import (
     FormSchema
 )
-from common import filter_data_forms, get_records_with_multiref
-from utils import get_client, console, handle_api_errors
+from activityinfo.client.models.range_inner import RangeInner
+from common import filter_data_forms, get_records_with_multiref, label_starts_with
+from utils import get_client, console, handle_api_errors, wrap_async
 
 # Initialize Typer sub-application for field-level configuration adjustments
 app = typer.Typer(no_args_is_help=True)
@@ -34,13 +34,13 @@ def strip_metric_prefix(code: str) -> str:
     return code
 
 
-def is_metric_field(code: str) -> bool:
+def is_metric_field(code: Optional[str]) -> bool:
     """Checks if a field code corresponds to an Amount or Metric field."""
     if not code: return False
     return code.startswith("AMOUNT_") or code.startswith("METRIC_")
 
 
-def is_disag_field(code: str) -> bool:
+def is_disag_field(code: Optional[str]) -> bool:
     """Checks if a field code corresponds to a Disaggregation field."""
     if not code: return False
     return code.startswith("DISAG_")
@@ -59,7 +59,8 @@ def get_metric_base_code(code: str) -> str:
 
 
 @app.command(help="Adjust metric fields in data forms", no_args_is_help=True)
-def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the target database")],
+@wrap_async
+async def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the target database")],
            root_folder_id: Annotated[
                Optional[str], typer.Argument(help="The root folder ID of the data folders (optional)")] = None,
            remove_fields: Annotated[
@@ -74,13 +75,6 @@ def metric(target_database_id: Annotated[str, typer.Argument(help="The ID of the
     3. Internal calculation (_ICALC)
     4. A final Coalesced field (Final)
     """
-    asyncio.run(_metric_async(target_database_id, root_folder_id, remove_fields, rebuild_fields))
-
-
-async def _metric_async(target_database_id: str,
-                        root_folder_id: Optional[str],
-                        remove_fields: bool,
-                        rebuild_fields: bool):
     client = get_client()
     cuid = Cuid(length=18)
 
@@ -100,7 +94,7 @@ async def _metric_async(target_database_id: str,
         folder_forms = filter_data_forms(target_tree, root_folder_id or target_database_id)
 
         # Second, find forms explicitly mentioned in 0.1.2 config form
-        config_form_012 = next((res for res in target_tree.resources if res.label.startswith("0.1.2")), None)
+        config_form_012 = next((res for res in target_tree.resources if label_starts_with(res, "0.1.2")), None)
         config_form_names = set()
         if config_form_012:
             with handle_api_errors("Could not obtain 0.1.2 config form records"):
@@ -121,7 +115,7 @@ async def _metric_async(target_database_id: str,
 
         # --- 4. Read Metric Configuration (0.3.3) ---
         metric_config_form = next(
-            (res for res in target_tree.resources if res.label.startswith(METRIC_CONFIG_FORM_PREFIX)), None)
+            (res for res in target_tree.resources if label_starts_with(res, METRIC_CONFIG_FORM_PREFIX)), None)
         if not metric_config_form:
             progress.stop()
             console.print(
@@ -309,7 +303,8 @@ async def _metric_async(target_database_id: str,
 
 
 @app.command(help="Adjust disaggregation fields in data forms", no_args_is_help=True)
-def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the target database")],
+@wrap_async
+async def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the target database")],
            root_folder_id: Annotated[
                Optional[str], typer.Argument(help="The root folder ID of the data folders (optional)")] = None,
            remove_fields: Annotated[bool, typer.Option(help="Remove existing fields missing from the config")] = False,
@@ -320,13 +315,6 @@ def disagg(target_database_id: Annotated[str, typer.Argument(help="The ID of the
     These fields act as keys in the data form and point to specific reference forms 
     (e.g., Age/Gender groups, Locations).
     """
-    asyncio.run(_disagg_async(target_database_id, root_folder_id, remove_fields, rebuild_fields))
-
-
-async def _disagg_async(target_database_id: str,
-                        root_folder_id: Optional[str],
-                        remove_fields: bool,
-                        rebuild_fields: bool):
     client = get_client()
     cuid = Cuid(length=18)
 
@@ -342,7 +330,7 @@ async def _disagg_async(target_database_id: str,
 
         # Retrieve exhaustive list of target forms
         folder_forms = filter_data_forms(target_tree, root_folder_id or target_database_id)
-        config_form_012 = next((res for res in target_tree.resources if res.label.startswith("0.1.2")), None)
+        config_form_012 = next((res for res in target_tree.resources if label_starts_with(res, "0.1.2")), None)
         config_form_names = set()
         if config_form_012:
             with handle_api_errors("Could not obtain 0.1.2 config form records"):
@@ -361,7 +349,7 @@ async def _disagg_async(target_database_id: str,
 
         # --- Read Disaggregation Configuration (0.3.2) ---
         disagg_config_form = next(
-            (res for res in target_tree.resources if res.label.startswith(DISAGG_CONFIG_FORM_PREFIX)), None)
+            (res for res in target_tree.resources if label_starts_with(res, DISAGG_CONFIG_FORM_PREFIX)), None)
         if not disagg_config_form:
             progress.stop()
             console.print(f"[bold red]Error:[/bold red] Configuration form {DISAGG_CONFIG_FORM_PREFIX} not found.")
@@ -445,7 +433,7 @@ async def _disagg_async(target_database_id: str,
                         relevanceCondition=relevance,
                         typeParameters=FormSchemaElementParameter(
                             cardinality="single",
-                            range=[{"formId": ref_form.id}],
+                            range=[RangeInner.model_validate({"formId": ref_form.id})],
                             lookupConfigs=[FormSchemaElementParameterLookup(id=cuid.generate(), formula="REFLABEL",
                                                                             lookupLabel="Reference Label")]
                         )
@@ -498,7 +486,8 @@ async def _disagg_async(target_database_id: str,
 
 
 @app.command(help="Adjust segmentation fields in CDE, LFE, IND/CST/CSL and data forms", no_args_is_help=True)
-def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of the target database")],
+@wrap_async
+async def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of the target database")],
             remove_fields: Annotated[bool, typer.Option(help="Remove existing fields missing from the config")] = False,
             rebuild_fields: Annotated[bool, typer.Option(help="Rebuild existing fields from the config")] = False):
     """
@@ -508,12 +497,6 @@ def segment(target_database_id: Annotated[str, typer.Argument(help="The ID of th
     Level 1 (Coordination Entity) -> Level 2 (Logframe Entity) -> Level 3 (Activity Entity) -> Level 4 (Data Form).
     Fields are either explicit manual entries or inherited calculations from the parent level.
     """
-    asyncio.run(_segment_async(target_database_id, remove_fields, rebuild_fields))
-
-
-async def _segment_async(target_database_id: str,
-                         remove_fields: bool,
-                         rebuild_fields: bool):
     client = get_client()
     cuid = Cuid(length=18)
 
@@ -527,11 +510,11 @@ async def _segment_async(target_database_id: str,
         with handle_api_errors(f"Could not get tree for {target_database_id}"):
             target_tree = await client.get_database_tree(database_id=target_database_id)
 
-        cde_form = next((res for res in target_tree.resources if res.label.startswith("1.1")), None)
-        lfe_form = next((res for res in target_tree.resources if res.label.startswith("1.2")), None)
+        cde_form = next((res for res in target_tree.resources if label_starts_with(res, "1.1")), None)
+        lfe_form = next((res for res in target_tree.resources if label_starts_with(res, "1.2")), None)
 
         # Identify Level 3 forms (Activities/Entities)
-        entity_config_res = next((res for res in target_tree.resources if res.label.startswith(ENTITY_CONFIG_FORM_011)),
+        entity_config_res = next((res for res in target_tree.resources if label_starts_with(res, ENTITY_CONFIG_FORM_011)),
                                  None)
         level3_forms = []
         if entity_config_res:
@@ -540,11 +523,11 @@ async def _segment_async(target_database_id: str,
                 for rec in config_recs:
                     prefix = rec.get("SYSPREFIX")
                     if prefix:
-                        f_res = next((res for res in target_tree.resources if res.label.startswith(prefix)), None)
+                        f_res = next((res for res in target_tree.resources if label_starts_with(res, prefix)), None)
                         if f_res: level3_forms.append({"resource": f_res, "refcode": rec.get("REFCODE")})
 
         # Identify Level 4 forms (Data entry forms)
-        data_config_res = next((res for res in target_tree.resources if res.label.startswith(DATA_CONFIG_FORM_012)),
+        data_config_res = next((res for res in target_tree.resources if label_starts_with(res, DATA_CONFIG_FORM_012)),
                                None)
         level4_forms = []
         if data_config_res:
@@ -558,7 +541,7 @@ async def _segment_async(target_database_id: str,
                             {"resource": f_res, "ccode": rec.get("CCODE"), "eform_refcode": rec.get("EFORM.REFCODE")})
 
         # --- 2. Read Segmentation Config (0.3.1) ---
-        seg_config_res = next((res for res in target_tree.resources if res.label.startswith(SEG_CONFIG_FORM_PREFIX)),
+        seg_config_res = next((res for res in target_tree.resources if label_starts_with(res, SEG_CONFIG_FORM_PREFIX)),
                               None)
         if not seg_config_res:
             console.print(f"[red]Error: {SEG_CONFIG_FORM_PREFIX} not found.[/red]")
@@ -604,26 +587,35 @@ async def _segment_async(target_database_id: str,
                 is_initial = (current_level == min_level)
 
                 targets: List[tuple] = []
-                if current_level == 1 and cde_form:
+                if current_level == 1 and cde_form and cde_form.id:
                     targets.append((await get_cached_schema(cde_form.id), {}, True))
-                elif current_level == 2 and lfe_form:
+                elif current_level == 2 and lfe_form and lfe_form.id:
                     targets.append((await get_cached_schema(lfe_form.id), {}, True))
                 elif current_level == 3:
                     if level_record:
                         explicit_refcodes = {f.get("REFCODE") for f in level_record.get("EFORMS", []) if
                                              f.get("REFCODE")}
                         for l3 in level3_forms:
+                            l3_resource = cast(DatabaseResource, l3["resource"])
+                            if not l3_resource.id:
+                                continue
                             is_explicit = not explicit_refcodes or l3["refcode"] in explicit_refcodes
                             if is_explicit or not is_initial: targets.append(
-                                (await get_cached_schema(l3["resource"].id), l3, is_explicit))
+                                (await get_cached_schema(l3_resource.id), l3, is_explicit))
                     elif not is_initial:
-                        for l3 in level3_forms: targets.append((await get_cached_schema(l3["resource"].id), l3, False))
+                        for l3 in level3_forms:
+                            l3_resource = cast(DatabaseResource, l3["resource"])
+                            if l3_resource.id:
+                                targets.append((await get_cached_schema(l3_resource.id), l3, False))
                 elif current_level == 4:
                     if level_record:
                         explicit_ccodes = {f.get("CCODE") for f in level_record.get("DFORMS", []) if f.get("CCODE")}
                         explicit_refcodes = {f.get("REFCODE") for f in level_record.get("EFORMS", []) if
                                              f.get("REFCODE")}
                         for l4 in level4_forms:
+                            l4_resource = cast(DatabaseResource, l4["resource"])
+                            if not l4_resource.id:
+                                continue
                             is_explicit = False
                             if explicit_ccodes:
                                 if l4["ccode"] in explicit_ccodes: is_explicit = True
@@ -633,9 +625,12 @@ async def _segment_async(target_database_id: str,
                                 is_explicit = True
 
                             if is_explicit or not is_initial: targets.append(
-                                (await get_cached_schema(l4["resource"].id), l4, is_explicit))
+                                (await get_cached_schema(l4_resource.id), l4, is_explicit))
                     elif not is_initial:
-                        for l4 in level4_forms: targets.append((await get_cached_schema(l4["resource"].id), l4, False))
+                        for l4 in level4_forms:
+                            l4_resource = cast(DatabaseResource, l4["resource"])
+                            if l4_resource.id:
+                                targets.append((await get_cached_schema(l4_resource.id), l4, False))
 
                 # Inject Fields into Schema
                 for schema, meta, is_explicit in targets:
@@ -741,7 +736,7 @@ async def _segment_async(target_database_id: str,
                                                       type="reference",
                                                       typeParameters=FormSchemaElementParameter(cardinality="single",
                                                                                                 range=[
-                                                                                                    {"formId": f_id}],
+                                                                                                    RangeInner.model_validate({"formId": f_id})],
                                                                                                 lookupConfigs=[
                                                                                                     FormSchemaElementParameterLookup(
                                                                                                         id=cuid.generate(),

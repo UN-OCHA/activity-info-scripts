@@ -1,4 +1,3 @@
-import asyncio
 import os
 from typing import Annotated, Optional, List, Dict, Any, cast, Set, Tuple
 
@@ -10,14 +9,15 @@ from activityinfo.client import UpdateDatabaseRequest, UpdateTranslationsRequest
     RecordUpdateRequest, RecordUpdateChange
 from activityinfo.client.models.database_translation import DatabaseTranslation
 from common import find_resource_by_prefix
-from utils import get_client, console, handle_api_errors
+from utils import get_client, console, handle_api_errors, wrap_async
 
 # Initialize a Typer sub-application for translation management
 app = typer.Typer(no_args_is_help=True)
 
 
 @app.command(help="Sync translations from a source database to a target database.")
-def transfer(
+@wrap_async
+async def transfer(
         source_database_id: Annotated[str, typer.Argument(help="The source ActivityInfo database ID")],
         target_database_id: Annotated[str, typer.Argument(help="The target ActivityInfo database ID")],
         language_code: Annotated[str, typer.Argument(help="The language code to sync (e.g., 'ar')")],
@@ -27,15 +27,6 @@ def transfer(
     Copy database and form-level translations from one database to another.
     Matches forms by label.
     """
-    asyncio.run(_transfer_async(source_database_id, target_database_id, language_code, dry_run))
-
-
-async def _transfer_async(
-        source_database_id: str,
-        target_database_id: str,
-        language_code: str,
-        dry_run: bool
-):
     client = get_client()
 
     with Progress(SpinnerColumn(),
@@ -54,7 +45,7 @@ async def _transfer_async(
                                                                             language_code=language_code)
 
         # --- 2. Validation ---
-        if language_code not in source_tree.languages:
+        if not source_tree.languages or language_code not in source_tree.languages:
             console.print(f"[red]Error:[/red] Language '{language_code}' not found in source database.")
             raise typer.Exit(code=1)
 
@@ -78,20 +69,20 @@ async def _transfer_async(
         # --- 5. Sync Database Strings ---
         if source_db_translations and hasattr(source_db_translations, "translated_strings"):
             mapped_db_strings = [
-                DatabaseTranslation(
+                TranslationString(
                     id=t.id,
                     original=t.original,
                     translated=t.translated,
-                    autoTranslated=t.auto_translated
-                ) for t in source_db_translations.translated_strings
+                    autoTranslated=t.auto_translated,
+                )
+                for t in source_db_translations.translated_strings
             ]
             if not dry_run:
                 with handle_api_errors("Failed to sync database-level translations"):
                     await client.update_database_translations(
                         database_id=target_database_id,
                         language_code=language_code,
-                        update_translations_request=
-                        UpdateTranslationsRequest(strings=mapped_db_strings)
+                        update_translations_request=UpdateTranslationsRequest(strings=mapped_db_strings),
                     )
 
         # --- 6. Sync Form-Level Strings ---
@@ -133,7 +124,8 @@ async def _transfer_async(
 
 
 @app.command(help="Upsert translations from a CSV file into a database.")
-def upsert(
+@wrap_async
+async def upsert(
         target_database_id: Annotated[str, typer.Argument(help="The target ActivityInfo database ID")],
         input_file: Annotated[str, typer.Argument(help="Path to the CSV file with translations")],
         language_code: Annotated[str, typer.Argument(help="The language code (e.g., 'ar')")],
@@ -143,15 +135,6 @@ def upsert(
     Reads a CSV (Original, Translated) and updates form schemas and database translations.
     Automatically handles adding the language if missing.
     """
-    asyncio.run(_upsert_async(target_database_id, input_file, language_code, dry_run))
-
-
-async def _upsert_async(
-        target_database_id: str,
-        input_file: str,
-        language_code: str,
-        dry_run: bool
-):
     client = get_client()
 
     if not os.path.exists(input_file):
@@ -162,9 +145,10 @@ async def _upsert_async(
     # Expected columns: Original, Translated
     translation_map = dict(zip(df['Original'], df['Translated']))
 
-    def get_translation(text: str) -> Optional[str]:
-        if pd.isna(text): return None
-        return translation_map.get(text.strip())
+    def get_translation(text: Optional[str]) -> Optional[str]:
+        if text is None or pd.isna(text):
+            return None
+        return translation_map.get(str(text).strip())
 
     with Progress(SpinnerColumn(),
                   TextColumn("[progress.description]{task.description}"),
@@ -203,10 +187,16 @@ async def _upsert_async(
         for role in target_tree.roles:
             trans = get_translation(role.label)
             if trans:
-                db_strings_to_update.append(DatabaseTranslation(id=f"role:{role.id}:label", original=role.label,
-                                                                translated=trans, autoTranslated=False))
+                db_strings_to_update.append(
+                    DatabaseTranslation(
+                        id=f"role:{role.id}:label",
+                        original=role.label or "",
+                        translated=trans,
+                        autoTranslated=False,
+                    )
+                )
             else:
-                schema_missing_en.add(("Database", "Role", "role:label", role.label))
+                schema_missing_en.add(("Database", "Role", "role:label", role.label or ""))
 
         # --- 2. Resources (Folders & Forms) ---
         target_forms = [res for res in target_tree.resources if res.type == "FORM"]
@@ -222,41 +212,58 @@ async def _upsert_async(
                                                                   strings=[
                                                                       TranslationString(
                                                                           id=f"resource:{folder.id}:label",
-                                                                          original=folder.label,
+                                                                          original=folder.label or "",
                                                                           translated=trans,
                                                                           autoTranslated=False)
                                                                   ]))
                 else:
-                    schema_missing_en.add(("Database", "Folder", "resource:label", folder.label))
+                    schema_missing_en.add(("Database", "Folder", "resource:label", folder.label or ""))
 
             for form in progress.track(target_forms, description="Syncing form schema translations"):
                 with handle_api_errors(f"Failed to sync translations for {form.label}"):
                     schema = await client.get_form_schema(form_id=form.id)
 
                     form_trans_val = get_translation(form.label)
-                    form_strings = [TranslationString(id=f"resource:{form.id}:label", original=form.label,
-                                                      translated=form_trans_val or "", autoTranslated=False)]
+                    form_strings = [
+                        TranslationString(
+                            id=f"resource:{form.id}:label",
+                            original=form.label or "",
+                            translated=form_trans_val or "",
+                            autoTranslated=False,
+                        )
+                    ]
                     if not form_trans_val:
-                        schema_missing_en.add(("Form", form.label, "resource:label", form.label))
+                        schema_missing_en.add(("Form", form.label or "", "resource:label", form.label or ""))
 
                     for field in schema.elements:
                         # Field Label
                         f_trans = get_translation(field.label)
                         if f_trans:
-                            form_strings.append(TranslationString(id=f"resource:{form.id}:field:{field.id}:label",
-                                                                  original=field.label, translated=f_trans,
-                                                                  autoTranslated=False))
+                            form_strings.append(
+                                TranslationString(
+                                    id=f"resource:{form.id}:field:{field.id}:label",
+                                    original=field.label or "",
+                                    translated=f_trans,
+                                    autoTranslated=False,
+                                )
+                            )
                         else:
-                            schema_missing_en.add(("Field", form.label, field.code or field.id, field.label))
+                            schema_missing_en.add(
+                                ("Field", form.label or "", field.code or field.id or "", field.label or "")
+                            )
 
                         # Field Description (if exists)
                         if hasattr(field, "description") and field.description:
                             d_trans = get_translation(field.description)
                             if d_trans:
                                 form_strings.append(
-                                    TranslationString(id=f"resource:{form.id}:field:{field.id}:description",
-                                                      original=field.description, translated=d_trans,
-                                                      autoTranslated=False))
+                                    TranslationString(
+                                        id=f"resource:{form.id}:field:{field.id}:description",
+                                        original=field.description or "",
+                                        translated=d_trans,
+                                        autoTranslated=False,
+                                    )
+                                )
 
                         # Choice values
                         if field.type_parameters and hasattr(field.type_parameters,
@@ -265,11 +272,17 @@ async def _upsert_async(
                                 v_trans = get_translation(val.label)
                                 if v_trans:
                                     form_strings.append(
-                                        TranslationString(id=f"resource:{form.id}:field:{field.id}:value:{val.id}",
-                                                          original=val.label, translated=v_trans,
-                                                          autoTranslated=False))
+                                        TranslationString(
+                                            id=f"resource:{form.id}:field:{field.id}:value:{val.id}",
+                                            original=val.label or "",
+                                            translated=v_trans,
+                                            autoTranslated=False,
+                                        )
+                                    )
                                 else:
-                                    schema_missing_en.add(("Choice", form.label, field.code or field.id, val.label))
+                                    schema_missing_en.add(
+                                        ("Choice", form.label or "", field.code or field.id or "", val.label or "")
+                                    )
 
                     await client.update_form_schema_translations(form_id=form.id, language_code=language_code,
                                                                  update_translations_request=UpdateTranslationsRequest(
@@ -285,7 +298,8 @@ async def _upsert_async(
 
 
 @app.command(help="Apply record-level translations using a reference form map.")
-def records(
+@wrap_async
+async def records(
         target_database_id: Annotated[str, typer.Argument(help="The target database ID")],
         config_form_prefix: Annotated[str, typer.Option(help="Prefix for translation config form")] = "0.1.4",
         language_code: Annotated[str, typer.Option(help="Language code target")] = "ar",
@@ -293,18 +307,9 @@ def records(
 ):
     """
     Translates data records based on a mapping form (0.1.4).
-    Matches records in target forms by looking up their current English value 
+    Matches records in target forms by looking up their current English value
     in a reference 'Translation Map' form.
     """
-    asyncio.run(_records_async(target_database_id, config_form_prefix, language_code, dry_run))
-
-
-async def _records_async(
-        target_database_id: str,
-        config_form_prefix: str,
-        language_code: str,
-        dry_run: bool
-):
     client = get_client()
 
     with handle_api_errors("Could not get tree"):
@@ -322,7 +327,10 @@ async def _records_async(
         translation_map = {str(r.get("EN")).strip(): r.get("AR") for r in map_records if r.get("EN")}
 
     # 2. Identify forms that need translation (prefixed 3, 4, 5, 6)
-    data_forms = [res for res in tree.resources if res.type == "FORM" and res.label[0] in "3456"]
+    data_forms = [
+        res for res in tree.resources
+        if res.type == "FORM" and res.label and res.label[0] in "3456"
+    ]
 
     not_found_en = set()
 

@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 from typing import Annotated, Optional, List, Dict, Any, cast
@@ -12,10 +11,11 @@ from rich.table import Table
 
 from activityinfo.client import AddFormRequest, FormSchema, DatabaseResource, UpdateDatabaseRequest, FormSchemaElement, \
     FormSchemaElementParameter, FormSchemaElementParameterLookup
+from activityinfo.client.models.range_inner import RangeInner
 from common import filter_data_forms, get_records_with_multiref, get_field_info, find_resource_by_prefix, \
     find_all_resources_by_prefix
 from id_translation import SchemaIdTranslator
-from utils import get_client, handle_api_errors, console
+from utils import get_client, handle_api_errors, console, wrap_async
 
 # Initialize a Typer sub-application for form and schema management
 app = typer.Typer(no_args_is_help=True)
@@ -83,7 +83,8 @@ def safe_apply_patch(patch_list: List[dict], schema_dict: dict) -> dict:
 
 
 @app.command(help="Create data forms from 0.1.2 in a given target database", no_args_is_help=True)
-def create_data(
+@wrap_async
+async def create_data(
         target_database_id: Annotated[str, typer.Argument(help="The ActivityInfo ID of the target database")],
         root_folder_id: Annotated[
             Optional[str], typer.Argument(help="The root folder ID of the data folders (optional)")] = None,
@@ -99,15 +100,6 @@ def create_data(
     that the target database has corresponding forms created with the correct 
     parent-child relationships and mandatory fields (Indicator, Project, etc.).
     """
-    asyncio.run(_create_data_async(target_database_id, root_folder_id, remove_forms, rebuild_forms))
-
-
-async def _create_data_async(
-        target_database_id: str,
-        root_folder_id: Optional[str] = None,
-        remove_forms: bool = False,
-        rebuild_forms: bool = False
-):
     client = get_client()
 
     with Progress(
@@ -200,7 +192,7 @@ async def _create_data_async(
                 type="reference",
                 typeParameters=FormSchemaElementParameter(
                     cardinality="single",
-                    range=[{"formId": "c62m9clm8jux492"}]  # Global Indicator reference
+                    range=[RangeInner.model_validate({"formId": "c62m9clm8jux492"})]  # Global Indicator reference
                 )
             ), FormSchemaElement(
                 code="PROJECT",
@@ -210,7 +202,7 @@ async def _create_data_async(
                 type="reference",
                 typeParameters=FormSchemaElementParameter(
                     cardinality="single",
-                    range=[{"formId": "cl6j6kwlkclnt1z2"}]  # Global Project reference
+                    range=[RangeInner.model_validate({"formId": "cl6j6kwlkclnt1z2"})]  # Global Project reference
                 )
             )]
 
@@ -276,7 +268,7 @@ async def _create_data_async(
         extra_forms = [form for form in data_forms if form.label not in processed_sysnames]
         if remove_forms and extra_forms:
             progress.update(task, description="Removing extra forms...")
-            extra_labels = [f.label for f in extra_forms]
+            extra_labels = [f.label for f in extra_forms if f.label]
             console.print(f"[yellow]Removing extra forms:[/yellow] {', '.join(extra_labels)}")
             with handle_api_errors("Could not delete extra forms"):
                 await client.update_database(database_id=target_database_id,
@@ -290,7 +282,8 @@ async def _create_data_async(
 
 
 @app.command(help="Create reference forms from 0.1.3 in a given target database", no_args_is_help=True)
-def create_reference(
+@wrap_async
+async def create_reference(
         target_cm_database_id: Annotated[
             str, typer.Argument(help="The ActivityInfo ID of the target country module database")],
         grm_database_id: Annotated[
@@ -306,15 +299,6 @@ def create_reference(
     This command follows a dependency-aware order to ensure that parent forms are created 
     before child forms. It maps global reference data to country-specific forms.
     """
-    asyncio.run(_create_reference_async(target_cm_database_id, grm_database_id, remove_forms, rebuild_forms))
-
-
-async def _create_reference_async(
-        target_cm_database_id: str,
-        grm_database_id: str,
-        remove_forms: bool = False,
-        rebuild_forms: bool = False
-):
     client = get_client()
     cuid = Cuid(length=18)
 
@@ -447,7 +431,7 @@ async def _create_reference_async(
                         type="reference",
                         typeParameters=FormSchemaElementParameter(
                             cardinality="single",
-                            range=[{"formId": grm_form.id}],
+                            range=[RangeInner.model_validate({"formId": grm_form.id})],
                             lookupConfigs=[
                                 FormSchemaElementParameterLookup(
                                     id=cuid.generate(),
@@ -516,12 +500,12 @@ async def _create_reference_async(
                     elements.append(FormSchemaElement(
                         code=parent_refcode,
                         id=cuid.generate(),
-                        label=parent_rec.get("NAME") if parent_rec else "Parent",
+                        label=str(parent_rec.get("NAME") if parent_rec else "Parent"),
                         required=True,
                         type="reference",
                         typeParameters=FormSchemaElementParameter(
                             cardinality="single",
-                            range=[{"formId": parent_form_id}],
+                            range=[RangeInner.model_validate({"formId": parent_form_id})],
                             lookupConfigs=[
                                 FormSchemaElementParameterLookup(
                                     id=cuid.generate(),
@@ -610,7 +594,8 @@ async def _create_reference_async(
 
 
 @app.command(help="Generate a form schema patch by comparing two versions of a form schema", no_args_is_help=True)
-def patch(
+@wrap_async
+async def patch(
         form_id: Annotated[Optional[str], typer.Argument(help="The ID of the form to patch")] = None,
         label: Annotated[Optional[str], typer.Option("--label", "-l", help="The label of the form to patch")] = None,
         database_id: Annotated[
@@ -625,14 +610,6 @@ def patch(
     4. Fetches the updated schema.
     5. Generates and saves a JSON patch between the two versions.
     """
-    asyncio.run(_patch_async(form_id, label, database_id))
-
-
-async def _patch_async(
-        form_id: Optional[str] = None,
-        label: Optional[str] = None,
-        database_id: Optional[str] = None
-):
     client = get_client()
 
     if not form_id:
@@ -759,7 +736,8 @@ async def _patch_async(
 
 
 @app.command(help="Apply a semantic JSON patch to forms in one or more target databases", no_args_is_help=True)
-def apply(
+@wrap_async
+async def apply(
         target_database_ids: Annotated[List[str], typer.Argument(help="The list of target database IDs")],
         patch_file: Annotated[
             str, typer.Option("--patch", "-p", help="Path to the JSON patch file")] = "form_patch.json",
@@ -778,16 +756,6 @@ def apply(
     4. Applies the patch(es) and translates internal IDs.
     5. Re-converts to list-based structure and pushes the update.
     """
-    asyncio.run(_apply_async(target_database_ids, patch_file, multi, dry_run, yes))
-
-
-async def _apply_async(
-        target_database_ids: List[str],
-        patch_file: str = "form_patch.json",
-        multi: bool = False,
-        dry_run: bool = False,
-        yes: bool = False,
-):
     client = get_client()
 
     if not os.path.exists(patch_file):
@@ -797,14 +765,15 @@ async def _apply_async(
     with open(patch_file, "r") as f:
         patch_data = json.load(f)
 
+    patch_entries: List[Dict[str, Any]]
     if isinstance(patch_data, list) and len(patch_data) > 0:
         if "op" in patch_data[0]:
             patch_entries = [{"patch": patch_data}]
         else:
-            patch_entries = patch_data
+            patch_entries = cast(List[Dict[str, Any]], patch_data)
     elif isinstance(patch_data, dict):
         if "patch" in patch_data:
-            patch_entries = [patch_data]
+            patch_entries = [cast(Dict[str, Any], patch_data)]
         else:
             patch_entries = [{"patch": [patch_data]}]
     else:
@@ -869,7 +838,7 @@ async def _apply_async(
 
         return results
 
-    planned_updates = []
+    planned_updates: List[Dict[str, Any]] = []
     translators: Dict[str, SchemaIdTranslator] = {}
 
     async def get_translator(source_form_id: str) -> SchemaIdTranslator:
@@ -1045,7 +1014,7 @@ async def _apply_async(
         console.print("\n[bold cyan]Dry run mode: No changes applied.[/bold cyan]")
         return
 
-    blocked_updates = [up for up in planned_updates if up["unresolved_count"] > 0]
+    blocked_updates = [up for up in planned_updates if cast(int, up["unresolved_count"]) > 0]
     if blocked_updates:
         console.print("\n[bold red]Cannot apply patch: unresolved source IDs remain after translation.[/bold red]")
         for up in blocked_updates:

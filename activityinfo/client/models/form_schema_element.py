@@ -37,7 +37,7 @@ class FormSchemaElement(BaseModel):
     data_entry_visible: Optional[StrictBool] = Field(default=True, description="If false, this field is not shown in data entry", alias="dataEntryVisible")
     table_visible: Optional[StrictBool] = Field(default=True, description="If false, this field is not shown by default in the table view", alias="tableVisible")
     required: StrictBool = Field(description="If true, a value for this field must be provided")
-    key: StrictBool = Field(description="If true, this field is part of the form's natural key fields whose combination must be unique within the form")
+    key: Optional[StrictBool] = Field(default=False, description="If true, this field is part of the form's natural key fields whose combination must be unique within the form")
     unique: Optional[StrictBool] = Field(default=False, description="If true, the value for this field must be unique across the form's records")
     read_only: Optional[StrictBool] = Field(default=False, description="If true, the value for this field cannot be modified by any user (but it can be set by default on record add).", alias="readOnly")
     default_value: Optional[StrictStr] = Field(default=None, description="The default value for this field, set on record add", alias="defaultValue")
