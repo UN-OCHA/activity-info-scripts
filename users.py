@@ -19,7 +19,10 @@ from common import find_resource_by_prefix
 app = typer.Typer(no_args_is_help=True)
 
 # SPPB roles as per spec
-USER_ROLES = ["Global Administrator", "CM Administrator", "CM Coordinator", "CM Partner"]
+# USER_ROLES = ["Global Administrator", "CM Administrator", "CM Coordinator", "CM Partner"]
+
+#Partner form properties
+PARTNER_PROPERTIES = ["GLOBORG.ABBREV", "GLOBORG.HPCID", "NAME"]
 
 # Form IDs for parameters as per spec
 # FORM_ID_COORDINATION_ENTITIES = "c9mpkvrml3u24bz1a9"
@@ -29,22 +32,31 @@ USER_ROLES = ["Global Administrator", "CM Administrator", "CM Coordinator", "CM 
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
 
 
-def get_record_id_by_ccode(records: List[Dict[str, Any]], ccode: str) -> Optional[str]:
-    """Find record ID in a form where CCODE matches."""
-    ccode_clean = ccode.strip().lower()
-    for rec in records:
-        if str(rec.get("CCODE", "")).strip().lower() == ccode_clean:
-            return cast(str, rec.get("@id"))
-    return None
+# def get_record_id_by_ccode(records: List[Dict[str, Any]], ccode: str) -> Optional[str]:
+#     """Find record ID in a form where CCODE matches."""
+#     ccode_clean = ccode.strip().lower()
+#     for rec in records:
+#         if str(rec.get("CCODE", "")).strip().lower() == ccode_clean:
+#             return cast(str, rec.get("@id"))
+#     return None
+#
+#
+# def get_record_id_by_org_abbrev(records: List[Dict[str, Any]],abbrev: str) -> Optional[str]:
+#     """Find record ID in Partners form where GLOBORG.ABBREV matches."""
+#     abbrev_clean = abbrev.strip().lower()
+#     for rec in records:
+#         # Based on spec "GLOBORG.ABBREV referenced field"
+#         if str(rec.get("GLOBORG.ABBREV", "")).strip().lower() == abbrev_clean:
+#             return cast(str, rec.get("@id"))
+#     return None
 
-
-def get_record_id_by_org_abbrev(records: List[Dict[str, Any]],abbrev: str) -> Optional[str]:
-    """Find record ID in Partners form where GLOBORG.ABBREV matches."""
-    abbrev_clean = abbrev.strip().lower()
+def get_record_id_by_property(records: List[Dict[str, Any]], properties: List[str], value: str) -> Optional[str]:
+    """Find record ID in a form where the value matches one of the properties."""
+    value_clean = value.strip().lower()
     for rec in records:
-        # Based on spec "GLOBORG.ABBREV referenced field"
-        if str(rec.get("GLOBORG.ABBREV", "")).strip().lower() == abbrev_clean:
-            return cast(str, rec.get("@id"))
+        for prop in properties:
+            if str(rec.get(prop, "")).strip().lower() == value_clean:
+                return cast(str, rec.get("@id"))
     return None
 
 
@@ -52,6 +64,7 @@ def get_record_id_by_org_abbrev(records: List[Dict[str, Any]],abbrev: str) -> Op
 def add_bulk(
         target_database_id: Annotated[str, typer.Argument(help="The ID of the target database")],
         input_file_path: Annotated[str, typer.Argument(help="The path to the input CSV file")],
+        update_users: Annotated[bool, typer.Option(help="Update existing users if role or parameters are different on input list")] = True,
         remove_users: Annotated[bool, typer.Option(help="Remove existing users missing from the input list")] = False,
         dry_run: Annotated[bool, typer.Option(help="Do not actually perform any changes")] = False,
         yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation prompt")] = False,
@@ -129,117 +142,162 @@ def add_bulk(
 
     user_additions: List[Dict[str, Any]] = []
     user_updates: List[Dict[str, Any]] = []
+    user_ignores: List[Dict[str, Any]] = []
 
-    for idx, row in data.iterrows():
+    with console.status("Processing file...") as status:
+        for idx, row in data.iterrows():
+            status.update(f"Processing {idx+1} of {len(data)}")
 
-        print(f"Processing {idx+1} of {len(data)}")
+            # Spec: Stop if empty row reached
+            if pd.isna(row[email_col]) and pd.isna(row.get("role")):
+                break
 
-        # Spec: Stop if empty row reached
-        if pd.isna(row[email_col]) and pd.isna(row.get("role")):
-            break
+            email_raw = str(row[email_col]).strip() if not pd.isna(row[email_col]) else ""
+            role_label_raw = str(row["role"]).strip() if not pd.isna(row["role"]) else ""
+            name_raw = str(row.get("name", "")).strip() if not pd.isna(row.get("name")) else ""
+            lang_raw = str(row.get("language", "en")).strip() if not pd.isna(row.get("language")) else "en"
+            cde_raw = str(row.get("cde", "")).strip() if not pd.isna(row.get("cde")) else ""
+            org_raw = str(row.get("org", "")).strip() if not pd.isna(row.get("org")) else ""
 
-        email_raw = str(row[email_col]).strip() if not pd.isna(row[email_col]) else ""
-        role_label_raw = str(row["role"]).strip() if not pd.isna(row["role"]) else ""
-        name_raw = str(row.get("name", "")).strip() if not pd.isna(row.get("name")) else ""
-        lang_raw = str(row.get("language", "en")).strip() if not pd.isna(row.get("language")) else "en"
-        cde_raw = str(row.get("cde", "")).strip() if not pd.isna(row.get("cde")) else ""
-        org_raw = str(row.get("org", "")).strip() if not pd.isna(row.get("org")) else ""
-
-        if not email_raw:
-            continue
-
-        # Email preflight
-        with handle_api_errors(f"Preflight failed for {email_raw}"):
-            preflight = client.api.user_preflight(target_database_id, UserPreflightDTO(email=email_raw))
-
-        if not preflight.valid_email:
-            results.append(
-                {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
-                 "Message": preflight.localized_error_message or "Invalid email"})
-            continue
-
-        # Role matching
-        role_key = role_label_raw.lower()
-        if role_key not in db_roles:
-            results.append(
-                {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
-                 "Message": f"Unknown role: {role_label_raw}"})
-            continue
-
-        target_role = db_roles[role_key]
-        role_id = target_role.id
-        role_params: Dict[str, Any] = {}
-
-        # Handle Role Parameters
-        if role_label_raw == "CM Coordinator":
-            if not cde_raw:
-                results.append(
-                    {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
-                     "Message": "Missing cde for CM Coordinator"})
+            if not email_raw:
                 continue
 
-            # Find record in 1.1 Coordination Entities
-            rec_id = get_record_id_by_ccode(coordination_entity_records, cde_raw)
-            if not rec_id:
-                results.append(
-                    {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
-                     "Message": "Unknown cde"})
-                continue
-            role_params = {"cde": f"{coordination_entities_form.id}:{rec_id}"}
+            # Email preflight
+            with handle_api_errors(f"Preflight failed for {email_raw}"):
+                preflight = client.api.user_preflight(target_database_id, UserPreflightDTO(email=email_raw))
 
-        elif role_label_raw in ("CM Partner", "Partner Data Entry"):
-            if not org_raw:
-                results.append(
-                    {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
-                     "Message": "Missing org for CM Partner/Parter Data Entry"})
+            if not preflight.valid_email:
+                user_ignores.append({
+                    "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw},
+                    "message": preflight.localized_error_message or "Invalid email"
+                })
+                # results.append(
+                #     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                #      "Message": preflight.localized_error_message or "Invalid email"})
                 continue
 
-            # Find record in Partners
-            rec_id = get_record_id_by_org_abbrev(partner_records, org_raw)
-            if not rec_id:
-                results.append(
-                    {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
-                     "Message": "Unknown org"})
+            # Role matching
+            role_key = role_label_raw.lower()
+            if role_key not in db_roles:
+                user_ignores.append({
+                    "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw},
+                    "message": f"Unknown role: {role_label_raw}"
+                })
+                # results.append(
+                #     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                #      "Message": f"Unknown role: {role_label_raw}"})
                 continue
-            role_params = {"org": f"{partners_form.id}:{rec_id}"}
 
-        # User identification
-        email_clean = email_raw.lower()
-        known_emails.add(email_clean)
+            target_role = db_roles[role_key]
+            role_id = target_role.id
+            role_params: Dict[str, Any] = {}
 
-        existing_user = next((u for u in existing_users if u.email.lower() == email_clean), None)
+            # Handle Role Parameters
+            if role_label_raw == "CM Coordinator":
+                if not cde_raw:
+                    user_ignores.append({
+                        "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw},
+                        "message": "Missing cde for CM Coordinator"
+                    })
+                    # results.append(
+                    #     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                    #      "Message": "Missing cde for CM Coordinator"})
+                    continue
 
-        # Name fallback
-        final_name = name_raw if name_raw else (preflight.name if preflight.name else email_raw)
-        final_lang = lang_raw if lang_raw else "en"
+                # Find record in 1.1 Coordination Entities
+                rec_id = get_record_id_by_property(coordination_entity_records, ["CCODE"], cde_raw)
+                if not rec_id:
+                    user_ignores.append({
+                        "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw},
+                        "message": "Unknown cde"
+                    })
+                    # results.append(
+                    #     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                    #      "Message": "Unknown cde"})
+                    continue
+                role_params = {"cde": f"{coordination_entities_form.id}:{rec_id}"}
 
-        if not existing_user:
-            user_additions.append({
-                "name": final_name,
-                "email": email_clean,
-                "locale": final_lang,
-                "role": DatabaseRole(id=role_id, parameters=role_params),
-                "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw}
-            })
-        else:
-            # Check if role or params changed
-            changed = False
-            if existing_user.role.id != role_id:
-                changed = True
-            elif existing_user.role.parameters != role_params:
-                changed = True
+            elif role_label_raw in ("CM Partner", "Partner Data Entry"):
+                if not org_raw:
+                    user_ignores.append({
+                        "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw},
+                        "message": "Missing org for CM Partner/Partner Data Entry"
+                    })
+                    # results.append(
+                    #     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                    #      "Message": "Missing org for CM Partner/Partner Data Entry"})
+                    continue
 
-            if changed:
-                user_updates.append({
-                    "user_id": existing_user.user_id,
+                # Find record in Partners
+                rec_id = get_record_id_by_property(partner_records, PARTNER_PROPERTIES, org_raw)
+                if not rec_id:
+                    user_ignores.append({
+                        "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw},
+                        "message": "Unknown org"
+                    })
+                    # results.append(
+                    #     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                    #      "Message": "Unknown org"})
+                    continue
+                role_params = {"org": f"{partners_form.id}:{rec_id}"}
+
+            # User identification
+            email_clean = email_raw.lower()
+            known_emails.add(email_clean)
+
+            existing_user = next((u for u in existing_users if u.email.lower() == email_clean), None)
+
+            # Name fallback
+            final_name = name_raw if name_raw else (preflight.name if preflight.name else email_raw)
+            final_lang = lang_raw.lower() if lang_raw else "en"
+
+            if not existing_user:
+                user_additions.append({
+                    "name": final_name,
                     "email": email_clean,
+                    "locale": final_lang,
                     "role": DatabaseRole(id=role_id, parameters=role_params),
                     "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw}
                 })
             else:
-                results.append(
-                    {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Unchanged",
-                     "Message": ""})
+                if update_users:
+
+                    # Check if role or params changed
+                    changed = False
+                    if existing_user.role.id != role_id:
+                        changed = True
+                    elif existing_user.role.parameters != role_params:
+                        changed = True
+
+                    if changed:
+                        user_updates.append({
+                            "user_id": existing_user.user_id,
+                            "email": email_clean,
+                            "role": DatabaseRole(id=role_id, parameters=role_params),
+                            "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw}
+                        })
+                    else:
+                        user_ignores.append({
+                            "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw},
+                            "message": "Unchanged existing user"
+                        })
+                        # results.append(
+                        #     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw,
+                        #      "Status": "Unchanged",
+                        #      "Message": ""})
+                else:
+                    user_ignores.append({
+                        "orig_row": {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw},
+                        "message": "Existing user"
+                    })
+                    # results.append(
+                    #     {"Email": email_raw, "Role": role_label_raw, "cde": cde_raw, "org": org_raw, "Status": "Ignored",
+                    #      "Message": "Existing user"})
+
+    # For all Ignores, extract parameter string from orig_row and add to results
+    for ign in user_ignores:
+        ign['parameters'] = str({ k: ign['orig_row'][k] for k in ('org', 'cde') if ign['orig_row'].get(k)})
+        results.append({**ign['orig_row'], "Status": "Ignored", "Message": ign['message']})
 
     # Identify Deletions
     user_deletions = []
@@ -251,32 +309,36 @@ def add_bulk(
     # --- 4. Recap and Confirmation ---
     role_id_to_label = {r.id: r.label for r in target_tree.roles}
 
-    if user_additions or user_updates or user_deletions:
-        table = Table(title="Planned User Changes Summary")
-        table.add_column("Action", style="bold")
-        table.add_column("Email", style="cyan")
-        table.add_column("Role", style="magenta")
-        table.add_column("Parameters", style="dim")
+    table = Table(title="Planned User Changes Summary")
+    table.add_column("Action", style="bold")
+    table.add_column("Email", style="cyan")
+    table.add_column("Role", style="magenta")
+    table.add_column("Parameters", style="dim")
+    table.add_column("Message")
 
-        for add in user_additions:
-            role_obj = cast(DatabaseRole, add['role'])
-            role_label = role_id_to_label.get(role_obj.id, role_obj.id)
-            params = str(role_obj.parameters) if role_obj.parameters else "-"
-            table.add_row("Add", add['email'], role_label, params, style="green")
+    for ign in user_ignores:
+        table.add_row("Ignore", ign['orig_row']['Email'], ign['orig_row']['Role'], ign['parameters'], ign['message'], style="grey70")
 
-        for up in user_updates:
-            role_obj = cast(DatabaseRole, up['role'])
-            role_label = role_id_to_label.get(role_obj.id, role_obj.id)
-            params = str(role_obj.parameters) if role_obj.parameters else "-"
-            table.add_row("Modify", up['email'], role_label, params, style="yellow")
+    for add in user_additions:
+        role_obj = cast(DatabaseRole, add['role'])
+        role_label = role_id_to_label.get(role_obj.id, role_obj.id)
+        params = str(role_obj.parameters) if role_obj.parameters else "-"
+        table.add_row("Add", add['email'], role_label, params, "-", style="green")
 
-        for dele in user_deletions:
-            role_label = role_id_to_label.get(dele.role.id, dele.role.id)
-            params = str(dele.role.parameters) if dele.role.parameters else "-"
-            table.add_row("Delete", dele.email, role_label, params, style="red")
+    for up in user_updates:
+        role_obj = cast(DatabaseRole, up['role'])
+        role_label = role_id_to_label.get(role_obj.id, role_obj.id)
+        params = str(role_obj.parameters) if role_obj.parameters else "-"
+        table.add_row("Modify", up['email'], role_label, params, "-", style="yellow")
 
-        console.print(table)
-    else:
+    for dele in user_deletions:
+        role_label = role_id_to_label.get(dele.role.id, dele.role.id)
+        params = str(dele.role.parameters) if dele.role.parameters else "-"
+        table.add_row("Delete", dele.email, role_label, params, "-", style="red")
+
+    console.print(table)
+
+    if not(user_additions or user_updates or user_deletions):
         console.print("[green]No changes needed.[/green]")
         report_df = pd.DataFrame(results)
         report_df.to_csv(output_csv, index=False)
@@ -315,7 +377,7 @@ def add_bulk(
                                                      UpdateDatabaseUserRoleDTO(
                                                          assignments=[cast(DatabaseRole, up['role'])]
                                                      ))
-                results.append({**up['orig_row'], "Status": "Modified", "Message": ""})
+                results.append({**up['orig_row'], "Status": "Updated", "Message": ""})
 
         for dele in user_deletions:
             status.update(f"Deleting user: {dele.email}")
