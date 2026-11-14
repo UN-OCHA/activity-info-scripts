@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -82,7 +82,7 @@ class DatabaseLock:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+    def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.database_lock_date_range import DatabaseLockDateRange
 
         d = dict(src_dict)
@@ -102,9 +102,9 @@ class DatabaseLock:
             try:
                 if not isinstance(data, dict):
                     raise TypeError()
-                date_range_type_1 = DatabaseLockDateRange.from_dict(data)
+                date_range_type_0 = DatabaseLockDateRange.from_dict(data)
 
-                return date_range_type_1
+                return date_range_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
             return cast(DatabaseLockDateRange | None | Unset, data)

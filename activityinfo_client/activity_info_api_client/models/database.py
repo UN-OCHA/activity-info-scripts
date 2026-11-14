@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -31,7 +31,7 @@ class Database:
         version (str): The monotonically-increasing version of the database tree. The version number is incremented
             whenever a change is made that affects the database tree.
         label (str): This database's human-readable label.
-        owner_ref (UserRef):
+        owner_ref (None | UserRef):
         suspended (bool): True if this database is suspended for billing reasons
         role (UserRole):
         roles (list[DatabaseRole]): The roles that have been defined for this database.
@@ -57,7 +57,7 @@ class Database:
     user_id: str
     version: str
     label: str
-    owner_ref: UserRef
+    owner_ref: None | UserRef
     suspended: bool
     role: UserRole
     roles: list[DatabaseRole]
@@ -76,6 +76,8 @@ class Database:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.user_ref import UserRef
+
         database_id = self.database_id
 
         user_id = self.user_id
@@ -84,7 +86,11 @@ class Database:
 
         label = self.label
 
-        owner_ref = self.owner_ref.to_dict()
+        owner_ref: dict[str, Any] | None
+        if isinstance(self.owner_ref, UserRef):
+            owner_ref = self.owner_ref.to_dict()
+        else:
+            owner_ref = self.owner_ref
 
         suspended = self.suspended
 
@@ -173,7 +179,7 @@ class Database:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+    def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.database_lock import DatabaseLock
         from ..models.database_resource import DatabaseResource
         from ..models.database_role import DatabaseRole
@@ -191,7 +197,20 @@ class Database:
 
         label = d.pop("label")
 
-        owner_ref = UserRef.from_dict(d.pop("ownerRef"))
+        def _parse_owner_ref(data: object) -> None | UserRef:
+            if data is None:
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                owner_ref_type_0 = UserRef.from_dict(data)
+
+                return owner_ref_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | UserRef, data)
+
+        owner_ref = _parse_owner_ref(d.pop("ownerRef"))
 
         suspended = d.pop("suspended")
 
@@ -211,7 +230,9 @@ class Database:
         security_categories = []
         _security_categories = d.pop("securityCategories")
         for security_categories_item_data in _security_categories:
-            security_categories_item = SecurityCategory.from_dict(security_categories_item_data)
+            security_categories_item = SecurityCategory.from_dict(
+                security_categories_item_data
+            )
 
             security_categories.append(security_categories_item)
 

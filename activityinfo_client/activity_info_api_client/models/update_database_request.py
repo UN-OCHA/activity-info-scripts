@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -112,7 +112,7 @@ class UpdateDatabaseRequest:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+    def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.database_lock import DatabaseLock
         from ..models.database_resource import DatabaseResource
         from ..models.database_role import DatabaseRole
@@ -123,7 +123,9 @@ class UpdateDatabaseRequest:
         if _resource_updates is not UNSET:
             resource_updates = []
             for resource_updates_item_data in _resource_updates:
-                resource_updates_item = DatabaseResource.from_dict(resource_updates_item_data)
+                resource_updates_item = DatabaseResource.from_dict(
+                    resource_updates_item_data
+                )
 
                 resource_updates.append(resource_updates_item)
 

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, TypeVar
+from typing import Any, Self, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.audit_database_request_type_filter_item import AuditDatabaseRequestTypeFilterItem
+from ..models.audit_database_request_type_filter_item import (
+    AuditDatabaseRequestTypeFilterItem,
+)
 from ..types import UNSET, Unset
 
 T = TypeVar("T", bound="AuditDatabaseRequest")
@@ -62,7 +64,7 @@ class AuditDatabaseRequest:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+    def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         d = dict(src_dict)
         start_time = d.pop("startTime")
 
@@ -73,7 +75,9 @@ class AuditDatabaseRequest:
         if _type_filter is not UNSET:
             type_filter = []
             for type_filter_item_data in _type_filter:
-                type_filter_item = AuditDatabaseRequestTypeFilterItem(type_filter_item_data)
+                type_filter_item = AuditDatabaseRequestTypeFilterItem(
+                    type_filter_item_data
+                )
 
                 type_filter.append(type_filter_item)
 

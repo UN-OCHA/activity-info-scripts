@@ -5,18 +5,44 @@ import pandas as pd
 import typer
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
-from api.models import (
-    RecordUpdateDTO,
-    UpdateDatabaseDTO,
-    DatabaseTreeResourceType,
-    UpdateDatabaseTranslationsDTO,
-    DatabaseTranslation
+from activityinfo_client_helpers import find_resource_by_prefix, get_form_records_with_multiref
+from activityinfo_client.activity_info_api_client.api.default import (
+    get_database_tree,
+    get_database_translations,
+    get_form_schema,
+    get_form_translations,
+    update_database,
+    update_database_translations,
+    update_form_records,
+    update_form_schema_translations,
 )
-from common import get_records_with_multiref, find_resource_by_prefix
-from utils import get_client, console, handle_api_errors
+from activityinfo_client.activity_info_api_client.models import (
+    DatabaseResourceType,
+    RecordUpdateChange,
+    RecordUpdateChangeFields,
+    RecordUpdateRequest,
+    TranslationString,
+    UpdateDatabaseRequest,
+    UpdateTranslationsRequest,
+)
+from activityinfo_client.activity_info_api_client.types import UNSET
+
+from api_client_utils import get_client as get_generated_client, call_api, console
 
 # Initialize a Typer sub-application for translation management
 app = typer.Typer(no_args_is_help=True)
+
+
+def _api_request(client, endpoint, **kwargs):
+    result, api_error = call_api(
+        endpoint.sync_detailed,
+        client=client,
+        exit_on_error=False,
+        **kwargs,
+    )
+    if api_error:
+        raise typer.Exit(code=1)
+    return result
 
 
 @app.command(help="Migrate existing translations from a source database to a target database.")
@@ -29,7 +55,7 @@ def transfer(
     """
     Synchronize translations for a specific language between two ActivityInfo databases.
     """
-    client = get_client()
+    client = get_generated_client()
 
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
                   BarColumn(),
@@ -39,23 +65,24 @@ def transfer(
         # --- 1. Initialization & Data Retrieval ---
         task = progress.add_task("Fetching database structures...", total=None)
 
-        with handle_api_errors("Could not retrieve database structures"):
-            source_tree = client.api.get_database_tree(source_database_id)
-            target_tree = client.api.get_database_tree(target_database_id)
-            source_db_translations = client.api.get_database_translations(source_database_id, language_code)
+        source_tree = _api_request(client, get_database_tree, database_id=source_database_id)
+        target_tree = _api_request(client, get_database_tree, database_id=target_database_id)
+        source_db_translations = _api_request(
+            client, get_database_translations, database_id=source_database_id, language_code=language_code
+        )
 
         # --- 2. Validation ---
-        if target_tree.originalLanguage and target_tree.originalLanguage.lower() != "en":
+        if target_tree.original_language is not UNSET and target_tree.original_language.lower() != "en":
             console.print(
-                f"[bold red]Error:[/bold red] Target DB original language must be 'en', found '{target_tree.originalLanguage}'")
+                f"[bold red]Error:[/bold red] Target DB original language must be 'en', found '{target_tree.original_language}'")
             raise typer.Exit(code=1)
 
         # --- 3. Build Resource ID Mapping ---
         resource_id_map = {source_database_id: target_database_id}
-        target_resources_by_key = {(res.type, res.label): res for res in target_tree.resources}
+        target_resources_by_key = {(res.type_, res.label): res for res in target_tree.resources}
 
         for s_res in source_tree.resources:
-            key = (s_res.type, s_res.label)
+            key = (s_res.type_, s_res.label)
             if key in target_resources_by_key:
                 resource_id_map[s_res.id] = target_resources_by_key[key].id
 
@@ -75,71 +102,61 @@ def transfer(
             return res_id
 
         # --- 4. Language Setup ---
-        if language_code not in target_tree.languages:
+        target_languages = [] if target_tree.languages is UNSET else target_tree.languages
+        if language_code not in target_languages:
             progress.update(task, description=f"Adding '{language_code}' to target database...")
             if not dry_run:
-                with handle_api_errors(f"Could not add language '{language_code}' to target database"):
-                    client.api.update_database(target_database_id, UpdateDatabaseDTO(
-                        resourceUpdates=[],
-                        resourceDeletions=[],
-                        languageUpdates=[language_code],
-                        originalLanguage="en"
-                    ))
+                _api_request(client, update_database, database_id=target_database_id, body=UpdateDatabaseRequest(
+                    language_updates=[language_code], original_language="en"
+                ))
 
         # --- 5. Sync Database-Level Translations ---
         progress.update(task, description="Syncing database-level translations...")
         if not dry_run:
             mapped_db_strings = [
-                DatabaseTranslation(
+                TranslationString(
                     id=map_identifier(t.id),
                     original=t.original,
                     translated=t.translated,
-                    autoTranslated=t.auto_translated
+                    auto_translated=t.auto_translated
                 ) for t in source_db_translations.translated_strings
             ]
-            with handle_api_errors("Failed to sync database-level translations"):
-                client.api.update_database_translations(
-                    target_database_id,
-                    language_code,
-                    UpdateDatabaseTranslationsDTO(strings=mapped_db_strings)
-                )
+            _api_request(client, update_database_translations, database_id=target_database_id,
+                    language_code=language_code, body=UpdateTranslationsRequest(strings=mapped_db_strings))
 
         # --- 6. Sync Form-Level Translations ---
-        target_forms = [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM]
+        target_forms = [res for res in target_tree.resources if res.type_ == DatabaseResourceType.FORM]
         progress.update(task, description="Syncing form-level translations...", total=len(target_forms))
 
         for form in target_forms:
             source_form = next((res for res in source_tree.resources if
-                                res.label == form.label and res.type == DatabaseTreeResourceType.FORM), None)
+                                res.label == form.label and res.type_ == DatabaseResourceType.FORM), None)
             if not source_form:
                 progress.advance(task)
                 continue
 
-            with handle_api_errors(f"Failed to sync translations for {form.label}"):
-                source_translations = client.api.get_form_translations(source_database_id, source_form.id,
-                                                                       language_code)
-                source_schema = client.api.get_form_schema(source_form.id)
-                target_schema = client.api.get_form_schema(form.id)
+            source_translations = _api_request(client, get_form_translations, database_id=source_database_id,
+                                          form_id=source_form.id, language_code=language_code)
+            source_schema = _api_request(client, get_form_schema, form_id=source_form.id)
+            target_schema = _api_request(client, get_form_schema, form_id=form.id)
 
-                target_fields_by_label = {f.label: f for f in target_schema.elements}
-                field_id_map = {}
-                for s_field in source_schema.elements:
-                    if s_field.label in target_fields_by_label:
-                        field_id_map[s_field.id] = target_fields_by_label[s_field.label].id
+            target_fields_by_label = {f.label: f for f in target_schema.elements}
+            field_id_map = {}
+            for s_field in source_schema.elements:
+                if s_field.label in target_fields_by_label:
+                    field_id_map[s_field.id] = target_fields_by_label[s_field.label].id
 
-                if not dry_run:
-                    new_translations = [
-                        DatabaseTranslation(
-                            id=map_identifier(t.id, field_id_map),
-                            original=t.original,
-                            translated=t.translated,
-                            autoTranslated=t.auto_translated
-                        ) for t in source_translations.translated_strings
-                    ]
-                    client.api.update_form_translations(
-                        target_database_id, form.id, language_code,
-                        UpdateDatabaseTranslationsDTO(strings=new_translations)
-                    )
+            if not dry_run:
+                new_translations = [
+                    TranslationString(
+                        id=map_identifier(t.id, field_id_map),
+                        original=t.original,
+                        translated=t.translated,
+                        auto_translated=t.auto_translated
+                    ) for t in source_translations.translated_strings
+                ]
+                _api_request(client, update_form_schema_translations, form_id=form.id, language_code=language_code,
+                        body=UpdateTranslationsRequest(strings=new_translations))
             progress.advance(task)
 
     console.print(f"[bold green]Translation sync for '{language_code}' completed.[/bold green]")
@@ -162,31 +179,27 @@ def upsert(
     """
     Upsert translations for a specific language between an Excel file and a target ActivityInfo database.
     """
-    client = get_client()
+    client = get_generated_client()
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
                   BarColumn(),
                   TaskProgressColumn(),
                   console=console) as progress:
         task = progress.add_task("Fetching database structure...", total=None)
 
-        with handle_api_errors("Could not retrieve database structure"):
-            target_tree = client.api.get_database_tree(target_database_id)
+        target_tree = _api_request(client, get_database_tree, database_id=target_database_id)
 
-        if target_tree.originalLanguage and target_tree.originalLanguage.lower() != "en":
+        if target_tree.original_language is not UNSET and target_tree.original_language.lower() != "en":
             console.print(
-                f"[bold red]Error:[/bold red] Target DB original language must be 'en', found '{target_tree.originalLanguage}'")
+                f"[bold red]Error:[/bold red] Target DB original language must be 'en', found '{target_tree.original_language}'")
             raise typer.Exit(code=1)
 
         # --- Language Setup ---
-        if language_code not in target_tree.languages:
+        target_languages = [] if target_tree.languages is UNSET else target_tree.languages
+        if language_code not in target_languages:
             progress.update(task, description=f"Adding '{language_code}' to target database...")
-            with handle_api_errors(f"Could not add language '{language_code}' to target database"):
-                client.api.update_database(target_database_id, UpdateDatabaseDTO(
-                    resourceUpdates=[],
-                    resourceDeletions=[],
-                    languageUpdates=[language_code],
-                    originalLanguage="en"
-                ))
+            _api_request(client, update_database, database_id=target_database_id, body=UpdateDatabaseRequest(
+                language_updates=[language_code], original_language="en"
+            ))
 
         schema_missing_en = set()  # Set of (Context, SubContext, StringContext, Original)
 
@@ -217,16 +230,16 @@ def upsert(
             # Database-level translations
             progress.update(task, description="Syncing database-level translations...")
             db_strings = [
-                DatabaseTranslation(id=f"resource:{target_database_id}:label", original=target_tree.label,
-                                    translated="", autoTranslated=False)
+                TranslationString(id=f"resource:{target_database_id}:label", original=target_tree.label,
+                                  translated="", auto_translated=False)
             ]
-            if target_tree.description:
-                db_strings.append(DatabaseTranslation(id=f"resource:{target_database_id}:description",
-                                                      original=target_tree.description, translated="",
-                                                      autoTranslated=False))
+            if target_tree.description is not UNSET and target_tree.description:
+                db_strings.append(TranslationString(id=f"resource:{target_database_id}:description",
+                                                    original=target_tree.description, translated="",
+                                                    auto_translated=False))
             for role in target_tree.roles:
-                db_strings.append(DatabaseTranslation(id=f"role:{role.id}:label", original=role.label, translated="",
-                                                      autoTranslated=False))
+                db_strings.append(TranslationString(id=f"role:{role.id}:label", original=role.label, translated="",
+                                                    auto_translated=False))
 
             updated_db_strings = []
             for t in db_strings:
@@ -240,12 +253,12 @@ def upsert(
 
             if updated_db_strings:
                 console.print(f"[dim]Updating {len(updated_db_strings)} database-level strings...[/dim]")
-                client.api.update_database_translations(target_database_id, language_code,
-                                                        UpdateDatabaseTranslationsDTO(strings=updated_db_strings))
+                _api_request(client, update_database_translations, database_id=target_database_id, language_code=language_code,
+                        body=UpdateTranslationsRequest(strings=updated_db_strings))
 
             # Form-level translations
-            target_forms = [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM]
-            target_folders = [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FOLDER]
+            target_forms = [res for res in target_tree.resources if res.type_ == DatabaseResourceType.FORM]
+            target_folders = [res for res in target_tree.resources if res.type_ == DatabaseResourceType.FOLDER]
 
             def get_translation(original_label: str) -> Optional[str]:
                 # 1. Try exact match
@@ -266,85 +279,80 @@ def upsert(
                 trans_val = get_translation(folder.label)
                 if trans_val:
                     console.print(f"[dim]Updating folder '{folder.label}' -> '{trans_val}'...[/dim]")
-                    client.api.update_database_translations(target_database_id, language_code,
-                                                            UpdateDatabaseTranslationsDTO(strings=[
-                                                                DatabaseTranslation(id=f"resource:{folder.id}:label",
-                                                                                    original=folder.label,
-                                                                                    translated=trans_val,
-                                                                                    autoTranslated=False)
-                                                            ]))
+                    _api_request(client, update_database_translations, database_id=target_database_id,
+                            language_code=language_code,
+                            body=UpdateTranslationsRequest(strings=[
+                                TranslationString(id=f"resource:{folder.id}:label", original=folder.label,
+                                                  translated=trans_val, auto_translated=False)
+                            ]))
                 else:
                     schema_missing_en.add(("Database", "Folder", "resource:label", folder.label))
 
             for form in progress.track(target_forms, description="Syncing form schema translations"):
-                with handle_api_errors(f"Failed to sync translations for {form.label}"):
-                    schema = client.api.get_form_schema(form.id)
+                schema = _api_request(client, get_form_schema, form_id=form.id)
 
-                    form_trans_val = get_translation(form.label)
-                    form_strings = [DatabaseTranslation(id=f"resource:{form.id}:label", original=form.label,
-                                                        translated=form_trans_val or "", autoTranslated=False)]
-                    if not form_trans_val:
-                        schema_missing_en.add((form.label, "", "resource:label", form.label))
+                form_trans_val = get_translation(form.label)
+                form_strings = [TranslationString(id=f"resource:{form.id}:label", original=form.label,
+                                                  translated=form_trans_val or "", auto_translated=False)]
+                if not form_trans_val:
+                    schema_missing_en.add((form.label, "", "resource:label", form.label))
 
-                    for field in schema.elements:
-                        field_trans_val = get_translation(field.label)
-                        form_strings.append(DatabaseTranslation(id=f"field:{field.id}:label", original=field.label,
-                                                                translated=field_trans_val or "", autoTranslated=False))
-                        if not field_trans_val:
-                            schema_missing_en.add((form.label, field.code, "field:label", field.label))
+                for field in schema.elements:
+                    field_code = "" if field.code is UNSET else field.code
+                    field_trans_val = get_translation(field.label)
+                    form_strings.append(TranslationString(id=f"field:{field.id}:label", original=field.label,
+                                                          translated=field_trans_val or "", auto_translated=False))
+                    if not field_trans_val:
+                        schema_missing_en.add((form.label, field_code, "field:label", field.label))
 
-                        if field.description:
-                            desc_trans_val = get_translation(field.description)
-                            form_strings.append(
-                                DatabaseTranslation(id=f"field:{field.id}:description", original=field.description,
-                                                    translated=desc_trans_val or "", autoTranslated=False))
-                            if not desc_trans_val:
-                                schema_missing_en.add((form.label, field.code, "field:description", field.description))
+                    if field.description is not UNSET and field.description:
+                        desc_trans_val = get_translation(field.description)
+                        form_strings.append(
+                            TranslationString(id=f"field:{field.id}:description", original=field.description,
+                                              translated=desc_trans_val or "", auto_translated=False))
+                        if not desc_trans_val:
+                            schema_missing_en.add((form.label, field_code, "field:description", field.description))
 
-                        if field.type_parameters:
-                            if field.type_parameters.lookup_configs:
-                                for lookup_config in field.type_parameters.lookup_configs:
-                                    lookup_trans_val = get_translation(lookup_config.lookupLabel)
-                                    form_strings.append(
-                                        DatabaseTranslation(id=f"lookup:{lookup_config.id}:label",
-                                                            original=lookup_config.lookupLabel,
-                                                            translated=lookup_trans_val or "", autoTranslated=False))
-                                    if not lookup_trans_val:
-                                        schema_missing_en.add((form.label, field.code, "lookup:label",
-                                                               lookup_config.lookupLabel))
+                    if field.type_parameters is not UNSET:
+                        lookup_configs = field.type_parameters.lookup_configs
+                        if lookup_configs is not UNSET:
+                            for lookup_config in lookup_configs:
+                                lookup_label = lookup_config.lookup_label
+                                if lookup_label is UNSET:
+                                    continue
+                                lookup_trans_val = get_translation(lookup_label)
+                                form_strings.append(
+                                    TranslationString(id=f"lookup:{lookup_config.id}:label",
+                                                      original=lookup_label,
+                                                      translated=lookup_trans_val or "", auto_translated=False))
+                                if not lookup_trans_val:
+                                    schema_missing_en.add((form.label, field_code, "lookup:label", lookup_label))
 
-                            if field.type_parameters.values:
-                                for value in field.type_parameters.values:
-                                    value_trans_val = get_translation(value.label)
-                                    form_strings.append(
-                                        DatabaseTranslation(id=f"item:{value.id}:label",
-                                                            original=value.label,
-                                                            translated=value_trans_val or "", autoTranslated=False))
-                                    if not value_trans_val:
-                                        schema_missing_en.add((form.label, field.code, "item:label", value.label))
+                        values = field.type_parameters.values
+                        if values is not UNSET:
+                            for value in values:
+                                value_trans_val = get_translation(value.label)
+                                form_strings.append(
+                                    TranslationString(id=f"item:{value.id}:label", original=value.label,
+                                                      translated=value_trans_val or "", auto_translated=False))
+                                if not value_trans_val:
+                                    schema_missing_en.add((form.label, field_code, "item:label", value.label))
 
 
-                    updated_form_strings = [t for t in form_strings if t.translated]
+                updated_form_strings = [t for t in form_strings if t.translated]
 
-                    # Track missing
-                    # for t in form_strings:
-                    #     if not t.translated:
-                    #         schema_missing_en.add((form.label, t.original))
-
-                    # Clean missing strings
-                    schema_missing_en_cleaned = {
-                        tuple("" if x is None else x for x in item)
-                        for item in schema_missing_en
-                    }
-
-                    if updated_form_strings:
-                        console.print(
-                            f"[dim]Updating {len(updated_form_strings)} strings for form '{form.label}'...[/dim]")
-                        client.api.update_form_translations(target_database_id, form.id, language_code,
-                                                            UpdateDatabaseTranslationsDTO(strings=updated_form_strings))
+                if updated_form_strings:
+                    console.print(
+                        f"[dim]Updating {len(updated_form_strings)} strings for form '{form.label}'...[/dim]")
+                    _api_request(client, update_form_schema_translations, form_id=form.id, language_code=language_code,
+                            body=UpdateTranslationsRequest(strings=updated_form_strings))
 
             console.print(f"[bold green]Schema translations completed.[/bold green]")
             if schema_output and schema_missing_en:
+                schema_missing_en_cleaned = {
+                    tuple("" if x is None or x is UNSET else x for x in item)
+                    for item in schema_missing_en
+                }
                 with open(schema_output, 'w', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f)
                     writer.writerow(['Context', 'Subcontext', 'String Context', 'EN'])
@@ -369,7 +377,7 @@ def upsert(
                                                 description="Syncing reference values"):
                 # Robust form matching: Try exact match, then prefix with underscore or dot, then just prefix
                 form_res = find_resource_by_prefix(
-                    [res for res in target_tree.resources if res.type == DatabaseTreeResourceType.FORM],
+                    [res for res in target_tree.resources if res.type_ == DatabaseResourceType.FORM],
                     str(prefix)
                 )
 
@@ -379,45 +387,55 @@ def upsert(
                          'Reason': 'Form not found'})
                     continue
 
-                with handle_api_errors(f"Failed to fetch data for form {form_res.label}"):
-                    console.print(f"[dim]Processing form '{form_res.label}' (Prefix: {prefix})...[/dim]")
-                    schema = client.api.get_form_schema(form_res.id)
-                    records = get_records_with_multiref(client, form_res.id)
-                    field_code_to_id = {f.code: f.id for f in schema.elements}
+                console.print(f"[dim]Processing form '{form_res.label}' (Prefix: {prefix})...[/dim]")
+                schema = _api_request(client, get_form_schema, form_id=form_res.id)
+                records = get_form_records_with_multiref(
+                    client, form_res.id, request_api=_api_request
+                )
+                field_code_to_id = {
+                    field.code: field.id for field in schema.elements if field.code is not UNSET
+                }
 
-                    record_map = {}
-                    for rec in records:
-                        for k in ['CCODE', 'REFCODE', 'REFCODE_MAN']:
-                            val = rec.get(k)
-                            if val is not None:
-                                val_str = str(val).strip()
-                                if val_str and val_str.lower() != "none":
-                                    record_map[val_str] = rec
+                record_map = {}
+                for rec in records:
+                    for key in ['CCODE', 'REFCODE', 'REFCODE_MAN']:
+                        value = rec.get(key)
+                        if value is not None:
+                            value_string = str(value).strip()
+                            if value_string and value_string.lower() != "none":
+                                record_map[value_string] = rec
 
-                    updates = []
-                    for _, row in group.iterrows():
-                        field_code, refcode = str(row['Field Code']).strip(), str(row['Refcode']).strip()
-                        target_fc = f"{field_code}{target_field_suffix}"
+                updates = []
+                for _, row in group.iterrows():
+                    field_code, refcode = str(row['Field Code']).strip(), str(row['Refcode']).strip()
+                    target_field_code = f"{field_code}{target_field_suffix}"
 
-                        if target_fc not in field_code_to_id:
-                            continue
+                    if target_field_code not in field_code_to_id:
+                        continue
 
-                        rec = record_map.get(refcode)
-                        if not rec:
-                            not_found_items.append(
-                                {'Form System Prefix': prefix, 'Field Code': field_code, 'Refcode': refcode,
-                                 'Reason': f'Record {refcode} not found'})
-                            continue
+                    record = record_map.get(refcode)
+                    if not record:
+                        not_found_items.append(
+                            {'Form System Prefix': prefix, 'Field Code': field_code, 'Refcode': refcode,
+                             'Reason': f'Record {refcode} not found'})
+                        continue
 
-                        trans_val = row.get(target_lang_col)
-                        if not pd.isna(trans_val) and str(trans_val).strip() != "":
-                            if replace_translations or not rec.get(target_fc):
-                                updates.append(RecordUpdateDTO(formId=form_res.id, recordId=rec['@id'], fields={
-                                    field_code_to_id[target_fc]: str(trans_val).strip()}))
+                    translation = row.get(target_lang_col)
+                    if not pd.isna(translation) and str(translation).strip() != "":
+                        if replace_translations or not record.get(target_field_code):
+                            updates.append(RecordUpdateChange(
+                                form_id=form_res.id,
+                                record_id=record['@id'],
+                                fields=RecordUpdateChangeFields.from_dict({
+                                    field_code_to_id[target_field_code]: str(translation).strip()
+                                }),
+                            ))
 
-                    if updates:
-                        console.print(f"[dim]Pushing {len(updates)} record updates for '{form_res.label}'...[/dim]")
-                        for i in range(0, len(updates), 100): client.api.update_form_records(updates[i:i + 100])
+                if updates:
+                    console.print(f"[dim]Pushing {len(updates)} record updates for '{form_res.label}'...[/dim]")
+                    for start in range(0, len(updates), 100):
+                        _api_request(client, update_form_records,
+                                     body=RecordUpdateRequest(changes=updates[start:start + 100]))
 
             console.print("[bold green]Reference value translations completed.[/bold green]")
             if reference_output and not_found_items:

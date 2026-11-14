@@ -1,4 +1,5 @@
 import os
+import traceback
 from typing import Any, Callable, TypeVar
 from http import HTTPStatus
 from dotenv import load_dotenv
@@ -137,6 +138,8 @@ def call_api(
             f"error type: Unexpected Error\n" +
             f"message: {str(e)}\n"
         )
+        if os.getenv("API_DEBUG_TRACEBACK", "").lower() in {"1", "true", "yes"}:
+            error_msg += "traceback:\n" + traceback.format_exc()
 
     console.print(error_header)
     console.print(f"[red]{error_msg}[/red]")

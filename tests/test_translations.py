@@ -1,200 +1,236 @@
-from cuid2 import Cuid
+from types import SimpleNamespace
+
+import pandas as pd
 from typer.testing import CliRunner
 
-from api.models import AddDatabaseDTO, AddFormDTO, DatabaseTreeResourceType, DatabaseTreeResourceVisibility, \
-    SchemaFieldDTO, FieldType, UpdateDatabaseTranslationsDTO, DatabaseTranslation
-from translations import app
+import activityinfo_client_helpers
+import translations
+from activityinfo_client.activity_info_api_client.models import TranslationString
+from activityinfo_client.activity_info_api_client.models.database_resource_type import DatabaseResourceType
+from activityinfo_client.activity_info_api_client.models.form_schema_element_type import FormSchemaElementType
+from activityinfo_client.activity_info_api_client.types import UNSET
+
 
 runner = CliRunner()
 
 
-def test_translation_transfer(api_client, ai_setup):
-    base_url = ai_setup["url"]
-    token = ai_setup["token"]
+def test_translation_transfer_maps_database_folder_form_and_field_ids(monkeypatch):
+    source_db_id, target_db_id = "source-db", "target-db"
+    source_folder_id, target_folder_id = "source-folder", "target-folder"
+    source_form_id, target_form_id = "source-form", "target-form"
+    source_field_id, target_field_id = "source-field", "target-field"
 
-    cuid = Cuid(length=18)
-    source_db_id = cuid.generate()
-    target_db_id = cuid.generate()
+    def resource(resource_id, label, type_):
+        return SimpleNamespace(id=resource_id, label=label, type_=type_)
 
-    # 1. Create Source and Target DBs
-    api_client.api.add_database(
-        AddDatabaseDTO(id=source_db_id, label="Source DB", description="Source", templateId="blank"))
-    api_client.api.add_database(
-        AddDatabaseDTO(id=target_db_id, label="Target DB", description="Target", templateId="blank"))
-
-    # Add 'fr' language to both
-    from api.models import UpdateDatabaseDTO
-    api_client.api.update_database(source_db_id, UpdateDatabaseDTO(
-        languageUpdates=["fr"], resourceUpdates=[], resourceDeletions=[], originalLanguage="en"))
-    api_client.api.update_database(target_db_id, UpdateDatabaseDTO(
-        languageUpdates=["fr"], resourceUpdates=[], resourceDeletions=[], originalLanguage="en"))
-
-    # 2. Add a form to Source DB with some fields
-    form_id = cuid.generate()
-    field_id = cuid.generate()
-    api_client.api.add_form(AddFormDTO(
-        formClass=AddFormDTO.FormClass(
-            databaseId=source_db_id,
-            id=form_id,
-            label="Test Form",
-            schemaVersion=1,
-            elements=[
-                SchemaFieldDTO(id=field_id, code="F1", label="Field 1", required=True, type=FieldType.FREE_TEXT)
-            ]
+    source_tree = SimpleNamespace(
+        original_language="en",
+        languages=["en", "fr"],
+        resources=[
+            resource(source_folder_id, "Reports", DatabaseResourceType.FOLDER),
+            resource(source_form_id, "Monthly Data", DatabaseResourceType.FORM),
+        ],
+    )
+    target_tree = SimpleNamespace(
+        original_language="en",
+        languages=["en", "fr"],
+        resources=[
+            resource(target_folder_id, "Reports", DatabaseResourceType.FOLDER),
+            resource(target_form_id, "Monthly Data", DatabaseResourceType.FORM),
+        ],
+    )
+    source_db_dictionary = SimpleNamespace(translated_strings=[
+        TranslationString(
+            id=f"resource:{source_db_id}:label", original="Source", translated="Source traduit",
+            auto_translated=False,
         ),
-        formResource=AddFormDTO.FormResource(
-            id=form_id,
-            label="Test Form",
-            parentId=source_db_id,
-            type=DatabaseTreeResourceType.FORM,
-            visibility=DatabaseTreeResourceVisibility.PRIVATE
-        )
-    ))
-
-    # 3. Add same form to Target DB (simulating a clone or migration)
-    target_form_id = cuid.generate()
-    target_field_id = cuid.generate()
-    api_client.api.add_form(AddFormDTO(
-        formClass=AddFormDTO.FormClass(
-            databaseId=target_db_id,
-            id=target_form_id,
-            label="Test Form",
-            schemaVersion=1,
-            elements=[
-                SchemaFieldDTO(id=target_field_id, code="F1", label="Field 1", required=True, type=FieldType.FREE_TEXT)
-            ]
+        TranslationString(
+            id=f"resource:{source_folder_id}:label", original="Reports", translated="Rapports",
+            auto_translated=False,
         ),
-        formResource=AddFormDTO.FormResource(
-            id=target_form_id,
-            label="Test Form",
-            parentId=target_db_id,
-            type=DatabaseTreeResourceType.FORM,
-            visibility=DatabaseTreeResourceVisibility.PRIVATE
-        )
-    ))
+    ])
+    source_form_dictionary = SimpleNamespace(translated_strings=[
+        TranslationString(
+            id=f"resource:{source_form_id}:label", original="Monthly Data", translated="Monthly Data translated",
+            auto_translated=False,
+        ),
+        TranslationString(
+            id=f"field:{source_field_id}:label", original="Amount", translated="Montant",
+            auto_translated=False,
+        ),
+    ])
+    schemas = {
+        source_form_id: SimpleNamespace(elements=[SimpleNamespace(id=source_field_id, label="Amount")]),
+        target_form_id: SimpleNamespace(elements=[SimpleNamespace(id=target_field_id, label="Amount")]),
+    }
+    writes = []
 
-    # 4. Seed Source translations for 'fr'
-    translations = [
-        DatabaseTranslation(id=f"field:{field_id}:label", original="Field 1", translated="Champ 1", autoTranslated=False)
+    def fake_call_api(func, *args, **kwargs):
+        assert kwargs["exit_on_error"] is False
+        endpoint = func.__module__.rsplit(".", 1)[-1]
+        if endpoint == "get_database_tree":
+            result = source_tree if kwargs["database_id"] == source_db_id else target_tree
+        elif endpoint == "get_database_translations":
+            result = source_db_dictionary
+        elif endpoint == "get_form_translations":
+            result = source_form_dictionary
+        elif endpoint == "get_form_schema":
+            result = schemas[kwargs["form_id"]]
+        else:
+            writes.append((endpoint, kwargs))
+            result = None
+        return result, None
+
+    monkeypatch.setattr(translations, "get_generated_client", lambda: object())
+    monkeypatch.setattr(translations, "call_api", fake_call_api)
+
+    result = runner.invoke(translations.app, ["transfer", source_db_id, target_db_id, "fr"])
+
+    assert result.exit_code == 0, result.output
+    database_write = next(item for item in writes if item[0] == "update_database_translations")
+    database_strings = database_write[1]["body"].strings
+    assert [(item.id, item.translated) for item in database_strings] == [
+        (f"resource:{target_db_id}:label", "Source traduit"),
+        (f"resource:{target_folder_id}:label", "Rapports"),
     ]
-    api_client.api.update_form_translations(target_db_id, form_id, "fr", UpdateDatabaseTranslationsDTO(strings=translations))
-    
-    # Verify seeding
-    source_translations = api_client.api.get_form_translations(source_db_id, form_id, "fr")
-    print(f"DEBUG: Source translations after seeding: {source_translations.translated_strings}")
 
-    # 5. Run the transfer command
-    import os
-    os.environ["API_TOKEN"] = token
-    os.environ["ACTIVITYINFO_BASE_URL"] = f"{base_url}/resources/"
-
-    target_tree = api_client.api.get_database_tree(target_db_id)
-    print(f"DEBUG: Target tree resources: {[ (r.label, r.type) for r in target_tree.resources]}")
-
-    print(f"DEBUG: source_db_id='{source_db_id}', target_db_id='{target_db_id}', language='fr'")
-    result = runner.invoke(app, [source_db_id, target_db_id, "fr"])
-    
-    print("--- CLI OUTPUT START ---")
-    print(result.output)
-    print("--- CLI OUTPUT END ---")
-    
-    assert result.exit_code == 0
-
-def test_translation_transfer_database_and_folders(api_client, ai_setup):
-    base_url = ai_setup["url"]
-    token = ai_setup["token"]
-
-    cuid = Cuid(length=18)
-    source_db_id = cuid.generate()
-    target_db_id = cuid.generate()
-
-    # 1. Create Source and Target DBs
-    api_client.api.add_database(
-        AddDatabaseDTO(id=source_db_id, label="Source DB", description="Source", templateId="blank"))
-    api_client.api.add_database(
-        AddDatabaseDTO(id=target_db_id, label="Target DB", description="Target", templateId="blank"))
-
-    from api.models import UpdateDatabaseDTO
-    api_client.api.update_database(source_db_id, UpdateDatabaseDTO(
-        languageUpdates=["fr"], resourceUpdates=[], resourceDeletions=[], originalLanguage="en"))
-    api_client.api.update_database(target_db_id, UpdateDatabaseDTO(
-        languageUpdates=["fr"], resourceUpdates=[], resourceDeletions=[], originalLanguage="en"))
-
-    # 2. Add Folder and Form to Source
-    folder_id = cuid.generate()
-    form_id = cuid.generate()
-    field_id = cuid.generate()
-
-    # Add Folder
-    from api.models import Resource
-    api_client.api.update_database(source_db_id, UpdateDatabaseDTO(
-        resourceUpdates=[
-            Resource(id=folder_id, parentId=source_db_id, label="Test Folder", type=DatabaseTreeResourceType.FOLDER)
-        ]
-    ))
-    
-    # Add Form
-    from api.models import AddFormDTO
-    api_client.api.add_form(AddFormDTO(
-        formClass=AddFormDTO.FormClass(
-            databaseId=source_db_id, id=form_id, label="Nested Form", schemaVersion=1,
-            elements=[SchemaFieldDTO(id=field_id, code="F1", label="Field 1", required=True, type=FieldType.FREE_TEXT)]
-        ),
-        formResource=AddFormDTO.FormResource(id=form_id, label="Nested Form", parentId=folder_id, type=DatabaseTreeResourceType.FORM)
-    ))
-
-    # 3. Add Folder and Form to Target (different IDs)
-    target_folder_id = cuid.generate()
-    target_form_id = cuid.generate()
-    target_field_id = cuid.generate()
-
-    # Add Folder
-    api_client.api.update_database(target_db_id, UpdateDatabaseDTO(
-        resourceUpdates=[
-            Resource(id=target_folder_id, parentId=target_db_id, label="Test Folder", type=DatabaseTreeResourceType.FOLDER)
-        ]
-    ))
-    
-    # Add Form
-    api_client.api.add_form(AddFormDTO(
-        formClass=AddFormDTO.FormClass(
-            databaseId=target_db_id, id=target_form_id, label="Nested Form", schemaVersion=1,
-            elements=[SchemaFieldDTO(id=target_field_id, code="F1", label="Field 1", required=True, type=FieldType.FREE_TEXT)]
-        ),
-        formResource=AddFormDTO.FormResource(id=target_form_id, label="Nested Form", parentId=target_folder_id, type=DatabaseTreeResourceType.FORM)
-    ))
-
-    # 4. Seed Database-Level Translations
-    db_translations = [
-        DatabaseTranslation(id=f"resource:{source_db_id}:label", original="Source DB", translated="BD Source", autoTranslated=False),
-        DatabaseTranslation(id=f"resource:{folder_id}:label", original="Test Folder", translated="Dossier Test", autoTranslated=False)
+    form_write = next(item for item in writes if item[0] == "update_form_schema_translations")
+    assert form_write[1]["form_id"] == target_form_id
+    assert [(item.id, item.translated) for item in form_write[1]["body"].strings] == [
+        (f"resource:{target_form_id}:label", "Monthly Data translated"),
+        (f"field:{target_field_id}:label", "Montant"),
     ]
-    api_client.api.update_database_translations(source_db_id, "fr", UpdateDatabaseTranslationsDTO(strings=db_translations))
 
-    # 5. Seed Form-Level Translations
-    form_translations = [
-        DatabaseTranslation(id=f"resource:{form_id}:label", original="Nested Form", translated="Formulaire Imbriqué", autoTranslated=False),
-        DatabaseTranslation(id=f"field:{field_id}:label", original="Field 1", translated="Champ 1", autoTranslated=False)
+
+def test_translation_upsert_uses_generated_schema_translation_requests(monkeypatch):
+    database_id = "target-db"
+    folder = SimpleNamespace(id="folder", label="3_Data", type_=DatabaseResourceType.FOLDER)
+    form = SimpleNamespace(id="form", label="3.1_Reference", type_=DatabaseResourceType.FORM)
+    target_tree = SimpleNamespace(
+        original_language="en",
+        languages=["en"],
+        label="Target Database",
+        description=UNSET,
+        roles=[],
+        resources=[folder, form],
+    )
+    schema = SimpleNamespace(elements=[SimpleNamespace(
+        id="field", code="NAME", label="Name", description=UNSET, type_parameters=UNSET,
+    )])
+    frames = {
+        "CM - Schema": pd.DataFrame({
+            "EN": ["Target Database", "3_Data", "3.1_Reference", "Name"],
+            "FR": ["Base", "Données", "Références", "Nom"],
+        }),
+        "CM - Schema (Metrics)": pd.DataFrame({"EN": [], "FR": []}),
+    }
+    writes = []
+
+    def fake_call_api(func, *args, **kwargs):
+        assert kwargs["exit_on_error"] is False
+        endpoint = func.__module__.rsplit(".", 1)[-1]
+        if endpoint == "get_database_tree":
+            return target_tree, None
+        if endpoint == "get_form_schema":
+            return schema, None
+        writes.append((endpoint, kwargs))
+        return None, None
+
+    monkeypatch.setattr(translations, "get_generated_client", lambda: object())
+    monkeypatch.setattr(translations, "call_api", fake_call_api)
+    monkeypatch.setattr(translations.pd, "read_excel", lambda _path, sheet_name, **_kwargs: frames[sheet_name])
+
+    result = runner.invoke(translations.app, [
+        "upsert", "translations.xlsx", database_id, "fr", "--skip-reference", "--schema-output", "",
+    ])
+
+    assert result.exit_code == 0, result.output
+    language_update = next(item for item in writes if item[0] == "update_database")
+    assert language_update[1]["body"].language_updates == ["fr"]
+    assert language_update[1]["body"].original_language == "en"
+    database_write = next(item for item in writes if item[0] == "update_database_translations")
+    assert [(item.id, item.translated) for item in database_write[1]["body"].strings] == [
+        (f"resource:{database_id}:label", "Base"),
     ]
-    api_client.api.update_form_translations(target_db_id, form_id, "fr", UpdateDatabaseTranslationsDTO(strings=form_translations))
+    folder_write = [item for item in writes if item[0] == "update_database_translations"][1]
+    assert [(item.id, item.translated) for item in folder_write[1]["body"].strings] == [
+        ("resource:folder:label", "Données"),
+    ]
+    form_write = next(item for item in writes if item[0] == "update_form_schema_translations")
+    assert [(item.id, item.translated) for item in form_write[1]["body"].strings] == [
+        ("resource:form:label", "Références"),
+        ("field:field:label", "Nom"),
+    ]
 
-    # 6. Run the transfer command
-    import os
-    os.environ["API_TOKEN"] = token
-    os.environ["ACTIVITYINFO_BASE_URL"] = f"{base_url}/resources/"
 
-    result = runner.invoke(app, [source_db_id, target_db_id, "fr"])
-    assert result.exit_code == 0
+def test_translation_upsert_updates_reference_records_with_generated_models(monkeypatch):
+    database_id = "target-db"
+    form = SimpleNamespace(id="form", label="3.1_Reference", type_=DatabaseResourceType.FORM)
+    target_tree = SimpleNamespace(
+        original_language="en", languages=["en", "fr"], label="Target Database", description=UNSET,
+        roles=[], resources=[form],
+    )
+    schema = SimpleNamespace(elements=[SimpleNamespace(
+        id="field-id", code="NAME_FR", type_=FormSchemaElementType.FREE_TEXT,
+    )])
+    records = [SimpleNamespace(to_dict=lambda: {
+        "@id": "record-1", "REFCODE": "R1", "NAME_FR": "", "CCODE": "R1",
+    })]
+    updates = []
+    values_frame = pd.DataFrame({
+        "Form System Prefix": ["3.1"], "Field Code": ["NAME"], "Refcode": ["R1"], "FR": ["Nom traduit"],
+    })
 
-    # 7. Verify Results
-    # 7.1 Database Level
-    target_db_trans = api_client.api.get_database_translations(target_db_id, "fr")
-    # Verify Folder label mapped (This is the key fix for folder IDs)
-    assert any(t.translated == "Dossier Test" and target_folder_id in t.id for t in target_db_trans.translated_strings)
+    def fake_call_api(func, *args, **kwargs):
+        assert kwargs["exit_on_error"] is False
+        endpoint = func.__module__.rsplit(".", 1)[-1]
+        if endpoint == "get_database_tree":
+            return target_tree, None
+        if endpoint == "get_form_schema":
+            return schema, None
+        if endpoint == "get_form_records":
+            return records, None
+        updates.append(kwargs["body"])
+        return None, None
 
-    # 7.2 Form Level
-    target_form_trans = api_client.api.get_form_translations(target_db_id, target_form_id, "fr")
-    # Verify Form label mapped
-    assert any(t.translated == "Formulaire Imbriqué" and target_form_id in t.id for t in target_form_trans.translated_strings)
-    # Verify Field label mapped
-    assert any(t.translated == "Champ 1" and target_field_id in t.id for t in target_form_trans.translated_strings)
+    monkeypatch.setattr(translations, "get_generated_client", lambda: object())
+    monkeypatch.setattr(translations, "call_api", fake_call_api)
+    monkeypatch.setattr(translations.pd, "read_excel", lambda *_args, **_kwargs: values_frame)
+
+    result = runner.invoke(translations.app, ["upsert", "translations.xlsx", database_id, "fr", "--skip-schema"])
+
+    assert result.exit_code == 0, result.output
+    assert len(updates) == 1
+    assert updates[0].to_dict() == {
+        "changes": [{
+            "formId": "form", "recordId": "record-1", "fields": {"field-id": "Nom traduit"}, "deleted": False,
+        }],
+    }
+
+
+def test_generated_record_helper_resolves_multiselect_references():
+    base_records = [SimpleNamespace(to_dict=lambda: {"@id": "record-1", "REFS.@id": "ref-1, ref-2"})]
+    reference_records = [
+        SimpleNamespace(to_dict=lambda: {"@id": "ref-1", "LABEL": "First"}),
+        SimpleNamespace(to_dict=lambda: {"@id": "ref-2", "LABEL": "Second"}),
+    ]
+    schema = SimpleNamespace(elements=[SimpleNamespace(
+        type_=FormSchemaElementType.MULTISELECTREFERENCE,
+        code="REFS",
+        type_parameters=SimpleNamespace(range_=[SimpleNamespace(form_id="reference-form")]),
+    )])
+    requested_forms = []
+
+    def fake_request(_client, endpoint, **kwargs):
+        endpoint_name = endpoint.__name__.rsplit(".", 1)[-1]
+        if endpoint_name == "get_form_schema":
+            return schema
+        requested_forms.append(kwargs["form_id"])
+        return reference_records if kwargs["form_id"] == "reference-form" else base_records
+
+    records = activityinfo_client_helpers.get_form_records_with_multiref(
+        object(), "base-form", request_api=fake_request
+    )
+
+    assert requested_forms == ["base-form", "reference-form"]
+    assert [item["LABEL"] for item in records[0]["REFS"]] == ["First", "Second"]

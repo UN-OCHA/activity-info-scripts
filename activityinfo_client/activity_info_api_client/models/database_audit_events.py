@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.database_audit_events_resource_types_item import DatabaseAuditEventsResourceTypesItem
+from ..models.database_audit_events_resource_types_item import (
+    DatabaseAuditEventsResourceTypesItem,
+)
 from ..models.database_audit_events_type import DatabaseAuditEventsType
 from ..types import UNSET, Unset
 
@@ -141,7 +143,7 @@ class DatabaseAuditEvents:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+    def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.database_automation import DatabaseAutomation
         from ..models.user_ref import UserRef
 
@@ -157,7 +159,9 @@ class DatabaseAuditEvents:
         resource_types = []
         _resource_types = d.pop("resourceTypes")
         for resource_types_item_data in _resource_types:
-            resource_types_item = DatabaseAuditEventsResourceTypesItem(resource_types_item_data)
+            resource_types_item = DatabaseAuditEventsResourceTypesItem(
+                resource_types_item_data
+            )
 
             resource_types.append(resource_types_item)
 

@@ -1309,7 +1309,14 @@
           },
           "ownerRef": {
             "title": "Owner Ref",
-            "$ref": "#/components/schemas/UserRef"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "language": {
             "title": "Language",
@@ -1678,10 +1685,12 @@
           "dateRange": {
             "title": "Date Range",
             "description": "The date range to which this lock applies, if it is a date-range lock.",
-            "nullable": true,
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/DatabaseLockDateRange"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -3260,13 +3269,11 @@
           "lastLoginDate": {
             "title": "Last Login Date",
             "description": "Date of last login on the platform.",
-            "nullable": true,
-            "allOf": [
-              {
-                "type": "string",
-                "format": "date"
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
           },
           "lastLoginTime": {
             "title": "Last Login Time",

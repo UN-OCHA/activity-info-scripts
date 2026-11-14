@@ -1,21 +1,35 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.form_schema_element_parameter_capture_methods_item import FormSchemaElementParameterCaptureMethodsItem
-from ..models.form_schema_element_parameter_cardinality import FormSchemaElementParameterCardinality
-from ..models.form_schema_element_parameter_presentation import FormSchemaElementParameterPresentation
+from ..models.form_schema_element_parameter_capture_methods_item import (
+    FormSchemaElementParameterCaptureMethodsItem,
+)
+from ..models.form_schema_element_parameter_cardinality import (
+    FormSchemaElementParameterCardinality,
+)
+from ..models.form_schema_element_parameter_presentation import (
+    FormSchemaElementParameterPresentation,
+)
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.form_schema_element_parameter_lookup import FormSchemaElementParameterLookup
-    from ..models.form_schema_element_parameter_range_item import FormSchemaElementParameterRangeItem
-    from ..models.form_schema_element_parameter_translation import FormSchemaElementParameterTranslation
-    from ..models.form_schema_element_parameter_value import FormSchemaElementParameterValue
+    from ..models.form_schema_element_parameter_lookup import (
+        FormSchemaElementParameterLookup,
+    )
+    from ..models.form_schema_element_parameter_range_item import (
+        FormSchemaElementParameterRangeItem,
+    )
+    from ..models.form_schema_element_parameter_translation import (
+        FormSchemaElementParameterTranslation,
+    )
+    from ..models.form_schema_element_parameter_value import (
+        FormSchemaElementParameterValue,
+    )
 
 
 T = TypeVar("T", bound="FormSchemaElementParameter")
@@ -195,11 +209,19 @@ class FormSchemaElementParameter:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.form_schema_element_parameter_lookup import FormSchemaElementParameterLookup
-        from ..models.form_schema_element_parameter_range_item import FormSchemaElementParameterRangeItem
-        from ..models.form_schema_element_parameter_translation import FormSchemaElementParameterTranslation
-        from ..models.form_schema_element_parameter_value import FormSchemaElementParameterValue
+    def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
+        from ..models.form_schema_element_parameter_lookup import (
+            FormSchemaElementParameterLookup,
+        )
+        from ..models.form_schema_element_parameter_range_item import (
+            FormSchemaElementParameterRangeItem,
+        )
+        from ..models.form_schema_element_parameter_translation import (
+            FormSchemaElementParameterTranslation,
+        )
+        from ..models.form_schema_element_parameter_value import (
+            FormSchemaElementParameterValue,
+        )
 
         d = dict(src_dict)
         prefix_formula = d.pop("prefixFormula", UNSET)
@@ -228,7 +250,9 @@ class FormSchemaElementParameter:
         if _values is not UNSET:
             values = []
             for values_item_data in _values:
-                values_item = FormSchemaElementParameterValue.from_dict(values_item_data)
+                values_item = FormSchemaElementParameterValue.from_dict(
+                    values_item_data
+                )
 
                 values.append(values_item)
 
@@ -244,7 +268,9 @@ class FormSchemaElementParameter:
         if _range_ is not UNSET:
             range_ = []
             for range_item_data in _range_:
-                range_item = FormSchemaElementParameterRangeItem.from_dict(range_item_data)
+                range_item = FormSchemaElementParameterRangeItem.from_dict(
+                    range_item_data
+                )
 
                 range_.append(range_item)
 
@@ -253,7 +279,9 @@ class FormSchemaElementParameter:
         if _lookup_configs is not UNSET:
             lookup_configs = []
             for lookup_configs_item_data in _lookup_configs:
-                lookup_configs_item = FormSchemaElementParameterLookup.from_dict(lookup_configs_item_data)
+                lookup_configs_item = FormSchemaElementParameterLookup.from_dict(
+                    lookup_configs_item_data
+                )
 
                 lookup_configs.append(lookup_configs_item)
 
@@ -262,11 +290,15 @@ class FormSchemaElementParameter:
         field_id = d.pop("fieldId", UNSET)
 
         _capture_methods = d.pop("captureMethods", UNSET)
-        capture_methods: list[FormSchemaElementParameterCaptureMethodsItem] | Unset = UNSET
+        capture_methods: list[FormSchemaElementParameterCaptureMethodsItem] | Unset = (
+            UNSET
+        )
         if _capture_methods is not UNSET:
             capture_methods = []
             for capture_methods_item_data in _capture_methods:
-                capture_methods_item = FormSchemaElementParameterCaptureMethodsItem(capture_methods_item_data)
+                capture_methods_item = FormSchemaElementParameterCaptureMethodsItem(
+                    capture_methods_item_data
+                )
 
                 capture_methods.append(capture_methods_item)
 
@@ -281,7 +313,9 @@ class FormSchemaElementParameter:
         if isinstance(_translation_config, Unset):
             translation_config = UNSET
         else:
-            translation_config = FormSchemaElementParameterTranslation.from_dict(_translation_config)
+            translation_config = FormSchemaElementParameterTranslation.from_dict(
+                _translation_config
+            )
 
         form_schema_element_parameter = cls(
             prefix_formula=prefix_formula,

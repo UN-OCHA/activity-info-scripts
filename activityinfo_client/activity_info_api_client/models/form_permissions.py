@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -157,7 +157,7 @@ class FormPermissions:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+    def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.database_lock import DatabaseLock
         from ..models.field_condition import FieldCondition
 
@@ -210,7 +210,9 @@ class FormPermissions:
         if _field_level_conditions is not UNSET:
             field_level_conditions = []
             for field_level_conditions_item_data in _field_level_conditions:
-                field_level_conditions_item = FieldCondition.from_dict(field_level_conditions_item_data)
+                field_level_conditions_item = FieldCondition.from_dict(
+                    field_level_conditions_item_data
+                )
 
                 field_level_conditions.append(field_level_conditions_item)
 

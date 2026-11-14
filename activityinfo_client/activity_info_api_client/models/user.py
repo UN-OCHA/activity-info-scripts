@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -13,7 +13,6 @@ from ..models.user_user_license_type import UserUserLicenseType
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.user_last_login_date_type_1 import UserLastLoginDateType1
     from ..models.user_role import UserRole
 
 
@@ -40,7 +39,7 @@ class User:
             attempts.
         user_license_type (UserUserLicenseType | Unset): The type of user license required for this user, in this
             database.
-        last_login_date (None | Unset | UserLastLoginDateType1): Date of last login on the platform.
+        last_login_date (datetime.date | None | Unset): Date of last login on the platform.
         last_login_time (float | Unset):
         activation_status (UserActivationStatus | Unset): The user's current account status.
     """
@@ -57,14 +56,12 @@ class User:
     invite_accepted: bool | Unset = UNSET
     locked: bool | Unset = UNSET
     user_license_type: UserUserLicenseType | Unset = UNSET
-    last_login_date: None | Unset | UserLastLoginDateType1 = UNSET
+    last_login_date: datetime.date | None | Unset = UNSET
     last_login_time: float | Unset = UNSET
     activation_status: UserActivationStatus | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.user_last_login_date_type_1 import UserLastLoginDateType1
-
         database_id = self.database_id
 
         user_id = self.user_id
@@ -95,11 +92,11 @@ class User:
         if not isinstance(self.user_license_type, Unset):
             user_license_type = self.user_license_type.value
 
-        last_login_date: dict[str, Any] | None | Unset
+        last_login_date: None | str | Unset
         if isinstance(self.last_login_date, Unset):
             last_login_date = UNSET
-        elif isinstance(self.last_login_date, UserLastLoginDateType1):
-            last_login_date = self.last_login_date.to_dict()
+        elif isinstance(self.last_login_date, datetime.date):
+            last_login_date = self.last_login_date.isoformat()
         else:
             last_login_date = self.last_login_date
 
@@ -144,8 +141,7 @@ class User:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.user_last_login_date_type_1 import UserLastLoginDateType1
+    def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.user_role import UserRole
 
         d = dict(src_dict)
@@ -188,20 +184,20 @@ class User:
         else:
             user_license_type = UserUserLicenseType(_user_license_type)
 
-        def _parse_last_login_date(data: object) -> None | Unset | UserLastLoginDateType1:
+        def _parse_last_login_date(data: object) -> datetime.date | None | Unset:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
             try:
-                if not isinstance(data, dict):
+                if not isinstance(data, str):
                     raise TypeError()
-                last_login_date_type_1 = UserLastLoginDateType1.from_dict(data)
+                last_login_date_type_0 = datetime.date.fromisoformat(data)
 
-                return last_login_date_type_1
+                return last_login_date_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(None | Unset | UserLastLoginDateType1, data)
+            return cast(datetime.date | None | Unset, data)
 
         last_login_date = _parse_last_login_date(d.pop("lastLoginDate", UNSET))
 

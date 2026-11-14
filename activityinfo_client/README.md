@@ -122,3 +122,22 @@ If you want to install this client into another project without publishing it (e
 1. If that project is not using Poetry:
     1. Build a wheel with `poetry build -f wheel`
     1. Install that wheel from the other project `pip install <path-to-wheel>`
+
+## Regenerating the client
+
+The client is generated from `activityinfo_openapi_new.json` with `openapi-python-client` 0.29.0. Pin the generator
+version so its output remains compatible with this package's `httpx` dependency. Generate into a temporary directory
+first, review the result, then replace the contents of `activity_info_api_client` while preserving `py.typed` and this
+package's `pyproject.toml` and README:
+
+```powershell
+uv tool run --from openapi-python-client==0.29.0 openapi-python-client generate `
+  --path activityinfo_openapi_new.json `
+  --output-path "$env:TEMP\activity-info-api-client" `
+  --meta none `
+  --overwrite
+```
+
+The OpenAPI spec uses OpenAPI 3.1 nullable types. Primitive values such as `lastLoginDate` use
+`type: ["string", "null"]` with `format: "date"`; nullable references such as `dateRange` use `anyOf` with the
+referenced schema and `{ "type": "null" }`. Avoid the OpenAPI 3.0 `nullable` keyword.

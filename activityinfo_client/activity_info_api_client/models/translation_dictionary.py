@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -57,7 +57,7 @@ class TranslationDictionary:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+    def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.translation_dictionary_id import TranslationDictionaryId
         from ..models.translation_string import TranslationString
 
@@ -71,7 +71,9 @@ class TranslationDictionary:
         translated_strings = []
         _translated_strings = d.pop("translatedStrings")
         for translated_strings_item_data in _translated_strings:
-            translated_strings_item = TranslationString.from_dict(translated_strings_item_data)
+            translated_strings_item = TranslationString.from_dict(
+                translated_strings_item_data
+            )
 
             translated_strings.append(translated_strings_item)
 
