@@ -3,6 +3,9 @@ from typing import List, Optional
 from api import ActivityInfoClient
 from api.models import DatabaseTree, DatabaseTreeResourceType, Resource, FieldType, FormSchema
 
+from activityinfo_client.activity_info_api_client.models import DatabaseResource
+
+
 # Folders prefixed with these numbers are considered 'Data' folders in our standard structure
 DATA_FOLDER_PREFIXES = ["3", "4", "5", "6"]
 
@@ -37,7 +40,7 @@ def filter_data_forms(tree: DatabaseTree, folder_id: str) -> List[Resource]:
     ]
 
 
-def find_resource_by_prefix(items: List[Resource], prefix: str) -> Optional[Resource]:
+def find_resource_by_prefix(items: List[DatabaseResource], prefix: str) -> Optional[DatabaseResource]:
     """
     Find an item by its 'label' attribute prefix, preferring matches followed by standard delimiters.
     
@@ -71,7 +74,7 @@ def find_resource_by_prefix(items: List[Resource], prefix: str) -> Optional[Reso
     return matches[0]
 
 
-def find_all_resources_by_prefix(items: List[Resource], prefix: str) -> List[Resource]:
+def find_all_resources_by_prefix(items: List[DatabaseResource], prefix: str) -> List[DatabaseResource]:
     """
     Find all items whose 'label' attribute starts with the given prefix.
     

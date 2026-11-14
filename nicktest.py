@@ -12,16 +12,22 @@ from rich.pretty import pprint
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from api.models import (
-    RecordUpdateDTO,
-    UpdateDatabaseDTO,
-    DatabaseTreeResourceType,
-    UpdateDatabaseTranslationsDTO,
-    DatabaseTranslation, FormSchema
-)
+
+
+# from api.models import (
+#     RecordUpdateDTO,
+#     UpdateDatabaseDTO,
+#     DatabaseTreeResourceType,
+#     UpdateDatabaseTranslationsDTO,
+#     DatabaseTranslation, FormSchema
+# )
+
 from id_translation import SchemaIdTranslator
 # from common import get_records_with_multiref
-from utils import get_client, console, handle_api_errors
+# from utils import get_client, console, handle_api_errors
+from api_client_utils import get_client, console, call_api
+from activityinfo_client.activity_info_api_client.api.default import get_form_schema, get_database_tree
+from activityinfo_client.activity_info_api_client.types import UNSET
 
 # Initialize a Typer sub-application for nick tests
 app = typer.Typer(no_args_is_help=True)
@@ -46,9 +52,12 @@ def form_schema(
     """
     client = get_client()
 
-    with handle_api_errors(f"Failed to get schema for {form_id}"):
-        schema = client.api.get_form_schema(form_id)
-
+    schema, api_error = call_api(
+        get_form_schema.sync_detailed,
+        form_id=form_id,
+        client=client,
+        message=f"Failed to get schema for {form_id}",
+    )
     pprint(schema, expand_all=True)
 
 @app.command(help="Nick's test scripts: Print DB Tree.")
@@ -60,8 +69,12 @@ def db_tree(
     """
     client = get_client()
 
-    with handle_api_errors(f"Failed to get tree for {db_id}"):
-        tree = client.api.get_database_tree(db_id)
+    tree, api_error = call_api(
+        get_database_tree.sync_detailed,
+        database_id=db_id,
+        client=client,
+        message=f"Failed to get tree for {db_id}",
+    )
 
     pprint(tree, expand_all=True)
 
