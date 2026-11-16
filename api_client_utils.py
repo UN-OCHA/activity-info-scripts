@@ -9,8 +9,8 @@ import httpx
 
 from rich.console import Console
 
-from activityinfo_client.activity_info_api_client import Client, errors
-from activityinfo_client.activity_info_api_client.types import Response
+from activity_info_api_client import Client, errors
+from activity_info_api_client.types import Response
 
 # Load environment variables from a .env file if it exists
 load_dotenv()
@@ -76,7 +76,7 @@ def call_api(
 ) -> tuple[T | None, str | None]:
 
     """
-    Call an API function in /activityinfo_client with full error handling.
+    Call an API function with full error handling.
 
     Returns:
         (result, error_message)

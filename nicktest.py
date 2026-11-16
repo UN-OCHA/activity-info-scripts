@@ -26,8 +26,8 @@ from id_translation import SchemaIdTranslator
 # from common import get_records_with_multiref
 # from utils import get_client, console, handle_api_errors
 from api_client_utils import get_client, console, call_api
-from activityinfo_client.activity_info_api_client.api.default import get_form_schema, get_database_tree
-from activityinfo_client.activity_info_api_client.types import UNSET
+from activity_info_api_client.api.default import get_form_schema, get_database_tree
+from activity_info_api_client.types import UNSET
 
 # Initialize a Typer sub-application for nick tests
 app = typer.Typer(no_args_is_help=True)

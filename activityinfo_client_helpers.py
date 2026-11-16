@@ -3,10 +3,10 @@
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from activityinfo_client.activity_info_api_client.api.default import get_form_records, get_form_schema
-from activityinfo_client.activity_info_api_client.client import Client
-from activityinfo_client.activity_info_api_client.models import DatabaseResource, FormSchemaElementType
-from activityinfo_client.activity_info_api_client.types import UNSET
+from activity_info_api_client.api.default import get_form_records, get_form_schema
+from activity_info_api_client.client import Client
+from activity_info_api_client.models import DatabaseResource, FormSchemaElementType
+from activity_info_api_client.types import UNSET
 
 
 def find_resource_by_prefix(

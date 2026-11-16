@@ -6,7 +6,7 @@ import typer
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
 from activityinfo_client_helpers import find_resource_by_prefix, get_form_records_with_multiref
-from activityinfo_client.activity_info_api_client.api.default import (
+from activity_info_api_client.api.default import (
     get_database_tree,
     get_database_translations,
     get_form_schema,
@@ -16,7 +16,7 @@ from activityinfo_client.activity_info_api_client.api.default import (
     update_form_records,
     update_form_schema_translations,
 )
-from activityinfo_client.activity_info_api_client.models import (
+from activity_info_api_client.models import (
     DatabaseResourceType,
     RecordUpdateChange,
     RecordUpdateChangeFields,
@@ -25,7 +25,7 @@ from activityinfo_client.activity_info_api_client.models import (
     UpdateDatabaseRequest,
     UpdateTranslationsRequest,
 )
-from activityinfo_client.activity_info_api_client.types import UNSET
+from activity_info_api_client.types import UNSET
 
 from api_client_utils import get_client as get_generated_client, call_api, console
 

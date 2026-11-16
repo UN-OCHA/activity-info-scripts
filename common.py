@@ -3,7 +3,7 @@ from typing import List, Optional
 from api import ActivityInfoClient
 from api.models import DatabaseTree, DatabaseTreeResourceType, Resource, FieldType, FormSchema
 
-from activityinfo_client.activity_info_api_client.models import DatabaseResource
+from activity_info_api_client.models import DatabaseResource
 
 
 # Folders prefixed with these numbers are considered 'Data' folders in our standard structure

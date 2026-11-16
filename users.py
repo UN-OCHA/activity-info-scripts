@@ -15,7 +15,7 @@ from rich.console import Console
 
 from api_client_utils import get_client, call_api
 
-from activityinfo_client.activity_info_api_client.api.default import (
+from activity_info_api_client.api.default import (
     get_database_tree,
     get_form_records,
     get_database_users,
@@ -24,7 +24,7 @@ from activityinfo_client.activity_info_api_client.api.default import (
     update_database_user_role,
     delete_database_user,
 )
-from activityinfo_client.activity_info_api_client.models import (
+from activity_info_api_client.models import (
     AddUserRequest,
     UpdateUserRequest,
     UserRole,

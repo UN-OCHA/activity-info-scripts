@@ -15,6 +15,7 @@ dependencies = [
     "jsonpatch",
     "lark",
     "pandas-stubs~=3.0.1",
+    "activity-info-api-client @ git+https://github.com/UN-OCHA/activity-info-python-client.git@v2.0.0",
 ]
 
 [dependency-groups]
@@ -24,3 +25,6 @@ dev = [
     "pytest-asyncio>=1.3.0",
     "testcontainers>=4.14.1",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

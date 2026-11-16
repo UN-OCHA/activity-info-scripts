@@ -5,10 +5,10 @@ from typer.testing import CliRunner
 
 import activityinfo_client_helpers
 import translations
-from activityinfo_client.activity_info_api_client.models import TranslationString
-from activityinfo_client.activity_info_api_client.models.database_resource_type import DatabaseResourceType
-from activityinfo_client.activity_info_api_client.models.form_schema_element_type import FormSchemaElementType
-from activityinfo_client.activity_info_api_client.types import UNSET
+from activity_info_api_client.models import TranslationString
+from activity_info_api_client.models.database_resource_type import DatabaseResourceType
+from activity_info_api_client.models.form_schema_element_type import FormSchemaElementType
+from activity_info_api_client.types import UNSET
 
 
 runner = CliRunner()

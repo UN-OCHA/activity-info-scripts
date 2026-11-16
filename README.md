@@ -161,7 +161,9 @@ PYTHONPATH=. uv run pytest tests/test_config.py
 - `config.py`: Field-level configuration (metrics/disaggregations).
 - `db.py`: General database utility commands.
 - `utils.py`: Shared utilities (logging, console output, client init).
-- `activityinfo_openapi.json`: OpenAPI specification for the ActivityInfo REST API.
+- The generated ActivityInfo API client is installed from the
+  [activity-info-python-client](https://github.com/UN-OCHA/activity-info-python-client) Git repository at tag `v2.0.0`,
+  as declared in `pyproject.toml`. Its OpenAPI definition and generation files are maintained in that client project.
 
 ---
 
